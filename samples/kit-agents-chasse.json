@@ -17,7 +17,6 @@
       "table",
       "chaise",
       "tapis",
-      "rideau",
       "livre",
       "jouets",
       "lit",
@@ -26,11 +25,10 @@
       "boite",
       "crayons",
       "cartable",
-      "frigo",
+      "porte",
       "torchon",
       "marmite",
       "fruits",
-      "porte",
       "manteau"
     ],
     "fete": {
@@ -64,25 +62,25 @@
       "debut": 8,
       "duree": 5,
       "titre": "Étape 1",
-      "detail": "Dans la poche d'un manteau du porte-manteau. La carte mène à la cachette suivante."
+      "detail": "Sous le canapé. La carte mène à la cachette suivante."
     },
     {
       "debut": 13,
       "duree": 5,
       "titre": "Étape 2",
-      "detail": "Sous le canapé. La carte mène à la cachette suivante."
+      "detail": "Sous un coussin du canapé. La carte mène à la cachette suivante."
     },
     {
       "debut": 18,
       "duree": 5,
       "titre": "Étape 3",
-      "detail": "Sous un coussin du canapé. La carte mène à la cachette suivante."
+      "detail": "Dans la caisse à jouets. La carte mène à la cachette suivante."
     },
     {
       "debut": 23,
       "duree": 5,
       "titre": "Étape 4",
-      "detail": "Sous la table. Dernière carte : les enfants reviennent vous voir."
+      "detail": "Dans la poche d'un manteau posé sur une chaise. Dernière carte : les enfants reviennent vous voir."
     },
     {
       "debut": 28,
@@ -100,17 +98,6 @@
   "parcours": [
     {
       "etape": 1,
-      "cachette": "Dans la poche d'un manteau du porte-manteau",
-      "motCle": "MANTEAU",
-      "cachetteSuivante": "Sous le canapé",
-      "indices": [
-        "Cherchez du côté de : Entrée.",
-        "Cherchez dans un vêtement qui attend au porte-manteau.",
-        "La réponse : Dans la poche d'un manteau du porte-manteau."
-      ]
-    },
-    {
-      "etape": 2,
       "cachette": "Sous le canapé",
       "motCle": "CANAPE",
       "cachetteSuivante": "Sous un coussin du canapé",
@@ -121,10 +108,10 @@
       ]
     },
     {
-      "etape": 3,
+      "etape": 2,
       "cachette": "Sous un coussin du canapé",
       "motCle": "COUSSIN",
-      "cachetteSuivante": "Sous la table",
+      "cachetteSuivante": "Dans la caisse à jouets",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
         "C'est mou, c'est carré, et cela se soulève d'une main.",
@@ -132,14 +119,25 @@
       ]
     },
     {
-      "etape": 4,
-      "cachette": "Sous la table",
-      "motCle": "TABLE",
-      "cachetteSuivante": "le trésor",
+      "etape": 3,
+      "cachette": "Dans la caisse à jouets",
+      "motCle": "JOUETS",
+      "cachetteSuivante": "Dans la poche d'un manteau posé sur une chaise",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
-        "Regardez sous quelque chose qui a un grand plateau.",
-        "La réponse : Sous la table."
+        "C'est un contenant, et il est déjà plein de choses amusantes.",
+        "La réponse : Dans la caisse à jouets."
+      ]
+    },
+    {
+      "etape": 4,
+      "cachette": "Dans la poche d'un manteau posé sur une chaise",
+      "motCle": "MANTEAU",
+      "cachetteSuivante": "le trésor",
+      "indices": [
+        "Cherchez du côté de : Entrée.",
+        "Cherchez dans un vêtement chaud, posé à portée de main.",
+        "La réponse : Dans la poche d'un manteau posé sur une chaise."
       ]
     }
   ],
@@ -148,11 +146,11 @@
     "type": "devinette",
     "titre": "Devinette",
     "consigne": "Écoute bien la comptine. Elle dit où aller.",
-    "texte": "Je tiens chaud dehors. J'ai des poches. Fouille-les !",
-    "reponse": "MANTEAU",
+    "texte": "On s'assoit sur moi. Je suis tout doux. Regarde bien dessous !",
+    "reponse": "CANAPE",
     "role": "navigation",
     "surFiche": false,
-    "solution": "La réponse est MANTEAU : Dans la poche d'un manteau du porte-manteau."
+    "solution": "La réponse est CANAPE : Sous le canapé."
   },
   "equipes": [
     {
@@ -169,18 +167,18 @@
       "cartes": [
         {
           "etape": 1,
-          "cachette": "manteau",
+          "cachette": "canape",
           "ambiance": "La fiche de mission précise :",
           "navigation": {
             "id": "e1-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "On s'assoit sur moi. Je suis tout doux. Regarde bien dessous !",
-            "reponse": "CANAPE",
+            "texte": "Je suis tout mou. Je vis sur le canapé. Soulève-moi !",
+            "reponse": "COUSSIN",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est CANAPE : Sous le canapé."
+            "solution": "La réponse est COUSSIN : Sous un coussin du canapé."
           },
           "code": null,
           "bonus": {
@@ -230,18 +228,18 @@
         },
         {
           "etape": 2,
-          "cachette": "canape",
+          "cachette": "coussin",
           "ambiance": "Un billet plié en quatre indique :",
           "navigation": {
             "id": "e2-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "Je suis tout mou. Je vis sur le canapé. Soulève-moi !",
-            "reponse": "COUSSIN",
+            "texte": "Je suis une grande boîte. Dedans, il y a des jeux. Fouille-moi !",
+            "reponse": "JOUETS",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est COUSSIN : Sous un coussin du canapé."
+            "solution": "La réponse est JOUETS : Dans la caisse à jouets."
           },
           "code": null,
           "bonus": {
@@ -278,18 +276,18 @@
         },
         {
           "etape": 3,
-          "cachette": "coussin",
+          "cachette": "jouets",
           "ambiance": "Le dossier secret s'ouvre sur cette ligne :",
           "navigation": {
             "id": "e3-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "On mange sur moi. J'ai quatre pieds. Regarde en dessous !",
-            "reponse": "TABLE",
+            "texte": "Je tiens chaud. J'ai deux poches. Fouille-les !",
+            "reponse": "MANTEAU",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est TABLE : Sous la table."
+            "solution": "La réponse est MANTEAU : Dans la poche d'un manteau posé sur une chaise."
           },
           "code": null,
           "bonus": {
@@ -339,7 +337,7 @@
         },
         {
           "etape": 4,
-          "cachette": "table",
+          "cachette": "manteau",
           "ambiance": "Un billet plié en quatre indique :",
           "navigation": null,
           "code": null,

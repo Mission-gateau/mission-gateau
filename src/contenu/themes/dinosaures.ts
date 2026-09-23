@@ -27,16 +27,16 @@ export const DINOSAURES: Theme = {
       histoire:
         "Écoutez bien. Cette nuit, un tout petit dinosaure est passé par ici. Il cherchait un endroit tranquille. Il a posé son œuf quelque part dans la maison. Puis il est reparti dans la vallée. Mais il a laissé des traces. Des traces partout ! Chaque trace montre où aller. Il faut les suivre, une par une, doucement. Au bout, il y a l'œuf. Et l'œuf est un cadeau pour {prenom} !",
       briefing:
-        "Voici la règle, les explorateurs. On cherche tous ensemble. On marche à pas de dinosaure : doucement. Quand on trouve une trace, on me l'apporte et je la lis. Puis on repart. Prêts ? La première trace est tout près.",
+        "Voici la règle, l'équipe. On cherche tous ensemble. On marche à pas de dinosaure : doucement. Quand on trouve une trace, on me l'apporte et je la lis. Puis on repart. On y va ? La première trace est tout près.",
       reussites: [
         "Bravo ! Le petit dinosaure serait content.",
         "Une trace de plus ! On avance bien.",
-        "Vous suivez la piste comme des vrais guides.",
+        "Vous suivez la piste comme de vrais guides.",
         "L'œuf n'est plus très loin.",
       ],
       tresor:
         "Le nid est là ! Le petit dinosaure l'a laissé pour {prenom}, qui a {age} ans aujourd'hui. Ouvrez-le tous ensemble. À l'intérieur, il y a le gâteau et les cadeaux. Bon anniversaire, {prenom} !",
-      diplomeTitre: "Diplôme d'explorateur de la vallée",
+      diplomeTitre: "Diplôme de la vallée",
       diplomeTexte:
         "Ce diplôme est décerné à {nom}, membre de l'expédition, pour avoir suivi toutes les traces et retrouvé le nid de {prenom}.",
       invitation:

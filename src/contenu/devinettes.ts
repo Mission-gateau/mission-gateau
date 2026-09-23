@@ -38,11 +38,6 @@ export const DEVINETTES: Record<string, Record<IdFormat, string>> = typographier
     mission: "Je suis posé au sol et tout le monde me marche dessus sans s'excuser. Soulève mon coin.",
     escape: "Je couvre le sol sans être le sol. On s'essuie les pieds sur moi sans me dire merci. Mon coin se soulève.",
   },
-  rideau: {
-    chasse: "Je suis près de la fenêtre. Je bouge un peu avec l'air. Regarde derrière moi !",
-    mission: "Je pends à côté de la fenêtre et je cache la lumière le soir. Regarde derrière moi.",
-    escape: "Je m'ouvre et je me ferme, pourtant je ne suis pas une porte. Le soir, je fais la nuit avant la nuit. Passe derrière.",
-  },
   livre: {
     chasse: "J'ai plein de pages et des images. On me lit le soir. Cherche derrière moi !",
     mission: "Je suis plein de pages et d'histoires, rangé avec mes camarades sur une étagère basse. L'indice est glissé derrière moi.",
@@ -83,11 +78,6 @@ export const DEVINETTES: Record<string, Record<IdFormat, string>> = typographier
     mission: "Je pars à l'école chaque matin, porté sur un dos. Ouvre ma grande poche.",
     escape: "Je pèse lourd le lundi et léger le samedi. J'ai deux bretelles et beaucoup de secrets. Ouvre-moi.",
   },
-  frigo: {
-    chasse: "Je suis tout froid. Je garde à manger. Ouvre ma porte !",
-    mission: "Je suis froid dedans et je garde le lait et les yaourts. Ouvre ma porte.",
-    escape: "Je fais du froid sans neige et je ronronne sans être un chat. Ouvre-moi, puis referme vite.",
-  },
   torchon: {
     chasse: "Je suis un tiroir. Dedans, il y a des torchons. Ouvre-moi !",
     mission: "Je suis le tiroir où dorment les torchons pliés. Ouvre-moi.",
@@ -104,13 +94,13 @@ export const DEVINETTES: Record<string, Record<IdFormat, string>> = typographier
     escape: "Je porte des fruits sans être un arbre. Écarte les pommes et regarde tout au fond.",
   },
   porte: {
-    chasse: "On me pousse pour entrer. Je fais parfois du bruit. Regarde derrière moi !",
-    mission: "On me pousse pour entrer dans la maison. Regarde derrière moi.",
-    escape: "Je laisse passer tout le monde et je ne fais jamais un pas. Ouvre-moi en grand et regarde derrière.",
+    chasse: "Je suis en bois. On me pousse et je tourne. Regarde derrière moi !",
+    mission: "Je tourne sur mes gonds et je sépare la chambre du couloir. Regarde derrière moi.",
+    escape: "Je tourne sans jamais avancer, et je sépare sans fâcher personne. Pousse-moi doucement et regarde derrière.",
   },
   manteau: {
-    chasse: "Je tiens chaud dehors. J'ai des poches. Fouille-les !",
-    mission: "Je tiens chaud dehors et j'attends sagement sur le porte-manteau. Fouille mes poches.",
+    chasse: "Je tiens chaud. J'ai deux poches. Fouille-les !",
+    mission: "Je tiens chaud quand il fait froid, et j'attends sagement, posé sur une chaise. Fouille mes poches.",
     escape: "Je prends la forme de qui me porte et je garde les mains au chaud. Mes poches ont la mémoire courte. Fouille-les.",
   },
 });

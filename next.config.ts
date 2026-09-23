@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Les icônes sont des PNG de 128 pixels, servis tels quels : les faire
+  // passer par l'optimiseur d'images ne gagnerait rien et consommerait le
+  // quota de l'offre Hobby.
+  images: { unoptimized: true },
+
   // @react-pdf/renderer tourne côté Node : on le laisse hors du bundle.
   serverExternalPackages: ["@react-pdf/renderer"],
 

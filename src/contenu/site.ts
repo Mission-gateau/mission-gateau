@@ -15,7 +15,7 @@ export const SITE = typographier({
     {
       titre: "Vous répondez à six questions",
       texte:
-        "Le thème, l'âge fêté, le prénom, le nombre d'enfants, la durée, et les cachettes dont vous disposez chez vous.",
+        "Le thème, l'âge fêté, le prénom, le nombre d'enfants, la durée, et les cachettes dont vous disposez chez vous. Une septième étape, facultative, sert aux invitations et aux diplômes.",
     },
     {
       titre: "Le jeu se compose tout seul",
@@ -52,8 +52,8 @@ export const SITE = typographier({
       titre: "Escape game",
       age: "10-12 ans",
       texte:
-        "De la logique et du chiffrement : César, sudoku, grille de logique, morse, et un code final à quatre chiffres que personne ne détient seul.",
-      points: ["Chiffrements et déductions", "Code réparti entre les équipes", "Jeu coopératif"],
+        "De la logique et du chiffrement : César, sudoku, grille de logique, morse, et un code final à quatre chiffres. Dès qu'il y a plusieurs équipes, le code se répartit entre elles et personne ne le détient en entier.",
+      points: ["Chiffrements et déductions", "Code final à quatre chiffres", "Coopératif dès deux équipes"],
     },
   ],
 
@@ -74,7 +74,7 @@ export const SITE = typographier({
 
   titreSecurite: "Des cachettes sûres, choisies par vous",
   securiteTexte:
-    "La liste des cachettes est fermée et pensée pour la maison : rien près du four, des plaques, d'une machine, d'une prise ou d'une fenêtre, rien qui oblige à grimper, rien dans la salle de bains, rien dehors. Vous cochez celles que vous avez.",
+    "La liste des cachettes est fermée et pensée pour la maison : aucune n'est un appareil, une prise, une fenêtre, un balcon ou un escalier, aucune n'oblige à grimper, aucune n'est dans la salle de bains ni à l'extérieur. Vous cochez celles que vous avez, et le guide vous rappelle d'écarter celles qui seraient trop près du four ou des plaques.",
 
   titreDonnees: "Vos réponses restent chez vous",
   donneesTexte:

@@ -1,5 +1,6 @@
 import type { Alea } from "../alea";
 import { MOTS_GRILLE } from "../../contenu/mots";
+import { occurrences } from "../verif/motsmeles";
 
 export interface MotsMelesGeneres {
   grille: string[][];
@@ -149,7 +150,14 @@ export function genererMotsMeles(
         grille.push(cellules.slice(y * taille, (y + 1) * taille) as string[]);
       }
       const mots = placements.map((p) => p.mot).sort((a, b) => a.localeCompare(b, "fr"));
-      return { grille, mots, placements };
+      // Le remplissage peut faire apparaître un mot une seconde fois par
+      // hasard, souvent un mot court. L'enfant qui entoure la mauvaise
+      // occurrence obtiendrait une réponse fausse : on repart alors sur un
+      // autre essai plutôt que de livrer une grille ambiguë.
+      if (mots.every((mot) => occurrences(grille, mot) === 1)) {
+        return { grille, mots, placements };
+      }
+      continue;
     }
   }
   throw new Error(`mots mêlés : aucune grille ${taille}x${taille} trouvée pour « ${reponse} »`);

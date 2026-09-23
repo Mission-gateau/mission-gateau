@@ -44,7 +44,7 @@ export function ApercusDuKit() {
         <div className="mt-1 space-y-[2px]">
           {[
             ["1", "Sous le canapé"],
-            ["2", "Dans le frigo"],
+            ["2", "Sous le lit"],
             ["3", "Sous l'oreiller"],
           ].map(([n, lieu]) => (
             <div key={n} className="flex gap-2 border-b border-bordure pb-[1px]">

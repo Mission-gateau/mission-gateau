@@ -41,11 +41,13 @@ export const CONSIGNES = typographier({
 
   miroir: "Ce mot est écrit à l'envers. Lis-le de droite à gauche, ou dans un miroir.",
 
+  // Le décalage est un chiffre du code, souvent la réponse de la fiche que la
+  // même carte fait remettre : l'écrire ici reviendrait à donner la solution.
   cesar:
-    "Chaque lettre a été décalée de {decalage} rangs dans l'alphabet. Recule de {decalage} rangs pour retrouver le mot.",
+    "Chaque lettre a été décalée dans l'alphabet, toujours du même nombre de rangs. Ce nombre est le chiffre que ton équipe a déjà trouvé. Recule d'autant de rangs pour retrouver le mot.",
 
   sudoku:
-    "Remplis la grille : chaque chiffre de 1 à {max} apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case grisée est un chiffre du code.",
+    "Remplis la grille : chaque chiffre de 1 à {max} apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case marquée d'un rond est un chiffre du code.",
 
   logique:
     "Lis les indices et complète le tableau. Une seule solution est possible.",
@@ -83,6 +85,7 @@ export const TITRES = typographier({
 /** Phrases de solution, pour la page réservée à l'adulte. */
 export const SOLUTIONS = typographier({
   cachette: "La réponse est {reponse} : {cachette}.",
+  cesar: "Décalage de {decalage} rangs. La réponse est {reponse} : {cachette}.",
   chiffre: "Le résultat est {reponse}. C'est le chiffre n° {position} du code.",
   bonus: "Réponse : {reponse}.",
   intrus: "L'intrus est en ligne {ligne}, colonne {colonne} : c'est {intrus} au milieu des {commun}.",

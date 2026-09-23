@@ -25,9 +25,9 @@ export const PIRATES: Theme = {
     chasse: {
       titreKit: "La chasse au trésor des pirates",
       histoire:
-        "Écoutez bien, petits pirates. Cette nuit, un bateau est passé près de la maison. Le capitaine avait un coffre. Le coffre était trop lourd. Alors il l'a caché ici, tout près. Puis il est reparti sur la mer. Avant de partir, il a semé des cartes. Chaque carte montre où aller. Le perroquet nous les a laissées. Il faut les suivre, une par une. Au bout du chemin, il y a le trésor. Et le trésor, aujourd'hui, il est pour {prenom} !",
+        "Écoutez bien, l'équipage. Cette nuit, un bateau est passé près de la maison. Le capitaine avait un coffre. Le coffre était trop lourd. Alors il l'a caché ici, tout près. Puis il est reparti sur la mer. Avant de partir, il a semé des cartes. Chaque carte montre où aller. Le perroquet nous les a laissées. Il faut les suivre, une par une. Au bout du chemin, il y a le trésor. Et le trésor, aujourd'hui, il est pour {prenom} !",
       briefing:
-        "Voici la règle, moussaillons. On cherche ensemble. On marche, on ne court pas. Quand on trouve une carte, on me l'apporte. Je la lis à voix haute. Et on repart. Prêts ? La première carte est cachée tout près.",
+        "Voici la règle, l'équipage. On cherche ensemble. On marche, on ne court pas. Quand on trouve une carte, on me l'apporte. Je la lis à voix haute. Et on repart. On y va ? La première carte est cachée tout près.",
       reussites: [
         "Bravo ! Le capitaine serait fier de vous.",
         "Une carte de plus ! L'équipage avance.",
@@ -76,7 +76,7 @@ export const PIRATES: Theme = {
       ],
       tresor:
         "Le code {code} entre dans la serrure et le coffre du capitaine Rovan cède enfin. Ce qu'il gardait depuis tout ce temps revient à {prenom}, qui a {age} ans aujourd'hui. Vous l'avez ouvert ensemble : aucune équipe n'y serait arrivée seule.",
-      diplomeTitre: "Diplôme de briseur de code",
+      diplomeTitre: "Diplôme du code brisé",
       diplomeTexte:
         "Ce diplôme est décerné à {nom}, pour avoir percé les énigmes du capitaine Rovan et reconstitué le code du coffre, chez {prenom}.",
       invitation:

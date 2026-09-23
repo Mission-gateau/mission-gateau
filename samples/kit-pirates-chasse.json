@@ -17,7 +17,6 @@
       "table",
       "chaise",
       "tapis",
-      "rideau",
       "livre",
       "jouets",
       "lit",
@@ -26,11 +25,10 @@
       "boite",
       "crayons",
       "cartable",
-      "frigo",
+      "porte",
       "torchon",
       "marmite",
       "fruits",
-      "porte",
       "manteau"
     ],
     "fete": {
@@ -64,31 +62,31 @@
       "debut": 8,
       "duree": 7,
       "titre": "Étape 1",
-      "detail": "Derrière la porte d'entrée. La carte mène à la cachette suivante."
+      "detail": "Derrière un livre, sur une étagère basse. La carte mène à la cachette suivante."
     },
     {
       "debut": 15,
       "duree": 7,
       "titre": "Étape 2",
-      "detail": "Dans la caisse à jouets. La carte mène à la cachette suivante."
+      "detail": "Sous l'oreiller. La carte mène à la cachette suivante."
     },
     {
       "debut": 22,
       "duree": 7,
       "titre": "Étape 3",
-      "detail": "Derrière un livre, sur une étagère basse. La carte mène à la cachette suivante."
+      "detail": "Sous le canapé. La carte mène à la cachette suivante."
     },
     {
       "debut": 29,
       "duree": 7,
       "titre": "Étape 4",
-      "detail": "Sous le tapis. La carte mène à la cachette suivante."
+      "detail": "Dans la corbeille à fruits. La carte mène à la cachette suivante."
     },
     {
       "debut": 36,
       "duree": 7,
       "titre": "Étape 5",
-      "detail": "Sous le canapé. Dernière carte : les enfants reviennent vous voir."
+      "detail": "Sous un coussin du canapé. Dernière carte : les enfants reviennent vous voir."
     },
     {
       "debut": 43,
@@ -106,31 +104,9 @@
   "parcours": [
     {
       "etape": 1,
-      "cachette": "Derrière la porte d'entrée",
-      "motCle": "PORTE",
-      "cachetteSuivante": "Dans la caisse à jouets",
-      "indices": [
-        "Cherchez du côté de : Entrée.",
-        "C'est ce qu'on pousse pour entrer dans la maison.",
-        "La réponse : Derrière la porte d'entrée."
-      ]
-    },
-    {
-      "etape": 2,
-      "cachette": "Dans la caisse à jouets",
-      "motCle": "JOUETS",
-      "cachetteSuivante": "Derrière un livre, sur une étagère basse",
-      "indices": [
-        "Cherchez du côté de : Salon et salle à manger.",
-        "C'est un contenant, et il est déjà plein de choses amusantes.",
-        "La réponse : Dans la caisse à jouets."
-      ]
-    },
-    {
-      "etape": 3,
       "cachette": "Derrière un livre, sur une étagère basse",
       "motCle": "LIVRE",
-      "cachetteSuivante": "Sous le tapis",
+      "cachetteSuivante": "Sous l'oreiller",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
         "Cherchez sur une étagère basse, derrière quelque chose qui se lit.",
@@ -138,25 +114,47 @@
       ]
     },
     {
-      "etape": 4,
-      "cachette": "Sous le tapis",
-      "motCle": "TAPIS",
+      "etape": 2,
+      "cachette": "Sous l'oreiller",
+      "motCle": "OREILLER",
       "cachetteSuivante": "Sous le canapé",
       "indices": [
-        "Cherchez du côté de : Salon et salle à manger.",
-        "C'est par terre, et il faut en soulever un coin.",
-        "La réponse : Sous le tapis."
+        "Cherchez du côté de : Chambre.",
+        "C'est sur le lit, et on y pose la tête.",
+        "La réponse : Sous l'oreiller."
       ]
     },
     {
-      "etape": 5,
+      "etape": 3,
       "cachette": "Sous le canapé",
       "motCle": "CANAPE",
-      "cachetteSuivante": "le trésor",
+      "cachetteSuivante": "Dans la corbeille à fruits",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
         "C'est un meuble sur lequel on s'assoit à plusieurs, et il faut se baisser.",
         "La réponse : Sous le canapé."
+      ]
+    },
+    {
+      "etape": 4,
+      "cachette": "Dans la corbeille à fruits",
+      "motCle": "FRUITS",
+      "cachetteSuivante": "Sous un coussin du canapé",
+      "indices": [
+        "Cherchez du côté de : Cuisine.",
+        "Cherchez du côté des pommes et des bananes.",
+        "La réponse : Dans la corbeille à fruits."
+      ]
+    },
+    {
+      "etape": 5,
+      "cachette": "Sous un coussin du canapé",
+      "motCle": "COUSSIN",
+      "cachetteSuivante": "le trésor",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est mou, c'est carré, et cela se soulève d'une main.",
+        "La réponse : Sous un coussin du canapé."
       ]
     }
   ],
@@ -165,11 +163,11 @@
     "type": "devinette",
     "titre": "Devinette",
     "consigne": "Écoute bien la comptine. Elle dit où aller.",
-    "texte": "On me pousse pour entrer. Je fais parfois du bruit. Regarde derrière moi !",
-    "reponse": "PORTE",
+    "texte": "J'ai plein de pages et des images. On me lit le soir. Cherche derrière moi !",
+    "reponse": "LIVRE",
     "role": "navigation",
     "surFiche": false,
-    "solution": "La réponse est PORTE : Derrière la porte d'entrée."
+    "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
   },
   "equipes": [
     {
@@ -186,18 +184,18 @@
       "cartes": [
         {
           "etape": 1,
-          "cachette": "porte",
+          "cachette": "livre",
           "ambiance": "Le vieux marin grommelle son indice :",
           "navigation": {
             "id": "e1-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "Je suis une grande boîte. Dedans, il y a des jeux. Fouille-moi !",
-            "reponse": "JOUETS",
+            "texte": "On pose sa tête sur moi. Je suis tout doux. Soulève-moi !",
+            "reponse": "OREILLER",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est JOUETS : Dans la caisse à jouets."
+            "solution": "La réponse est OREILLER : Sous l'oreiller."
           },
           "code": null,
           "bonus": {
@@ -247,18 +245,18 @@
         },
         {
           "etape": 2,
-          "cachette": "jouets",
+          "cachette": "oreiller",
           "ambiance": "Le vieux marin grommelle son indice :",
           "navigation": {
             "id": "e2-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "J'ai plein de pages et des images. On me lit le soir. Cherche derrière moi !",
-            "reponse": "LIVRE",
+            "texte": "On s'assoit sur moi. Je suis tout doux. Regarde bien dessous !",
+            "reponse": "CANAPE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
+            "solution": "La réponse est CANAPE : Sous le canapé."
           },
           "code": null,
           "bonus": {
@@ -295,18 +293,18 @@
         },
         {
           "etape": 3,
-          "cachette": "livre",
+          "cachette": "canape",
           "ambiance": "Le vieux marin grommelle son indice :",
           "navigation": {
             "id": "e3-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "Je suis tout plat, par terre. On marche sur moi. Soulève-moi !",
-            "reponse": "TAPIS",
+            "texte": "Je tiens les pommes et les bananes. Regarde sous les fruits !",
+            "reponse": "FRUITS",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est TAPIS : Sous le tapis."
+            "solution": "La réponse est FRUITS : Dans la corbeille à fruits."
           },
           "code": null,
           "bonus": {
@@ -356,18 +354,18 @@
         },
         {
           "etape": 4,
-          "cachette": "tapis",
+          "cachette": "fruits",
           "ambiance": "Un coin de la carte au trésor porte ces mots :",
           "navigation": {
             "id": "e4-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "On s'assoit sur moi. Je suis tout doux. Regarde bien dessous !",
-            "reponse": "CANAPE",
+            "texte": "Je suis tout mou. Je vis sur le canapé. Soulève-moi !",
+            "reponse": "COUSSIN",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est CANAPE : Sous le canapé."
+            "solution": "La réponse est COUSSIN : Sous un coussin du canapé."
           },
           "code": null,
           "bonus": {
@@ -579,7 +577,7 @@
         },
         {
           "etape": 5,
-          "cachette": "canape",
+          "cachette": "coussin",
           "ambiance": "Le perroquet répète sans arrêt la même phrase :",
           "navigation": null,
           "code": null,

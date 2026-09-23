@@ -17,7 +17,6 @@
       "table",
       "chaise",
       "tapis",
-      "rideau",
       "livre",
       "jouets",
       "lit",
@@ -26,11 +25,10 @@
       "boite",
       "crayons",
       "cartable",
-      "frigo",
+      "porte",
       "torchon",
       "marmite",
       "fruits",
-      "porte",
       "manteau"
     ],
     "fete": {
@@ -70,37 +68,37 @@
       "debut": 13,
       "duree": 5,
       "titre": "Étape 2",
-      "detail": "Derrière un livre, sur une étagère basse. La carte mène à la cachette suivante."
+      "detail": "Sous le tapis. La carte mène à la cachette suivante."
     },
     {
       "debut": 18,
       "duree": 5,
       "titre": "Étape 3",
-      "detail": "Derrière le rideau. La carte mène à la cachette suivante."
+      "detail": "Sous le canapé. La carte mène à la cachette suivante."
     },
     {
       "debut": 23,
       "duree": 5,
       "titre": "Étape 4",
-      "detail": "Dans le frigo. La carte mène à la cachette suivante."
+      "detail": "Derrière un livre, sur une étagère basse. La carte mène à la cachette suivante."
     },
     {
       "debut": 28,
       "duree": 5,
       "titre": "Étape 5",
-      "detail": "Sous le canapé. La carte mène à la cachette suivante."
+      "detail": "Derrière la porte de la chambre. La carte mène à la cachette suivante."
     },
     {
       "debut": 33,
       "duree": 5,
       "titre": "Étape 6",
-      "detail": "Dans le pot à crayons. La carte mène à la cachette suivante."
+      "detail": "Sous une chaise. La carte mène à la cachette suivante."
     },
     {
       "debut": 38,
       "duree": 5,
       "titre": "Étape 7",
-      "detail": "Dans le panier à linge propre. Dernière carte : les enfants reviennent vous voir."
+      "detail": "Sous la table. Dernière carte : les enfants reviennent vous voir."
     },
     {
       "debut": 43,
@@ -120,7 +118,7 @@
       "etape": 1,
       "cachette": "Dans une boîte à chaussures",
       "motCle": "BOITE",
-      "cachetteSuivante": "Derrière un livre, sur une étagère basse",
+      "cachetteSuivante": "Sous le tapis",
       "indices": [
         "Cherchez du côté de : Chambre.",
         "C'est un contenant en carton, avec un couvercle.",
@@ -129,42 +127,20 @@
     },
     {
       "etape": 2,
-      "cachette": "Derrière un livre, sur une étagère basse",
-      "motCle": "LIVRE",
-      "cachetteSuivante": "Derrière le rideau",
+      "cachette": "Sous le tapis",
+      "motCle": "TAPIS",
+      "cachetteSuivante": "Sous le canapé",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
-        "Cherchez sur une étagère basse, derrière quelque chose qui se lit.",
-        "La réponse : Derrière un livre, sur une étagère basse."
+        "C'est par terre, et il faut en soulever un coin.",
+        "La réponse : Sous le tapis."
       ]
     },
     {
       "etape": 3,
-      "cachette": "Derrière le rideau",
-      "motCle": "RIDEAU",
-      "cachetteSuivante": "Dans le frigo",
-      "indices": [
-        "Cherchez du côté de : Salon et salle à manger.",
-        "C'est un grand tissu qui pend, tout près d'une fenêtre.",
-        "La réponse : Derrière le rideau."
-      ]
-    },
-    {
-      "etape": 4,
-      "cachette": "Dans le frigo",
-      "motCle": "FRIGO",
-      "cachetteSuivante": "Sous le canapé",
-      "indices": [
-        "Cherchez du côté de : Cuisine.",
-        "C'est grand, c'est froid, et cela a une porte.",
-        "La réponse : Dans le frigo."
-      ]
-    },
-    {
-      "etape": 5,
       "cachette": "Sous le canapé",
       "motCle": "CANAPE",
-      "cachetteSuivante": "Dans le pot à crayons",
+      "cachetteSuivante": "Derrière un livre, sur une étagère basse",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
         "C'est un meuble sur lequel on s'assoit à plusieurs, et il faut se baisser.",
@@ -172,25 +148,47 @@
       ]
     },
     {
-      "etape": 6,
-      "cachette": "Dans le pot à crayons",
-      "motCle": "CRAYONS",
-      "cachetteSuivante": "Dans le panier à linge propre",
+      "etape": 4,
+      "cachette": "Derrière un livre, sur une étagère basse",
+      "motCle": "LIVRE",
+      "cachetteSuivante": "Derrière la porte de la chambre",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "Cherchez sur une étagère basse, derrière quelque chose qui se lit.",
+        "La réponse : Derrière un livre, sur une étagère basse."
+      ]
+    },
+    {
+      "etape": 5,
+      "cachette": "Derrière la porte de la chambre",
+      "motCle": "PORTE",
+      "cachetteSuivante": "Sous une chaise",
       "indices": [
         "Cherchez du côté de : Chambre.",
-        "Cherchez près du bureau, dans quelque chose qui tient debout.",
-        "La réponse : Dans le pot à crayons."
+        "C'est ce qu'on pousse pour passer d'une pièce à l'autre.",
+        "La réponse : Derrière la porte de la chambre."
+      ]
+    },
+    {
+      "etape": 6,
+      "cachette": "Sous une chaise",
+      "motCle": "CHAISE",
+      "cachetteSuivante": "Sous la table",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est un siège, mais pour une seule personne.",
+        "La réponse : Sous une chaise."
       ]
     },
     {
       "etape": 7,
-      "cachette": "Dans le panier à linge propre",
-      "motCle": "PANIER",
+      "cachette": "Sous la table",
+      "motCle": "TABLE",
       "cachetteSuivante": "le trésor",
       "indices": [
-        "Cherchez du côté de : Chambre.",
-        "Cherchez du côté du linge propre.",
-        "La réponse : Dans le panier à linge propre."
+        "Cherchez du côté de : Salon et salle à manger.",
+        "Regardez sous quelque chose qui a un grand plateau.",
+        "La réponse : Sous la table."
       ]
     }
   ],
@@ -259,44 +257,44 @@
             "titre": "Le message en morse",
             "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
             "codes": [
-              ".-..",
+              "-",
+              ".-",
+              ".--.",
               "..",
-              "...-",
-              ".-.",
-              "."
+              "..."
             ],
             "legende": [
               {
-                "lettre": "E",
-                "code": "."
+                "lettre": "A",
+                "code": ".-"
               },
               {
                 "lettre": "I",
                 "code": ".."
               },
               {
-                "lettre": "L",
-                "code": ".-.."
+                "lettre": "P",
+                "code": ".--."
               },
               {
-                "lettre": "R",
-                "code": ".-."
+                "lettre": "S",
+                "code": "..."
               },
               {
-                "lettre": "V",
-                "code": "...-"
+                "lettre": "T",
+                "code": "-"
               }
             ],
-            "reponse": "LIVRE",
+            "reponse": "TAPIS",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
+            "solution": "La réponse est TAPIS : Sous le tapis."
           },
           "code": {
             "id": "e1-etoile-code",
             "type": "sudoku",
             "titre": "La grille de chiffres",
-            "consigne": "Remplis la grille : chaque chiffre de 1 à 4 apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case grisée est un chiffre du code.",
+            "consigne": "Remplis la grille : chaque chiffre de 1 à 4 apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case marquée d'un rond est un chiffre du code.",
             "taille": 4,
             "blocLargeur": 2,
             "blocHauteur": 2,
@@ -367,20 +365,20 @@
         },
         {
           "etape": 2,
-          "cachette": "livre",
+          "cachette": "tapis",
           "ambiance": "Un billet plié en quatre indique :",
           "navigation": {
             "id": "e2-etoile-nav",
             "type": "cesar",
             "titre": "Le message décalé",
-            "consigne": "Chaque lettre a été décalée de 4 rangs dans l'alphabet. Recule de 4 rangs pour retrouver le mot.",
-            "texteChiffre": "VMHIEY",
-            "decalage": 4,
-            "origineDecalage": "étape 2",
-            "reponse": "RIDEAU",
+            "consigne": "Chaque lettre a été décalée dans l'alphabet, toujours du même nombre de rangs. Ce nombre est le chiffre que ton équipe a déjà trouvé. Recule d'autant de rangs pour retrouver le mot.",
+            "texteChiffre": "FDQDSH",
+            "decalage": 3,
+            "origineDecalage": "étape 1",
+            "reponse": "CANAPE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est RIDEAU : Derrière le rideau."
+            "solution": "Décalage de 3 rangs. La réponse est CANAPE : Sous le canapé."
           },
           "code": {
             "id": "e2-etoile-code",
@@ -487,7 +485,7 @@
         },
         {
           "etape": 3,
-          "cachette": "rideau",
+          "cachette": "canape",
           "ambiance": "Une fois décodé, le message donne ceci :",
           "navigation": {
             "id": "e3-etoile-nav",
@@ -497,144 +495,143 @@
             "taille": 10,
             "grille": [
               [
-                "E",
-                "E",
-                "N",
-                "A",
-                "V",
-                "A",
                 "R",
-                "A",
                 "C",
-                "N"
-              ],
-              [
+                "A",
                 "S",
-                "M",
-                "S",
-                "S",
-                "E",
                 "C",
-                "S",
-                "B",
-                "T",
-                "A"
-              ],
-              [
-                "R",
-                "O",
-                "N",
-                "E",
-                "N",
-                "A",
-                "E",
-                "O",
-                "R",
-                "V"
-              ],
-              [
-                "E",
-                "N",
-                "O",
-                "T",
-                "R",
-                "S",
-                "N",
-                "U",
-                "E",
-                "I"
-              ],
-              [
-                "V",
-                "T",
-                "Z",
-                "T",
-                "E",
-                "C",
-                "T",
-                "C",
-                "M",
-                "G"
-              ],
-              [
-                "A",
-                "A",
-                "I",
-                "E",
-                "V",
-                "A",
-                "I",
-                "L",
-                "P",
-                "U"
-              ],
-              [
-                "R",
-                "G",
-                "R",
-                "N",
                 "A",
                 "D",
                 "E",
-                "I",
-                "L",
-                "E"
-              ],
-              [
-                "T",
-                "N",
-                "O",
-                "U",
-                "C",
-                "E",
-                "R",
-                "E",
-                "I",
+                "S",
                 "R"
               ],
               [
-                "F",
                 "E",
-                "H",
-                "L",
-                "R",
+                "G",
+                "U",
+                "A",
+                "E",
+                "M",
+                "N",
+                "V",
                 "S",
+                "U"
+              ],
+              [
                 "I",
                 "R",
-                "N",
+                "A",
+                "V",
+                "S",
+                "A",
+                "A",
+                "O",
+                "A",
+                "E"
+              ],
+              [
+                "L",
+                "I",
+                "E",
+                "E",
+                "R",
+                "R",
+                "V",
+                "I",
+                "R",
                 "G"
               ],
               [
+                "C",
+                "M",
+                "P",
                 "N",
+                "E",
+                "M",
                 "I",
+                "L",
+                "D",
+                "N"
+              ],
+              [
+                "U",
+                "P",
+                "A",
+                "T",
+                "V",
+                "O",
+                "G",
+                "I",
+                "I",
+                "O"
+              ],
+              [
+                "O",
+                "E",
+                "R",
+                "U",
+                "A",
+                "T",
+                "U",
+                "E",
+                "N",
+                "L"
+              ],
+              [
+                "B",
+                "U",
                 "D",
                 "R",
-                "A",
-                "J",
+                "R",
+                "T",
+                "E",
+                "R",
+                "E",
+                "P"
+              ],
+              [
+                "L",
+                "R",
+                "I",
+                "E",
+                "T",
+                "E",
+                "R",
+                "S",
+                "S",
+                "V"
+              ],
+              [
+                "T",
+                "R",
+                "E",
+                "M",
+                "P",
                 "L",
                 "I",
-                "A",
-                "O"
+                "N",
+                "R",
+                "E"
               ]
             ],
             "mots": [
-              "AIL",
+              "AVENTURE",
               "BOUCLIER",
-              "CARAVANE",
               "CASCADES",
-              "CAVERNE",
-              "HORIZONS",
-              "JARDIN",
-              "LUNETTES",
-              "MONTAGNE",
+              "DRAPEAU",
+              "GRIMPEUR",
+              "MARMOTTE",
               "NAVIGUER",
-              "SENTIER",
+              "PLONGEUR",
+              "SARDINES",
               "TRAVERSE",
-              "TREMPLIN"
+              "TREMPLIN",
+              "VOILIERS"
             ],
             "placements": [
               {
-                "mot": "TRAVERSE",
+                "mot": "BOUCLIER",
                 "cases": [
                   [
                     0,
@@ -666,224 +663,6 @@
                   ],
                   [
                     0,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "CARAVANE",
-                "cases": [
-                  [
-                    1,
-                    0
-                  ],
-                  [
-                    2,
-                    0
-                  ],
-                  [
-                    3,
-                    0
-                  ],
-                  [
-                    4,
-                    0
-                  ],
-                  [
-                    5,
-                    0
-                  ],
-                  [
-                    6,
-                    0
-                  ],
-                  [
-                    7,
-                    0
-                  ],
-                  [
-                    8,
-                    0
-                  ]
-                ]
-              },
-              {
-                "mot": "NAVIGUER",
-                "cases": [
-                  [
-                    9,
-                    0
-                  ],
-                  [
-                    9,
-                    1
-                  ],
-                  [
-                    9,
-                    2
-                  ],
-                  [
-                    9,
-                    3
-                  ],
-                  [
-                    9,
-                    4
-                  ],
-                  [
-                    9,
-                    5
-                  ],
-                  [
-                    9,
-                    6
-                  ],
-                  [
-                    9,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "MONTAGNE",
-                "cases": [
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    1,
-                    3
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    1,
-                    5
-                  ],
-                  [
-                    1,
-                    6
-                  ],
-                  [
-                    1,
-                    7
-                  ],
-                  [
-                    1,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "HORIZONS",
-                "cases": [
-                  [
-                    2,
-                    1
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    2,
-                    3
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    2,
-                    5
-                  ],
-                  [
-                    2,
-                    6
-                  ],
-                  [
-                    2,
-                    7
-                  ],
-                  [
-                    2,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "LUNETTES",
-                "cases": [
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    3,
-                    3
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    3,
-                    5
-                  ],
-                  [
-                    3,
-                    6
-                  ],
-                  [
-                    3,
-                    7
-                  ],
-                  [
-                    3,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "CAVERNE",
-                "cases": [
-                  [
-                    4,
-                    1
-                  ],
-                  [
-                    4,
-                    2
-                  ],
-                  [
-                    4,
-                    3
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    4,
-                    5
-                  ],
-                  [
-                    4,
-                    6
-                  ],
-                  [
-                    4,
                     7
                   ]
                 ]
@@ -892,6 +671,224 @@
                 "mot": "CASCADES",
                 "cases": [
                   [
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    0
+                  ],
+                  [
+                    3,
+                    0
+                  ],
+                  [
+                    4,
+                    0
+                  ],
+                  [
+                    5,
+                    0
+                  ],
+                  [
+                    6,
+                    0
+                  ],
+                  [
+                    7,
+                    0
+                  ],
+                  [
+                    8,
+                    0
+                  ]
+                ]
+              },
+              {
+                "mot": "PLONGEUR",
+                "cases": [
+                  [
+                    9,
+                    0
+                  ],
+                  [
+                    9,
+                    1
+                  ],
+                  [
+                    9,
+                    2
+                  ],
+                  [
+                    9,
+                    3
+                  ],
+                  [
+                    9,
+                    4
+                  ],
+                  [
+                    9,
+                    5
+                  ],
+                  [
+                    9,
+                    6
+                  ],
+                  [
+                    9,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "GRIMPEUR",
+                "cases": [
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    1,
+                    7
+                  ],
+                  [
+                    1,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "DRAPEAU",
+                "cases": [
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    2,
+                    2
+                  ],
+                  [
+                    2,
+                    3
+                  ],
+                  [
+                    2,
+                    4
+                  ],
+                  [
+                    2,
+                    5
+                  ],
+                  [
+                    2,
+                    6
+                  ],
+                  [
+                    2,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "AVENTURE",
+                "cases": [
+                  [
+                    3,
+                    1
+                  ],
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    3,
+                    3
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    3,
+                    5
+                  ],
+                  [
+                    3,
+                    6
+                  ],
+                  [
+                    3,
+                    7
+                  ],
+                  [
+                    3,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "TRAVERSE",
+                "cases": [
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    4,
+                    7
+                  ],
+                  [
+                    4,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "MARMOTTE",
+                "cases": [
+                  [
                     5,
                     1
                   ],
@@ -926,7 +923,7 @@
                 ]
               },
               {
-                "mot": "SENTIER",
+                "mot": "NAVIGUER",
                 "cases": [
                   [
                     6,
@@ -955,11 +952,15 @@
                   [
                     6,
                     7
+                  ],
+                  [
+                    6,
+                    8
                   ]
                 ]
               },
               {
-                "mot": "BOUCLIER",
+                "mot": "VOILIERS",
                 "cases": [
                   [
                     7,
@@ -991,49 +992,49 @@
                   ],
                   [
                     7,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "SARDINES",
+                "cases": [
+                  [
+                    8,
+                    1
+                  ],
+                  [
+                    8,
+                    2
+                  ],
+                  [
+                    8,
+                    3
+                  ],
+                  [
+                    8,
+                    4
+                  ],
+                  [
+                    8,
+                    5
+                  ],
+                  [
+                    8,
+                    6
+                  ],
+                  [
+                    8,
+                    7
+                  ],
+                  [
+                    8,
                     8
                   ]
                 ]
               },
               {
                 "mot": "TREMPLIN",
-                "cases": [
-                  [
-                    8,
-                    1
-                  ],
-                  [
-                    8,
-                    2
-                  ],
-                  [
-                    8,
-                    3
-                  ],
-                  [
-                    8,
-                    4
-                  ],
-                  [
-                    8,
-                    5
-                  ],
-                  [
-                    8,
-                    6
-                  ],
-                  [
-                    8,
-                    7
-                  ],
-                  [
-                    8,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "JARDIN",
                 "cases": [
                   [
                     0,
@@ -1058,12 +1059,7 @@
                   [
                     5,
                     9
-                  ]
-                ]
-              },
-              {
-                "mot": "AIL",
-                "cases": [
+                  ],
                   [
                     6,
                     9
@@ -1071,18 +1067,14 @@
                   [
                     7,
                     9
-                  ],
-                  [
-                    8,
-                    9
                   ]
                 ]
               }
             ],
-            "reponse": "FRIGO",
+            "reponse": "LIVRE",
             "role": "navigation",
             "surFiche": true,
-            "solution": "La réponse est FRIGO : Dans le frigo."
+            "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
           },
           "code": null,
           "bonus": null,
@@ -1091,7 +1083,7 @@
         },
         {
           "etape": 4,
-          "cachette": "frigo",
+          "cachette": "livre",
           "ambiance": "Le quartier général transmet ce message :",
           "navigation": {
             "id": "e4-etoile-nav",
@@ -1099,39 +1091,38 @@
             "titre": "Le message en morse",
             "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
             "codes": [
-              "-.-.",
-              ".-",
-              "-.",
-              ".-",
               ".--.",
+              "---",
+              ".-.",
+              "-",
               "."
             ],
             "legende": [
-              {
-                "lettre": "A",
-                "code": ".-"
-              },
-              {
-                "lettre": "C",
-                "code": "-.-."
-              },
               {
                 "lettre": "E",
                 "code": "."
               },
               {
-                "lettre": "N",
-                "code": "-."
+                "lettre": "O",
+                "code": "---"
               },
               {
                 "lettre": "P",
                 "code": ".--."
+              },
+              {
+                "lettre": "R",
+                "code": ".-."
+              },
+              {
+                "lettre": "T",
+                "code": "-"
               }
             ],
-            "reponse": "CANAPE",
+            "reponse": "PORTE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est CANAPE : Sous le canapé."
+            "solution": "La réponse est PORTE : Derrière la porte de la chambre."
           },
           "code": null,
           "bonus": null,
@@ -1140,20 +1131,20 @@
         },
         {
           "etape": 5,
-          "cachette": "canape",
+          "cachette": "porte",
           "ambiance": "La fiche de mission précise :",
           "navigation": {
             "id": "e5-etoile-nav",
             "type": "cesar",
             "titre": "Le message décalé",
-            "consigne": "Chaque lettre a été décalée de 4 rangs dans l'alphabet. Recule de 4 rangs pour retrouver le mot.",
-            "texteChiffre": "GVECSRW",
+            "consigne": "Chaque lettre a été décalée dans l'alphabet, toujours du même nombre de rangs. Ce nombre est le chiffre que ton équipe a déjà trouvé. Recule d'autant de rangs pour retrouver le mot.",
+            "texteChiffre": "GLEMWI",
             "decalage": 4,
             "origineDecalage": "étape 2",
-            "reponse": "CRAYONS",
+            "reponse": "CHAISE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est CRAYONS : Dans le pot à crayons."
+            "solution": "Décalage de 4 rangs. La réponse est CHAISE : Sous une chaise."
           },
           "code": null,
           "bonus": null,
@@ -1162,7 +1153,7 @@
         },
         {
           "etape": 6,
-          "cachette": "crayons",
+          "cachette": "chaise",
           "ambiance": "Un murmure dans l'oreillette souffle :",
           "navigation": {
             "id": "e6-etoile-nav",
@@ -1172,149 +1163,182 @@
             "taille": 10,
             "grille": [
               [
-                "E",
-                "L",
-                "O",
                 "S",
-                "S",
+                "R",
                 "U",
+                "E",
+                "G",
+                "N",
                 "O",
-                "B",
-                "S",
-                "S"
+                "L",
+                "P",
+                "L"
               ],
               [
-                "R",
-                "V",
-                "N",
-                "R",
-                "L",
-                "R",
                 "E",
-                "U",
+                "M",
+                "O",
+                "N",
+                "T",
+                "A",
+                "G",
+                "N",
+                "E",
+                "U"
+              ],
+              [
+                "N",
+                "C",
+                "B",
+                "C",
+                "R",
+                "N",
+                "C",
+                "X",
                 "E",
                 "N"
               ],
               [
-                "E",
+                "I",
                 "O",
-                "I",
-                "U",
-                "U",
+                "O",
+                "O",
                 "E",
+                "I",
+                "H",
+                "U",
                 "N",
-                "A",
+                "E"
+              ],
+              [
                 "D",
-                "O"
-              ],
-              [
-                "I",
-                "I",
                 "L",
-                "E",
-                "N",
-                "I",
-                "G",
-                "E",
-                "A",
-                "Z"
-              ],
-              [
-                "T",
-                "L",
-                "P",
-                "G",
-                "E",
+                "U",
+                "Q",
+                "U",
                 "L",
                 "A",
-                "P",
+                "A",
+                "R",
+                "T"
+              ],
+              [
+                "R",
+                "L",
                 "C",
-                "I"
+                "U",
+                "G",
+                "P",
+                "P",
+                "N",
+                "E",
+                "T"
               ],
               [
-                "N",
+                "A",
+                "I",
+                "L",
+                "I",
                 "I",
                 "M",
-                "N",
-                "T",
-                "C",
-                "T",
-                "A",
-                "S",
-                "R"
-              ],
-              [
                 "E",
-                "E",
-                "E",
-                "O",
-                "T",
-                "U",
-                "N",
-                "R",
-                "A",
-                "O"
-              ],
-              [
-                "S",
-                "R",
-                "R",
-                "L",
-                "E",
-                "O",
-                "O",
-                "D",
-                "C",
-                "H"
-              ],
-              [
-                "P",
-                "S",
-                "T",
-                "P",
-                "S",
-                "B",
-                "M",
-                "E",
-                "U",
-                "R"
-              ],
-              [
+                "G",
                 "V",
-                "I",
-                "L",
-                "L",
-                "E",
-                "A",
+                "E"
+              ],
+              [
+                "S",
                 "N",
                 "I",
+                "L",
+                "V",
                 "E",
-                "R"
+                "A",
+                "I",
+                "A",
+                "S"
+              ],
+              [
+                "T",
+                "E",
+                "E",
+                "L",
+                "A",
+                "R",
+                "U",
+                "S",
+                "C",
+                "A"
+              ],
+              [
+                "B",
+                "L",
+                "R",
+                "E",
+                "N",
+                "T",
+                "C",
+                "A",
+                "S",
+                "E"
               ]
             ],
             "mots": [
               "BOUCLIER",
-              "BOUSSOLE",
-              "CASCADES",
-              "DRAPEAU",
-              "HORIZONS",
+              "CAVERNE",
+              "CHAPEAU",
+              "COLLINE",
+              "COQUILLE",
               "LUNETTES",
               "MONTAGNE",
+              "NAVIGUER",
               "PLONGEUR",
-              "RUE",
-              "SENTIER",
-              "TREMPLIN",
-              "VILLE",
-              "VOILIERS"
+              "SAC",
+              "SARDINES",
+              "SIGNAUX",
+              "TREMPLIN"
             ],
             "placements": [
               {
-                "mot": "BOUSSOLE",
+                "mot": "SARDINES",
                 "cases": [
                   [
                     0,
                     0
                   ],
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    0,
+                    3
+                  ],
+                  [
+                    0,
+                    4
+                  ],
+                  [
+                    0,
+                    5
+                  ],
+                  [
+                    0,
+                    6
+                  ],
+                  [
+                    0,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "PLONGEUR",
+                "cases": [
                   [
                     1,
                     0
@@ -1342,224 +1366,10 @@
                   [
                     7,
                     0
-                  ]
-                ]
-              },
-              {
-                "mot": "CASCADES",
-                "cases": [
+                  ],
                   [
                     8,
                     0
-                  ],
-                  [
-                    8,
-                    1
-                  ],
-                  [
-                    8,
-                    2
-                  ],
-                  [
-                    8,
-                    3
-                  ],
-                  [
-                    8,
-                    4
-                  ],
-                  [
-                    8,
-                    5
-                  ],
-                  [
-                    8,
-                    6
-                  ],
-                  [
-                    8,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "HORIZONS",
-                "cases": [
-                  [
-                    9,
-                    0
-                  ],
-                  [
-                    9,
-                    1
-                  ],
-                  [
-                    9,
-                    2
-                  ],
-                  [
-                    9,
-                    3
-                  ],
-                  [
-                    9,
-                    4
-                  ],
-                  [
-                    9,
-                    5
-                  ],
-                  [
-                    9,
-                    6
-                  ],
-                  [
-                    9,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "SENTIER",
-                "cases": [
-                  [
-                    0,
-                    1
-                  ],
-                  [
-                    0,
-                    2
-                  ],
-                  [
-                    0,
-                    3
-                  ],
-                  [
-                    0,
-                    4
-                  ],
-                  [
-                    0,
-                    5
-                  ],
-                  [
-                    0,
-                    6
-                  ],
-                  [
-                    0,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "VOILIERS",
-                "cases": [
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    1,
-                    3
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    1,
-                    5
-                  ],
-                  [
-                    1,
-                    6
-                  ],
-                  [
-                    1,
-                    7
-                  ],
-                  [
-                    1,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "TREMPLIN",
-                "cases": [
-                  [
-                    2,
-                    1
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    2,
-                    3
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    2,
-                    5
-                  ],
-                  [
-                    2,
-                    6
-                  ],
-                  [
-                    2,
-                    7
-                  ],
-                  [
-                    2,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "PLONGEUR",
-                "cases": [
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    3,
-                    3
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    3,
-                    5
-                  ],
-                  [
-                    3,
-                    6
-                  ],
-                  [
-                    3,
-                    7
-                  ],
-                  [
-                    3,
-                    8
                   ]
                 ]
               },
@@ -1567,35 +1377,105 @@
                 "mot": "LUNETTES",
                 "cases": [
                   [
-                    4,
+                    9,
+                    0
+                  ],
+                  [
+                    9,
+                    1
+                  ],
+                  [
+                    9,
+                    2
+                  ],
+                  [
+                    9,
+                    3
+                  ],
+                  [
+                    9,
+                    4
+                  ],
+                  [
+                    9,
+                    5
+                  ],
+                  [
+                    9,
+                    6
+                  ],
+                  [
+                    9,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "MONTAGNE",
+                "cases": [
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    3,
                     1
                   ],
                   [
                     4,
+                    1
+                  ],
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    7,
+                    1
+                  ],
+                  [
+                    8,
+                    1
+                  ]
+                ]
+              },
+              {
+                "mot": "COLLINE",
+                "cases": [
+                  [
+                    1,
                     2
                   ],
                   [
-                    4,
+                    1,
                     3
                   ],
                   [
-                    4,
+                    1,
                     4
                   ],
                   [
-                    4,
+                    1,
                     5
                   ],
                   [
-                    4,
+                    1,
                     6
                   ],
                   [
-                    4,
+                    1,
                     7
                   ],
                   [
-                    4,
+                    1,
                     8
                   ]
                 ]
@@ -1604,156 +1484,271 @@
                 "mot": "BOUCLIER",
                 "cases": [
                   [
-                    5,
-                    1
-                  ],
-                  [
-                    5,
+                    2,
                     2
                   ],
                   [
-                    5,
+                    2,
                     3
                   ],
                   [
-                    5,
+                    2,
                     4
                   ],
                   [
-                    5,
+                    2,
                     5
                   ],
                   [
-                    5,
+                    2,
                     6
                   ],
                   [
-                    5,
+                    2,
                     7
                   ],
                   [
-                    5,
+                    2,
                     8
-                  ]
-                ]
-              },
-              {
-                "mot": "MONTAGNE",
-                "cases": [
-                  [
-                    6,
-                    1
-                  ],
-                  [
-                    6,
-                    2
-                  ],
-                  [
-                    6,
-                    3
-                  ],
-                  [
-                    6,
-                    4
-                  ],
-                  [
-                    6,
-                    5
-                  ],
-                  [
-                    6,
-                    6
-                  ],
-                  [
-                    6,
-                    7
-                  ],
-                  [
-                    6,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "DRAPEAU",
-                "cases": [
-                  [
-                    7,
-                    1
-                  ],
-                  [
-                    7,
-                    2
-                  ],
-                  [
-                    7,
-                    3
-                  ],
-                  [
-                    7,
-                    4
-                  ],
-                  [
-                    7,
-                    5
-                  ],
-                  [
-                    7,
-                    6
-                  ],
-                  [
-                    7,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "RUE",
-                "cases": [
-                  [
-                    7,
-                    8
-                  ],
-                  [
-                    8,
-                    8
-                  ],
-                  [
-                    9,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "VILLE",
-                "cases": [
-                  [
-                    0,
-                    9
-                  ],
-                  [
-                    1,
-                    9
                   ],
                   [
                     2,
                     9
+                  ]
+                ]
+              },
+              {
+                "mot": "COQUILLE",
+                "cases": [
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    3,
+                    3
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    3,
+                    5
+                  ],
+                  [
+                    3,
+                    6
+                  ],
+                  [
+                    3,
+                    7
+                  ],
+                  [
+                    3,
+                    8
                   ],
                   [
                     3,
                     9
+                  ]
+                ]
+              },
+              {
+                "mot": "NAVIGUER",
+                "cases": [
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    4,
+                    7
+                  ],
+                  [
+                    4,
+                    8
                   ],
                   [
                     4,
                     9
                   ]
                 ]
+              },
+              {
+                "mot": "TREMPLIN",
+                "cases": [
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    5,
+                    5
+                  ],
+                  [
+                    5,
+                    6
+                  ],
+                  [
+                    5,
+                    7
+                  ],
+                  [
+                    5,
+                    8
+                  ],
+                  [
+                    5,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "CHAPEAU",
+                "cases": [
+                  [
+                    6,
+                    2
+                  ],
+                  [
+                    6,
+                    3
+                  ],
+                  [
+                    6,
+                    4
+                  ],
+                  [
+                    6,
+                    5
+                  ],
+                  [
+                    6,
+                    6
+                  ],
+                  [
+                    6,
+                    7
+                  ],
+                  [
+                    6,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "SIGNAUX",
+                "cases": [
+                  [
+                    7,
+                    2
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7,
+                    4
+                  ],
+                  [
+                    7,
+                    5
+                  ],
+                  [
+                    7,
+                    6
+                  ],
+                  [
+                    7,
+                    7
+                  ],
+                  [
+                    7,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "CAVERNE",
+                "cases": [
+                  [
+                    8,
+                    2
+                  ],
+                  [
+                    8,
+                    3
+                  ],
+                  [
+                    8,
+                    4
+                  ],
+                  [
+                    8,
+                    5
+                  ],
+                  [
+                    8,
+                    6
+                  ],
+                  [
+                    8,
+                    7
+                  ],
+                  [
+                    8,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "SAC",
+                "cases": [
+                  [
+                    6,
+                    9
+                  ],
+                  [
+                    7,
+                    9
+                  ],
+                  [
+                    8,
+                    9
+                  ]
+                ]
               }
             ],
-            "reponse": "PANIER",
+            "reponse": "TABLE",
             "role": "navigation",
             "surFiche": true,
-            "solution": "La réponse est PANIER : Dans le panier à linge propre."
+            "solution": "La réponse est TABLE : Sous la table."
           },
           "code": null,
           "bonus": null,
@@ -1762,7 +1757,7 @@
         },
         {
           "etape": 7,
-          "cachette": "panier",
+          "cachette": "table",
           "ambiance": "La radio grésille, puis annonce :",
           "navigation": null,
           "code": null,
@@ -2663,20 +2658,25 @@
         {
           "numero": 1,
           "etape": 1,
-          "enigme": "La grille de chiffres"
-        },
-        {
-          "numero": 2,
-          "etape": 3,
           "enigme": "Les mots mêlés"
         },
         {
+          "numero": 2,
+          "etape": 1,
+          "enigme": "La grille de chiffres"
+        },
+        {
           "numero": 3,
-          "etape": 6,
+          "etape": 2,
           "enigme": "Les mots mêlés"
         },
         {
           "numero": 4,
+          "etape": 5,
+          "enigme": "Les mots mêlés"
+        },
+        {
+          "numero": 5,
           "etape": 7,
           "enigme": "Le labyrinthe"
         }
@@ -2688,48 +2688,616 @@
           "ambiance": "La radio grésille, puis annonce :",
           "navigation": {
             "id": "e1-lune-nav",
-            "type": "morse",
-            "titre": "Le message en morse",
-            "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
-            "codes": [
-              ".-..",
-              "..",
-              "...-",
-              ".-.",
-              "."
+            "type": "motsmeles",
+            "titre": "Les mots mêlés",
+            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
+            "taille": 10,
+            "grille": [
+              [
+                "T",
+                "R",
+                "E",
+                "M",
+                "P",
+                "L",
+                "I",
+                "N",
+                "C",
+                "R"
+              ],
+              [
+                "R",
+                "U",
+                "E",
+                "P",
+                "M",
+                "I",
+                "R",
+                "G",
+                "A",
+                "E"
+              ],
+              [
+                "E",
+                "T",
+                "T",
+                "O",
+                "M",
+                "R",
+                "A",
+                "M",
+                "R",
+                "U"
+              ],
+              [
+                "T",
+                "E",
+                "L",
+                "F",
+                "F",
+                "I",
+                "S",
+                "D",
+                "A",
+                "G"
+              ],
+              [
+                "N",
+                "R",
+                "A",
+                "D",
+                "E",
+                "A",
+                "U",
+                "R",
+                "V",
+                "I"
+              ],
+              [
+                "A",
+                "E",
+                "N",
+                "A",
+                "B",
+                "A",
+                "C",
+                "A",
+                "A",
+                "V"
+              ],
+              [
+                "C",
+                "N",
+                "U",
+                "A",
+                "G",
+                "E",
+                "S",
+                "N",
+                "N",
+                "A"
+              ],
+              [
+                "L",
+                "R",
+                "O",
+                "B",
+                "O",
+                "T",
+                "E",
+                "A",
+                "E",
+                "N"
+              ],
+              [
+                "O",
+                "E",
+                "L",
+                "I",
+                "O",
+                "V",
+                "A",
+                "C",
+                "T",
+                "A"
+              ],
+              [
+                "V",
+                "N",
+                "I",
+                "A",
+                "R",
+                "T",
+                "U",
+                "P",
+                "I",
+                "S"
+              ]
             ],
-            "legende": [
+            "mots": [
+              "CABANE",
+              "CANARD",
+              "CARAVANE",
+              "GRIMPEUR",
+              "MARMOTTE",
+              "NAVIGUER",
+              "NUAGE",
+              "RADEAU",
+              "ROBOT",
+              "SEAU",
+              "SIFFLET",
+              "TRAIN",
+              "TREMPLIN",
+              "VOILE",
+              "VOLCAN"
+            ],
+            "placements": [
               {
-                "lettre": "E",
-                "code": "."
+                "mot": "TREMPLIN",
+                "cases": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    0
+                  ],
+                  [
+                    3,
+                    0
+                  ],
+                  [
+                    4,
+                    0
+                  ],
+                  [
+                    5,
+                    0
+                  ],
+                  [
+                    6,
+                    0
+                  ],
+                  [
+                    7,
+                    0
+                  ]
+                ]
               },
               {
-                "lettre": "I",
-                "code": ".."
+                "mot": "CARAVANE",
+                "cases": [
+                  [
+                    8,
+                    0
+                  ],
+                  [
+                    8,
+                    1
+                  ],
+                  [
+                    8,
+                    2
+                  ],
+                  [
+                    8,
+                    3
+                  ],
+                  [
+                    8,
+                    4
+                  ],
+                  [
+                    8,
+                    5
+                  ],
+                  [
+                    8,
+                    6
+                  ],
+                  [
+                    8,
+                    7
+                  ]
+                ]
               },
               {
-                "lettre": "L",
-                "code": ".-.."
+                "mot": "NAVIGUER",
+                "cases": [
+                  [
+                    9,
+                    0
+                  ],
+                  [
+                    9,
+                    1
+                  ],
+                  [
+                    9,
+                    2
+                  ],
+                  [
+                    9,
+                    3
+                  ],
+                  [
+                    9,
+                    4
+                  ],
+                  [
+                    9,
+                    5
+                  ],
+                  [
+                    9,
+                    6
+                  ],
+                  [
+                    9,
+                    7
+                  ]
+                ]
               },
               {
-                "lettre": "R",
-                "code": ".-."
+                "mot": "GRIMPEUR",
+                "cases": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    3,
+                    1
+                  ],
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    7,
+                    1
+                  ]
+                ]
               },
               {
-                "lettre": "V",
-                "code": "...-"
+                "mot": "MARMOTTE",
+                "cases": [
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    2,
+                    2
+                  ],
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    6,
+                    2
+                  ],
+                  [
+                    7,
+                    2
+                  ]
+                ]
+              },
+              {
+                "mot": "SIFFLET",
+                "cases": [
+                  [
+                    0,
+                    3
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    2,
+                    3
+                  ],
+                  [
+                    3,
+                    3
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    6,
+                    3
+                  ]
+                ]
+              },
+              {
+                "mot": "CANARD",
+                "cases": [
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7,
+                    4
+                  ],
+                  [
+                    7,
+                    5
+                  ],
+                  [
+                    7,
+                    6
+                  ],
+                  [
+                    7,
+                    7
+                  ],
+                  [
+                    7,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "VOLCAN",
+                "cases": [
+                  [
+                    0,
+                    4
+                  ],
+                  [
+                    0,
+                    5
+                  ],
+                  [
+                    0,
+                    6
+                  ],
+                  [
+                    0,
+                    7
+                  ],
+                  [
+                    0,
+                    8
+                  ],
+                  [
+                    0,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "RADEAU",
+                "cases": [
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    2,
+                    4
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    6,
+                    4
+                  ]
+                ]
+              },
+              {
+                "mot": "CABANE",
+                "cases": [
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    2,
+                    5
+                  ],
+                  [
+                    3,
+                    5
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    5,
+                    5
+                  ],
+                  [
+                    6,
+                    5
+                  ]
+                ]
+              },
+              {
+                "mot": "NUAGE",
+                "cases": [
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    2,
+                    6
+                  ],
+                  [
+                    3,
+                    6
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    5,
+                    6
+                  ]
+                ]
+              },
+              {
+                "mot": "SEAU",
+                "cases": [
+                  [
+                    6,
+                    6
+                  ],
+                  [
+                    6,
+                    7
+                  ],
+                  [
+                    6,
+                    8
+                  ],
+                  [
+                    6,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "ROBOT",
+                "cases": [
+                  [
+                    1,
+                    7
+                  ],
+                  [
+                    2,
+                    7
+                  ],
+                  [
+                    3,
+                    7
+                  ],
+                  [
+                    4,
+                    7
+                  ],
+                  [
+                    5,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "VOILE",
+                "cases": [
+                  [
+                    1,
+                    8
+                  ],
+                  [
+                    2,
+                    8
+                  ],
+                  [
+                    3,
+                    8
+                  ],
+                  [
+                    4,
+                    8
+                  ],
+                  [
+                    5,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "TRAIN",
+                "cases": [
+                  [
+                    1,
+                    9
+                  ],
+                  [
+                    2,
+                    9
+                  ],
+                  [
+                    3,
+                    9
+                  ],
+                  [
+                    4,
+                    9
+                  ],
+                  [
+                    5,
+                    9
+                  ]
+                ]
               }
             ],
-            "reponse": "LIVRE",
+            "reponse": "TAPIS",
             "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
+            "surFiche": true,
+            "solution": "La réponse est TAPIS : Sous le tapis."
           },
           "code": {
             "id": "e1-lune-code",
             "type": "sudoku",
             "titre": "La grille de chiffres",
-            "consigne": "Remplis la grille : chaque chiffre de 1 à 4 apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case grisée est un chiffre du code.",
+            "consigne": "Remplis la grille : chaque chiffre de 1 à 4 apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case marquée d'un rond est un chiffre du code.",
             "taille": 4,
             "blocLargeur": 2,
             "blocHauteur": 2,
@@ -2800,844 +3368,153 @@
         },
         {
           "etape": 2,
-          "cachette": "livre",
+          "cachette": "tapis",
           "ambiance": "L'agent de liaison a laissé cette note :",
           "navigation": {
             "id": "e2-lune-nav",
-            "type": "cesar",
-            "titre": "Le message décalé",
-            "consigne": "Chaque lettre a été décalée de 4 rangs dans l'alphabet. Recule de 4 rangs pour retrouver le mot.",
-            "texteChiffre": "VMHIEY",
-            "decalage": 4,
-            "origineDecalage": "étape 1",
-            "reponse": "RIDEAU",
-            "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est RIDEAU : Derrière le rideau."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 3,
-          "cachette": "rideau",
-          "ambiance": "L'agent de liaison a laissé cette note :",
-          "navigation": {
-            "id": "e3-lune-nav",
             "type": "motsmeles",
             "titre": "Les mots mêlés",
             "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
             "taille": 10,
             "grille": [
               [
-                "C",
-                "O",
-                "L",
-                "L",
-                "I",
                 "E",
                 "R",
-                "S",
-                "S",
-                "E"
-              ],
-              [
-                "E",
-                "E",
-                "R",
-                "E",
-                "S",
-                "H",
-                "C",
-                "C",
-                "A",
-                "S"
-              ],
-              [
                 "N",
-                "L",
+                "A",
+                "V",
+                "I",
+                "G",
                 "U",
-                "T",
-                "R",
-                "O",
-                "A",
-                "A",
-                "R",
+                "E",
                 "R"
               ],
               [
-                "G",
-                "L",
-                "E",
-                "T",
-                "E",
-                "R",
-                "R",
+                "N",
+                "U",
                 "S",
+                "A",
+                "R",
                 "D",
-                "E"
+                "I",
+                "N",
+                "E",
+                "S"
               ],
               [
                 "A",
-                "I",
+                "E",
                 "P",
+                "M",
+                "S",
+                "B",
+                "N",
+                "E",
+                "E",
+                "C"
+              ],
+              [
+                "V",
+                "P",
+                "L",
+                "A",
+                "N",
                 "O",
                 "I",
-                "I",
-                "A",
-                "C",
-                "I",
-                "V"
+                "L",
+                "R",
+                "A"
               ],
               [
-                "T",
+                "A",
+                "M",
+                "O",
+                "R",
+                "O",
                 "U",
-                "M",
-                "M",
                 "L",
+                "L",
+                "U",
+                "N"
+              ],
+              [
+                "R",
+                "I",
+                "N",
+                "M",
                 "Z",
-                "V",
-                "A",
-                "N",
-                "A"
-              ],
-              [
-                "N",
-                "Q",
-                "I",
-                "R",
-                "I",
-                "O",
-                "A",
-                "D",
-                "E",
-                "R"
-              ],
-              [
-                "O",
-                "O",
-                "R",
-                "A",
-                "O",
-                "N",
-                "N",
-                "E",
                 "S",
-                "T"
-              ],
-              [
-                "M",
-                "C",
-                "G",
-                "M",
-                "V",
-                "S",
-                "E",
-                "S",
-                "F",
-                "R"
-              ],
-              [
-                "C",
-                "A",
                 "P",
-                "T",
-                "U",
-                "R",
-                "E",
                 "I",
-                "G",
-                "O"
-              ]
-            ],
-            "mots": [
-              "CAPTURE",
-              "CARAVANE",
-              "CASCADES",
-              "COLLIERS",
-              "COQUILLE",
-              "GRIMPEUR",
-              "HORIZONS",
-              "MARMOTTE",
-              "MONTAGNE",
-              "SARDINES",
-              "TRAVERSE",
-              "VOILIERS"
-            ],
-            "placements": [
-              {
-                "mot": "COLLIERS",
-                "cases": [
-                  [
-                    0,
-                    0
-                  ],
-                  [
-                    1,
-                    0
-                  ],
-                  [
-                    2,
-                    0
-                  ],
-                  [
-                    3,
-                    0
-                  ],
-                  [
-                    4,
-                    0
-                  ],
-                  [
-                    5,
-                    0
-                  ],
-                  [
-                    6,
-                    0
-                  ],
-                  [
-                    7,
-                    0
-                  ]
-                ]
-              },
-              {
-                "mot": "SARDINES",
-                "cases": [
-                  [
-                    8,
-                    0
-                  ],
-                  [
-                    8,
-                    1
-                  ],
-                  [
-                    8,
-                    2
-                  ],
-                  [
-                    8,
-                    3
-                  ],
-                  [
-                    8,
-                    4
-                  ],
-                  [
-                    8,
-                    5
-                  ],
-                  [
-                    8,
-                    6
-                  ],
-                  [
-                    8,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "TRAVERSE",
-                "cases": [
-                  [
-                    9,
-                    0
-                  ],
-                  [
-                    9,
-                    1
-                  ],
-                  [
-                    9,
-                    2
-                  ],
-                  [
-                    9,
-                    3
-                  ],
-                  [
-                    9,
-                    4
-                  ],
-                  [
-                    9,
-                    5
-                  ],
-                  [
-                    9,
-                    6
-                  ],
-                  [
-                    9,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "MONTAGNE",
-                "cases": [
-                  [
-                    0,
-                    1
-                  ],
-                  [
-                    0,
-                    2
-                  ],
-                  [
-                    0,
-                    3
-                  ],
-                  [
-                    0,
-                    4
-                  ],
-                  [
-                    0,
-                    5
-                  ],
-                  [
-                    0,
-                    6
-                  ],
-                  [
-                    0,
-                    7
-                  ],
-                  [
-                    0,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "COQUILLE",
-                "cases": [
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    1,
-                    3
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    1,
-                    5
-                  ],
-                  [
-                    1,
-                    6
-                  ],
-                  [
-                    1,
-                    7
-                  ],
-                  [
-                    1,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "GRIMPEUR",
-                "cases": [
-                  [
-                    2,
-                    1
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    2,
-                    3
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    2,
-                    5
-                  ],
-                  [
-                    2,
-                    6
-                  ],
-                  [
-                    2,
-                    7
-                  ],
-                  [
-                    2,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "MARMOTTE",
-                "cases": [
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    3,
-                    3
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    3,
-                    5
-                  ],
-                  [
-                    3,
-                    6
-                  ],
-                  [
-                    3,
-                    7
-                  ],
-                  [
-                    3,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "VOILIERS",
-                "cases": [
-                  [
-                    4,
-                    1
-                  ],
-                  [
-                    4,
-                    2
-                  ],
-                  [
-                    4,
-                    3
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    4,
-                    5
-                  ],
-                  [
-                    4,
-                    6
-                  ],
-                  [
-                    4,
-                    7
-                  ],
-                  [
-                    4,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "HORIZONS",
-                "cases": [
-                  [
-                    5,
-                    1
-                  ],
-                  [
-                    5,
-                    2
-                  ],
-                  [
-                    5,
-                    3
-                  ],
-                  [
-                    5,
-                    4
-                  ],
-                  [
-                    5,
-                    5
-                  ],
-                  [
-                    5,
-                    6
-                  ],
-                  [
-                    5,
-                    7
-                  ],
-                  [
-                    5,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "CARAVANE",
-                "cases": [
-                  [
-                    6,
-                    1
-                  ],
-                  [
-                    6,
-                    2
-                  ],
-                  [
-                    6,
-                    3
-                  ],
-                  [
-                    6,
-                    4
-                  ],
-                  [
-                    6,
-                    5
-                  ],
-                  [
-                    6,
-                    6
-                  ],
-                  [
-                    6,
-                    7
-                  ],
-                  [
-                    6,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "CASCADES",
-                "cases": [
-                  [
-                    7,
-                    1
-                  ],
-                  [
-                    7,
-                    2
-                  ],
-                  [
-                    7,
-                    3
-                  ],
-                  [
-                    7,
-                    4
-                  ],
-                  [
-                    7,
-                    5
-                  ],
-                  [
-                    7,
-                    6
-                  ],
-                  [
-                    7,
-                    7
-                  ],
-                  [
-                    7,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "CAPTURE",
-                "cases": [
-                  [
-                    0,
-                    9
-                  ],
-                  [
-                    1,
-                    9
-                  ],
-                  [
-                    2,
-                    9
-                  ],
-                  [
-                    3,
-                    9
-                  ],
-                  [
-                    4,
-                    9
-                  ],
-                  [
-                    5,
-                    9
-                  ],
-                  [
-                    6,
-                    9
-                  ]
-                ]
-              }
-            ],
-            "reponse": "FRIGO",
-            "role": "navigation",
-            "surFiche": true,
-            "solution": "La réponse est FRIGO : Dans le frigo."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 4,
-          "cachette": "frigo",
-          "ambiance": "Une fois décodé, le message donne ceci :",
-          "navigation": {
-            "id": "e4-lune-nav",
-            "type": "morse",
-            "titre": "Le message en morse",
-            "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
-            "codes": [
-              "-.-.",
-              ".-",
-              "-.",
-              ".-",
-              ".--.",
-              "."
-            ],
-            "legende": [
-              {
-                "lettre": "A",
-                "code": ".-"
-              },
-              {
-                "lettre": "C",
-                "code": "-.-."
-              },
-              {
-                "lettre": "E",
-                "code": "."
-              },
-              {
-                "lettre": "N",
-                "code": "-."
-              },
-              {
-                "lettre": "P",
-                "code": ".--."
-              }
-            ],
-            "reponse": "CANAPE",
-            "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est CANAPE : Sous le canapé."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 5,
-          "cachette": "canape",
-          "ambiance": "La fiche de mission précise :",
-          "navigation": {
-            "id": "e5-lune-nav",
-            "type": "cesar",
-            "titre": "Le message décalé",
-            "consigne": "Chaque lettre a été décalée de 4 rangs dans l'alphabet. Recule de 4 rangs pour retrouver le mot.",
-            "texteChiffre": "GVECSRW",
-            "decalage": 4,
-            "origineDecalage": "étape 1",
-            "reponse": "CRAYONS",
-            "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est CRAYONS : Dans le pot à crayons."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 6,
-          "cachette": "crayons",
-          "ambiance": "L'agent de liaison a laissé cette note :",
-          "navigation": {
-            "id": "e6-lune-nav",
-            "type": "motsmeles",
-            "titre": "Les mots mêlés",
-            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
-            "taille": 10,
-            "grille": [
-              [
-                "R",
-                "C",
-                "A",
-                "R",
-                "A",
-                "V",
-                "A",
-                "N",
-                "E",
-                "S"
-              ],
-              [
-                "E",
-                "G",
-                "M",
-                "V",
-                "E",
-                "H",
-                "N",
-                "S",
-                "E",
+                "T",
                 "A"
               ],
               [
-                "U",
-                "R",
                 "A",
-                "O",
-                "N",
+                "R",
+                "G",
                 "O",
                 "I",
-                "R",
                 "S",
+                "M",
+                "U",
+                "N",
                 "R"
               ],
               [
+                "C",
                 "G",
-                "I",
-                "R",
-                "I",
-                "G",
-                "R",
-                "L",
                 "E",
+                "T",
                 "R",
+                "O",
+                "E",
+                "Q",
+                "E",
                 "D"
               ],
               [
-                "I",
-                "M",
-                "M",
-                "L",
+                "C",
                 "A",
-                "I",
-                "P",
-                "I",
-                "E",
-                "I"
-              ],
-              [
-                "V",
-                "P",
-                "O",
-                "I",
+                "U",
                 "T",
-                "Z",
-                "M",
+                "O",
                 "L",
+                "R",
+                "O",
                 "V",
                 "N"
               ],
               [
                 "A",
-                "E",
-                "T",
-                "E",
-                "N",
-                "O",
-                "E",
-                "L",
-                "A",
-                "E"
-              ],
-              [
-                "N",
-                "U",
-                "T",
-                "R",
-                "O",
-                "N",
-                "R",
-                "O",
-                "R",
-                "S"
-              ],
-              [
                 "P",
                 "R",
                 "E",
-                "S",
-                "M",
-                "S",
+                "H",
+                "E",
                 "T",
                 "C",
-                "T",
-                "A"
-              ],
-              [
-                "N",
                 "A",
-                "V",
-                "I",
-                "R",
-                "E",
-                "N",
-                "I",
-                "E",
-                "R"
+                "E"
               ]
             ],
             "mots": [
+              "AVENTURE",
+              "BOUSSOLE",
+              "CANARD",
               "CARAVANE",
-              "COLLIERS",
+              "COQUILLE",
               "GRIMPEUR",
               "HORIZONS",
               "MARMOTTE",
-              "MONTAGNE",
               "NAVIGUER",
-              "NAVIRE",
+              "PLONGEUR",
               "SARDINES",
-              "TRAVERSE",
-              "TREMPLIN",
-              "VOILIERS"
+              "TREMPLIN"
             ],
             "placements": [
               {
-                "mot": "NAVIGUER",
+                "mot": "CARAVANE",
                 "cases": [
                   [
                     0,
@@ -3674,12 +3551,45 @@
                 ]
               },
               {
-                "mot": "CARAVANE",
+                "mot": "GRIMPEUR",
                 "cases": [
                   [
                     1,
                     0
                   ],
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    1,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "NAVIGUER",
+                "cases": [
                   [
                     2,
                     0
@@ -3707,6 +3617,10 @@
                   [
                     8,
                     0
+                  ],
+                  [
+                    9,
+                    0
                   ]
                 ]
               },
@@ -3714,73 +3628,73 @@
                 "mot": "SARDINES",
                 "cases": [
                   [
-                    9,
-                    0
+                    2,
+                    1
                   ],
                   [
-                    9,
+                    3,
+                    1
+                  ],
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    7,
+                    1
+                  ],
+                  [
+                    8,
                     1
                   ],
                   [
                     9,
-                    2
-                  ],
-                  [
-                    9,
-                    3
-                  ],
-                  [
-                    9,
-                    4
-                  ],
-                  [
-                    9,
-                    5
-                  ],
-                  [
-                    9,
-                    6
-                  ],
-                  [
-                    9,
-                    7
+                    1
                   ]
                 ]
               },
               {
-                "mot": "GRIMPEUR",
+                "mot": "PLONGEUR",
                 "cases": [
                   [
-                    1,
-                    1
-                  ],
-                  [
-                    1,
+                    2,
                     2
                   ],
                   [
-                    1,
+                    2,
                     3
                   ],
                   [
-                    1,
+                    2,
                     4
                   ],
                   [
-                    1,
+                    2,
                     5
                   ],
                   [
-                    1,
+                    2,
                     6
                   ],
                   [
-                    1,
+                    2,
                     7
                   ],
                   [
-                    1,
+                    2,
                     8
+                  ],
+                  [
+                    2,
+                    9
                   ]
                 ]
               },
@@ -3788,47 +3702,6 @@
                 "mot": "MARMOTTE",
                 "cases": [
                   [
-                    2,
-                    1
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    2,
-                    3
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    2,
-                    5
-                  ],
-                  [
-                    2,
-                    6
-                  ],
-                  [
-                    2,
-                    7
-                  ],
-                  [
-                    2,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "VOILIERS",
-                "cases": [
-                  [
-                    3,
-                    1
-                  ],
-                  [
                     3,
                     2
                   ],
@@ -3855,43 +3728,10 @@
                   [
                     3,
                     8
-                  ]
-                ]
-              },
-              {
-                "mot": "MONTAGNE",
-                "cases": [
-                  [
-                    4,
-                    1
                   ],
                   [
-                    4,
-                    2
-                  ],
-                  [
-                    4,
-                    3
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    4,
-                    5
-                  ],
-                  [
-                    4,
-                    6
-                  ],
-                  [
-                    4,
-                    7
-                  ],
-                  [
-                    4,
-                    8
+                    3,
+                    9
                   ]
                 ]
               },
@@ -3899,9 +3739,42 @@
                 "mot": "HORIZONS",
                 "cases": [
                   [
-                    5,
-                    1
+                    4,
+                    2
                   ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    4,
+                    7
+                  ],
+                  [
+                    4,
+                    8
+                  ],
+                  [
+                    4,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "BOUSSOLE",
+                "cases": [
                   [
                     5,
                     2
@@ -3929,6 +3802,10 @@
                   [
                     5,
                     8
+                  ],
+                  [
+                    5,
+                    9
                   ]
                 ]
               },
@@ -3937,10 +3814,6 @@
                 "cases": [
                   [
                     6,
-                    1
-                  ],
-                  [
-                    6,
                     2
                   ],
                   [
@@ -3966,6 +3839,417 @@
                   [
                     6,
                     8
+                  ],
+                  [
+                    6,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "COQUILLE",
+                "cases": [
+                  [
+                    7,
+                    2
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7,
+                    4
+                  ],
+                  [
+                    7,
+                    5
+                  ],
+                  [
+                    7,
+                    6
+                  ],
+                  [
+                    7,
+                    7
+                  ],
+                  [
+                    7,
+                    8
+                  ],
+                  [
+                    7,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "AVENTURE",
+                "cases": [
+                  [
+                    8,
+                    2
+                  ],
+                  [
+                    8,
+                    3
+                  ],
+                  [
+                    8,
+                    4
+                  ],
+                  [
+                    8,
+                    5
+                  ],
+                  [
+                    8,
+                    6
+                  ],
+                  [
+                    8,
+                    7
+                  ],
+                  [
+                    8,
+                    8
+                  ],
+                  [
+                    8,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "CANARD",
+                "cases": [
+                  [
+                    9,
+                    2
+                  ],
+                  [
+                    9,
+                    3
+                  ],
+                  [
+                    9,
+                    4
+                  ],
+                  [
+                    9,
+                    5
+                  ],
+                  [
+                    9,
+                    6
+                  ],
+                  [
+                    9,
+                    7
+                  ]
+                ]
+              }
+            ],
+            "reponse": "CANAPE",
+            "role": "navigation",
+            "surFiche": true,
+            "solution": "La réponse est CANAPE : Sous le canapé."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 3,
+          "cachette": "canape",
+          "ambiance": "L'agent de liaison a laissé cette note :",
+          "navigation": {
+            "id": "e3-lune-nav",
+            "type": "morse",
+            "titre": "Le message en morse",
+            "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
+            "codes": [
+              ".-..",
+              "..",
+              "...-",
+              ".-.",
+              "."
+            ],
+            "legende": [
+              {
+                "lettre": "E",
+                "code": "."
+              },
+              {
+                "lettre": "I",
+                "code": ".."
+              },
+              {
+                "lettre": "L",
+                "code": ".-.."
+              },
+              {
+                "lettre": "R",
+                "code": ".-."
+              },
+              {
+                "lettre": "V",
+                "code": "...-"
+              }
+            ],
+            "reponse": "LIVRE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 4,
+          "cachette": "livre",
+          "ambiance": "Une fois décodé, le message donne ceci :",
+          "navigation": {
+            "id": "e4-lune-nav",
+            "type": "cesar",
+            "titre": "Le message décalé",
+            "consigne": "Chaque lettre a été décalée dans l'alphabet, toujours du même nombre de rangs. Ce nombre est le chiffre que ton équipe a déjà trouvé. Recule d'autant de rangs pour retrouver le mot.",
+            "texteChiffre": "TSVXI",
+            "decalage": 4,
+            "origineDecalage": "étape 1",
+            "reponse": "PORTE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "Décalage de 4 rangs. La réponse est PORTE : Derrière la porte de la chambre."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 5,
+          "cachette": "porte",
+          "ambiance": "La fiche de mission précise :",
+          "navigation": {
+            "id": "e5-lune-nav",
+            "type": "motsmeles",
+            "titre": "Les mots mêlés",
+            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
+            "taille": 10,
+            "grille": [
+              [
+                "V",
+                "N",
+                "S",
+                "E",
+                "G",
+                "V",
+                "E",
+                "E",
+                "N",
+                "P"
+              ],
+              [
+                "O",
+                "I",
+                "R",
+                "L",
+                "R",
+                "O",
+                "T",
+                "N",
+                "A",
+                "L"
+              ],
+              [
+                "I",
+                "L",
+                "E",
+                "O",
+                "I",
+                "Y",
+                "T",
+                "I",
+                "V",
+                "O"
+              ],
+              [
+                "L",
+                "P",
+                "I",
+                "S",
+                "M",
+                "A",
+                "O",
+                "E",
+                "I",
+                "N"
+              ],
+              [
+                "I",
+                "M",
+                "L",
+                "S",
+                "P",
+                "G",
+                "M",
+                "L",
+                "G",
+                "G"
+              ],
+              [
+                "E",
+                "E",
+                "L",
+                "U",
+                "E",
+                "E",
+                "R",
+                "A",
+                "U",
+                "E"
+              ],
+              [
+                "R",
+                "R",
+                "O",
+                "O",
+                "U",
+                "S",
+                "A",
+                "B",
+                "E",
+                "U"
+              ],
+              [
+                "S",
+                "T",
+                "C",
+                "B",
+                "R",
+                "P",
+                "M",
+                "N",
+                "R",
+                "R"
+              ],
+              [
+                "E",
+                "C",
+                "A",
+                "R",
+                "T",
+                "I",
+                "C",
+                "E",
+                "H",
+                "A"
+              ],
+              [
+                "E",
+                "L",
+                "I",
+                "O",
+                "V",
+                "C",
+                "I",
+                "Z",
+                "S",
+                "E"
+              ]
+            ],
+            "mots": [
+              "BALEINE",
+              "BOUSSOLE",
+              "COLLIERS",
+              "GRIMPEUR",
+              "MARMOTTE",
+              "NAVIGUER",
+              "NEZ",
+              "PIC",
+              "PLONGEUR",
+              "TRACE",
+              "TREMPLIN",
+              "VOILE",
+              "VOILIERS",
+              "VOYAGES"
+            ],
+            "placements": [
+              {
+                "mot": "VOILIERS",
+                "cases": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    0,
+                    3
+                  ],
+                  [
+                    0,
+                    4
+                  ],
+                  [
+                    0,
+                    5
+                  ],
+                  [
+                    0,
+                    6
+                  ],
+                  [
+                    0,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "TREMPLIN",
+                "cases": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    1,
+                    7
                   ]
                 ]
               },
@@ -3973,6 +4257,191 @@
                 "mot": "COLLIERS",
                 "cases": [
                   [
+                    2,
+                    0
+                  ],
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    2,
+                    2
+                  ],
+                  [
+                    2,
+                    3
+                  ],
+                  [
+                    2,
+                    4
+                  ],
+                  [
+                    2,
+                    5
+                  ],
+                  [
+                    2,
+                    6
+                  ],
+                  [
+                    2,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "BOUSSOLE",
+                "cases": [
+                  [
+                    3,
+                    0
+                  ],
+                  [
+                    3,
+                    1
+                  ],
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    3,
+                    3
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    3,
+                    5
+                  ],
+                  [
+                    3,
+                    6
+                  ],
+                  [
+                    3,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "GRIMPEUR",
+                "cases": [
+                  [
+                    4,
+                    0
+                  ],
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    4,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "VOYAGES",
+                "cases": [
+                  [
+                    5,
+                    0
+                  ],
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    5,
+                    5
+                  ],
+                  [
+                    5,
+                    6
+                  ]
+                ]
+              },
+              {
+                "mot": "MARMOTTE",
+                "cases": [
+                  [
+                    6,
+                    0
+                  ],
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    6,
+                    2
+                  ],
+                  [
+                    6,
+                    3
+                  ],
+                  [
+                    6,
+                    4
+                  ],
+                  [
+                    6,
+                    5
+                  ],
+                  [
+                    6,
+                    6
+                  ],
+                  [
+                    6,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "BALEINE",
+                "cases": [
+                  [
+                    7,
+                    0
+                  ],
+                  [
                     7,
                     1
                   ],
@@ -3995,22 +4464,18 @@
                   [
                     7,
                     6
-                  ],
-                  [
-                    7,
-                    7
-                  ],
-                  [
-                    7,
-                    8
                   ]
                 ]
               },
               {
-                "mot": "TRAVERSE",
+                "mot": "NAVIGUER",
                 "cases": [
                   [
                     8,
+                    0
+                  ],
+                  [
+                    8,
                     1
                   ],
                   [
@@ -4036,15 +4501,107 @@
                   [
                     8,
                     7
+                  ]
+                ]
+              },
+              {
+                "mot": "PLONGEUR",
+                "cases": [
+                  [
+                    9,
+                    0
                   ],
                   [
-                    8,
+                    9,
+                    1
+                  ],
+                  [
+                    9,
+                    2
+                  ],
+                  [
+                    9,
+                    3
+                  ],
+                  [
+                    9,
+                    4
+                  ],
+                  [
+                    9,
+                    5
+                  ],
+                  [
+                    9,
+                    6
+                  ],
+                  [
+                    9,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "PIC",
+                "cases": [
+                  [
+                    5,
+                    7
+                  ],
+                  [
+                    5,
+                    8
+                  ],
+                  [
+                    5,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "NEZ",
+                "cases": [
+                  [
+                    7,
+                    7
+                  ],
+                  [
+                    7,
+                    8
+                  ],
+                  [
+                    7,
+                    9
+                  ]
+                ]
+              },
+              {
+                "mot": "TRACE",
+                "cases": [
+                  [
+                    0,
+                    8
+                  ],
+                  [
+                    1,
+                    8
+                  ],
+                  [
+                    2,
+                    8
+                  ],
+                  [
+                    3,
+                    8
+                  ],
+                  [
+                    4,
                     8
                   ]
                 ]
               },
               {
-                "mot": "NAVIRE",
+                "mot": "VOILE",
                 "cases": [
                   [
                     0,
@@ -4065,18 +4622,62 @@
                   [
                     4,
                     9
-                  ],
-                  [
-                    5,
-                    9
                   ]
                 ]
               }
             ],
-            "reponse": "PANIER",
+            "reponse": "CHAISE",
             "role": "navigation",
             "surFiche": true,
-            "solution": "La réponse est PANIER : Dans le panier à linge propre."
+            "solution": "La réponse est CHAISE : Sous une chaise."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 6,
+          "cachette": "chaise",
+          "ambiance": "L'agent de liaison a laissé cette note :",
+          "navigation": {
+            "id": "e6-lune-nav",
+            "type": "morse",
+            "titre": "Le message en morse",
+            "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
+            "codes": [
+              "-",
+              ".-",
+              "-...",
+              ".-..",
+              "."
+            ],
+            "legende": [
+              {
+                "lettre": "A",
+                "code": ".-"
+              },
+              {
+                "lettre": "B",
+                "code": "-..."
+              },
+              {
+                "lettre": "E",
+                "code": "."
+              },
+              {
+                "lettre": "L",
+                "code": ".-.."
+              },
+              {
+                "lettre": "T",
+                "code": "-"
+              }
+            ],
+            "reponse": "TABLE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est TABLE : Sous la table."
           },
           "code": null,
           "bonus": null,
@@ -4085,7 +4686,7 @@
         },
         {
           "etape": 7,
-          "cachette": "panier",
+          "cachette": "table",
           "ambiance": "Un billet plié en quatre indique :",
           "navigation": null,
           "code": null,
@@ -4930,16 +5531,16 @@
         {
           "numero": 1,
           "etape": 1,
-          "enigme": "La grille de chiffres"
-        },
-        {
-          "numero": 2,
-          "etape": 3,
           "enigme": "Les mots mêlés"
         },
         {
+          "numero": 2,
+          "etape": 1,
+          "enigme": "La grille de chiffres"
+        },
+        {
           "numero": 3,
-          "etape": 6,
+          "etape": 4,
           "enigme": "Les mots mêlés"
         },
         {
@@ -4955,48 +5556,598 @@
           "ambiance": "Le dossier secret s'ouvre sur cette ligne :",
           "navigation": {
             "id": "e1-soleil-nav",
-            "type": "morse",
-            "titre": "Le message en morse",
-            "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
-            "codes": [
-              ".-..",
-              "..",
-              "...-",
-              ".-.",
-              "."
+            "type": "motsmeles",
+            "titre": "Les mots mêlés",
+            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
+            "taille": 10,
+            "grille": [
+              [
+                "S",
+                "E",
+                "D",
+                "A",
+                "C",
+                "S",
+                "A",
+                "C",
+                "C",
+                "E"
+              ],
+              [
+                "C",
+                "S",
+                "T",
+                "B",
+                "E",
+                "G",
+                "V",
+                "S",
+                "O",
+                "L"
+              ],
+              [
+                "O",
+                "E",
+                "R",
+                "O",
+                "T",
+                "R",
+                "O",
+                "E",
+                "L",
+                "O"
+              ],
+              [
+                "Q",
+                "T",
+                "E",
+                "U",
+                "T",
+                "I",
+                "I",
+                "N",
+                "L",
+                "S"
+              ],
+              [
+                "U",
+                "T",
+                "M",
+                "C",
+                "O",
+                "M",
+                "L",
+                "I",
+                "I",
+                "S"
+              ],
+              [
+                "I",
+                "E",
+                "P",
+                "L",
+                "M",
+                "P",
+                "I",
+                "D",
+                "E",
+                "U"
+              ],
+              [
+                "L",
+                "N",
+                "L",
+                "I",
+                "R",
+                "E",
+                "E",
+                "R",
+                "R",
+                "O"
+              ],
+              [
+                "L",
+                "U",
+                "I",
+                "E",
+                "A",
+                "U",
+                "R",
+                "A",
+                "S",
+                "B"
+              ],
+              [
+                "E",
+                "L",
+                "N",
+                "R",
+                "M",
+                "R",
+                "S",
+                "S",
+                "T",
+                "A"
+              ],
+              [
+                "D",
+                "R",
+                "A",
+                "P",
+                "E",
+                "A",
+                "U",
+                "P",
+                "I",
+                "S"
+              ]
             ],
-            "legende": [
+            "mots": [
+              "BOUCLIER",
+              "BOUSSOLE",
+              "CASCADES",
+              "COLLIERS",
+              "COQUILLE",
+              "DRAPEAU",
+              "GRIMPEUR",
+              "LUNETTES",
+              "MARMOTTE",
+              "SARDINES",
+              "TREMPLIN",
+              "VOILIERS"
+            ],
+            "placements": [
               {
-                "lettre": "E",
-                "code": "."
+                "mot": "CASCADES",
+                "cases": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    0
+                  ],
+                  [
+                    3,
+                    0
+                  ],
+                  [
+                    4,
+                    0
+                  ],
+                  [
+                    5,
+                    0
+                  ],
+                  [
+                    6,
+                    0
+                  ],
+                  [
+                    7,
+                    0
+                  ]
+                ]
               },
               {
-                "lettre": "I",
-                "code": ".."
+                "mot": "COLLIERS",
+                "cases": [
+                  [
+                    8,
+                    0
+                  ],
+                  [
+                    8,
+                    1
+                  ],
+                  [
+                    8,
+                    2
+                  ],
+                  [
+                    8,
+                    3
+                  ],
+                  [
+                    8,
+                    4
+                  ],
+                  [
+                    8,
+                    5
+                  ],
+                  [
+                    8,
+                    6
+                  ],
+                  [
+                    8,
+                    7
+                  ]
+                ]
               },
               {
-                "lettre": "L",
-                "code": ".-.."
+                "mot": "BOUSSOLE",
+                "cases": [
+                  [
+                    9,
+                    0
+                  ],
+                  [
+                    9,
+                    1
+                  ],
+                  [
+                    9,
+                    2
+                  ],
+                  [
+                    9,
+                    3
+                  ],
+                  [
+                    9,
+                    4
+                  ],
+                  [
+                    9,
+                    5
+                  ],
+                  [
+                    9,
+                    6
+                  ],
+                  [
+                    9,
+                    7
+                  ]
+                ]
               },
               {
-                "lettre": "R",
-                "code": ".-."
+                "mot": "COQUILLE",
+                "cases": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    0,
+                    3
+                  ],
+                  [
+                    0,
+                    4
+                  ],
+                  [
+                    0,
+                    5
+                  ],
+                  [
+                    0,
+                    6
+                  ],
+                  [
+                    0,
+                    7
+                  ],
+                  [
+                    0,
+                    8
+                  ]
+                ]
               },
               {
-                "lettre": "V",
-                "code": "...-"
+                "mot": "LUNETTES",
+                "cases": [
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    1,
+                    7
+                  ],
+                  [
+                    1,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "TREMPLIN",
+                "cases": [
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    2,
+                    2
+                  ],
+                  [
+                    2,
+                    3
+                  ],
+                  [
+                    2,
+                    4
+                  ],
+                  [
+                    2,
+                    5
+                  ],
+                  [
+                    2,
+                    6
+                  ],
+                  [
+                    2,
+                    7
+                  ],
+                  [
+                    2,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "BOUCLIER",
+                "cases": [
+                  [
+                    3,
+                    1
+                  ],
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    3,
+                    3
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    3,
+                    5
+                  ],
+                  [
+                    3,
+                    6
+                  ],
+                  [
+                    3,
+                    7
+                  ],
+                  [
+                    3,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "MARMOTTE",
+                "cases": [
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    4,
+                    7
+                  ],
+                  [
+                    4,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "GRIMPEUR",
+                "cases": [
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    5,
+                    5
+                  ],
+                  [
+                    5,
+                    6
+                  ],
+                  [
+                    5,
+                    7
+                  ],
+                  [
+                    5,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "VOILIERS",
+                "cases": [
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    6,
+                    2
+                  ],
+                  [
+                    6,
+                    3
+                  ],
+                  [
+                    6,
+                    4
+                  ],
+                  [
+                    6,
+                    5
+                  ],
+                  [
+                    6,
+                    6
+                  ],
+                  [
+                    6,
+                    7
+                  ],
+                  [
+                    6,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "SARDINES",
+                "cases": [
+                  [
+                    7,
+                    1
+                  ],
+                  [
+                    7,
+                    2
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7,
+                    4
+                  ],
+                  [
+                    7,
+                    5
+                  ],
+                  [
+                    7,
+                    6
+                  ],
+                  [
+                    7,
+                    7
+                  ],
+                  [
+                    7,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "DRAPEAU",
+                "cases": [
+                  [
+                    0,
+                    9
+                  ],
+                  [
+                    1,
+                    9
+                  ],
+                  [
+                    2,
+                    9
+                  ],
+                  [
+                    3,
+                    9
+                  ],
+                  [
+                    4,
+                    9
+                  ],
+                  [
+                    5,
+                    9
+                  ],
+                  [
+                    6,
+                    9
+                  ]
+                ]
               }
             ],
-            "reponse": "LIVRE",
+            "reponse": "TAPIS",
             "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
+            "surFiche": true,
+            "solution": "La réponse est TAPIS : Sous le tapis."
           },
           "code": {
             "id": "e1-soleil-code",
             "type": "sudoku",
             "titre": "La grille de chiffres",
-            "consigne": "Remplis la grille : chaque chiffre de 1 à 4 apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case grisée est un chiffre du code.",
+            "consigne": "Remplis la grille : chaque chiffre de 1 à 4 apparaît une seule fois par ligne, par colonne et dans chaque bloc. Le chiffre de la case marquée d'un rond est un chiffre du code.",
             "taille": 4,
             "blocLargeur": 2,
             "blocHauteur": 2,
@@ -5067,630 +6218,10 @@
         },
         {
           "etape": 2,
-          "cachette": "livre",
+          "cachette": "tapis",
           "ambiance": "Un billet plié en quatre indique :",
           "navigation": {
             "id": "e2-soleil-nav",
-            "type": "cesar",
-            "titre": "Le message décalé",
-            "consigne": "Chaque lettre a été décalée de 1 rangs dans l'alphabet. Recule de 1 rangs pour retrouver le mot.",
-            "texteChiffre": "SJEFBV",
-            "decalage": 1,
-            "origineDecalage": "étape 1",
-            "reponse": "RIDEAU",
-            "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est RIDEAU : Derrière le rideau."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 3,
-          "cachette": "rideau",
-          "ambiance": "Un billet plié en quatre indique :",
-          "navigation": {
-            "id": "e3-soleil-nav",
-            "type": "motsmeles",
-            "titre": "Les mots mêlés",
-            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
-            "taille": 10,
-            "grille": [
-              [
-                "S",
-                "M",
-                "O",
-                "N",
-                "T",
-                "A",
-                "G",
-                "N",
-                "E",
-                "E"
-              ],
-              [
-                "E",
-                "L",
-                "R",
-                "T",
-                "N",
-                "S",
-                "E",
-                "H",
-                "R",
-                "L"
-              ],
-              [
-                "N",
-                "U",
-                "U",
-                "R",
-                "I",
-                "E",
-                "R",
-                "O",
-                "U",
-                "L"
-              ],
-              [
-                "I",
-                "N",
-                "E",
-                "A",
-                "L",
-                "R",
-                "U",
-                "R",
-                "E",
-                "I"
-              ],
-              [
-                "D",
-                "E",
-                "G",
-                "V",
-                "P",
-                "P",
-                "T",
-                "I",
-                "P",
-                "U"
-              ],
-              [
-                "R",
-                "T",
-                "N",
-                "E",
-                "M",
-                "E",
-                "N",
-                "Z",
-                "M",
-                "Q"
-              ],
-              [
-                "A",
-                "T",
-                "O",
-                "R",
-                "E",
-                "N",
-                "E",
-                "O",
-                "I",
-                "O"
-              ],
-              [
-                "S",
-                "E",
-                "L",
-                "S",
-                "R",
-                "T",
-                "V",
-                "N",
-                "R",
-                "C"
-              ],
-              [
-                "F",
-                "S",
-                "P",
-                "E",
-                "T",
-                "R",
-                "A",
-                "S",
-                "G",
-                "I"
-              ],
-              [
-                "S",
-                "R",
-                "E",
-                "I",
-                "L",
-                "L",
-                "O",
-                "C",
-                "G",
-                "O"
-              ]
-            ],
-            "mots": [
-              "AVENTURE",
-              "COLLIERS",
-              "COQUILLE",
-              "GRIMPEUR",
-              "HORIZONS",
-              "LUNETTES",
-              "MONTAGNE",
-              "PLONGEUR",
-              "SARDINES",
-              "SERPENT",
-              "TRAVERSE",
-              "TREMPLIN"
-            ],
-            "placements": [
-              {
-                "mot": "SARDINES",
-                "cases": [
-                  [
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1
-                  ],
-                  [
-                    0,
-                    2
-                  ],
-                  [
-                    0,
-                    3
-                  ],
-                  [
-                    0,
-                    4
-                  ],
-                  [
-                    0,
-                    5
-                  ],
-                  [
-                    0,
-                    6
-                  ],
-                  [
-                    0,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "MONTAGNE",
-                "cases": [
-                  [
-                    1,
-                    0
-                  ],
-                  [
-                    2,
-                    0
-                  ],
-                  [
-                    3,
-                    0
-                  ],
-                  [
-                    4,
-                    0
-                  ],
-                  [
-                    5,
-                    0
-                  ],
-                  [
-                    6,
-                    0
-                  ],
-                  [
-                    7,
-                    0
-                  ],
-                  [
-                    8,
-                    0
-                  ]
-                ]
-              },
-              {
-                "mot": "COQUILLE",
-                "cases": [
-                  [
-                    9,
-                    0
-                  ],
-                  [
-                    9,
-                    1
-                  ],
-                  [
-                    9,
-                    2
-                  ],
-                  [
-                    9,
-                    3
-                  ],
-                  [
-                    9,
-                    4
-                  ],
-                  [
-                    9,
-                    5
-                  ],
-                  [
-                    9,
-                    6
-                  ],
-                  [
-                    9,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "LUNETTES",
-                "cases": [
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    1,
-                    3
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    1,
-                    5
-                  ],
-                  [
-                    1,
-                    6
-                  ],
-                  [
-                    1,
-                    7
-                  ],
-                  [
-                    1,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "PLONGEUR",
-                "cases": [
-                  [
-                    2,
-                    1
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    2,
-                    3
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    2,
-                    5
-                  ],
-                  [
-                    2,
-                    6
-                  ],
-                  [
-                    2,
-                    7
-                  ],
-                  [
-                    2,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "TRAVERSE",
-                "cases": [
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    3,
-                    3
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    3,
-                    5
-                  ],
-                  [
-                    3,
-                    6
-                  ],
-                  [
-                    3,
-                    7
-                  ],
-                  [
-                    3,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "TREMPLIN",
-                "cases": [
-                  [
-                    4,
-                    1
-                  ],
-                  [
-                    4,
-                    2
-                  ],
-                  [
-                    4,
-                    3
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    4,
-                    5
-                  ],
-                  [
-                    4,
-                    6
-                  ],
-                  [
-                    4,
-                    7
-                  ],
-                  [
-                    4,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "SERPENT",
-                "cases": [
-                  [
-                    5,
-                    1
-                  ],
-                  [
-                    5,
-                    2
-                  ],
-                  [
-                    5,
-                    3
-                  ],
-                  [
-                    5,
-                    4
-                  ],
-                  [
-                    5,
-                    5
-                  ],
-                  [
-                    5,
-                    6
-                  ],
-                  [
-                    5,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "AVENTURE",
-                "cases": [
-                  [
-                    6,
-                    1
-                  ],
-                  [
-                    6,
-                    2
-                  ],
-                  [
-                    6,
-                    3
-                  ],
-                  [
-                    6,
-                    4
-                  ],
-                  [
-                    6,
-                    5
-                  ],
-                  [
-                    6,
-                    6
-                  ],
-                  [
-                    6,
-                    7
-                  ],
-                  [
-                    6,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "HORIZONS",
-                "cases": [
-                  [
-                    7,
-                    1
-                  ],
-                  [
-                    7,
-                    2
-                  ],
-                  [
-                    7,
-                    3
-                  ],
-                  [
-                    7,
-                    4
-                  ],
-                  [
-                    7,
-                    5
-                  ],
-                  [
-                    7,
-                    6
-                  ],
-                  [
-                    7,
-                    7
-                  ],
-                  [
-                    7,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "GRIMPEUR",
-                "cases": [
-                  [
-                    8,
-                    1
-                  ],
-                  [
-                    8,
-                    2
-                  ],
-                  [
-                    8,
-                    3
-                  ],
-                  [
-                    8,
-                    4
-                  ],
-                  [
-                    8,
-                    5
-                  ],
-                  [
-                    8,
-                    6
-                  ],
-                  [
-                    8,
-                    7
-                  ],
-                  [
-                    8,
-                    8
-                  ]
-                ]
-              },
-              {
-                "mot": "COLLIERS",
-                "cases": [
-                  [
-                    0,
-                    9
-                  ],
-                  [
-                    1,
-                    9
-                  ],
-                  [
-                    2,
-                    9
-                  ],
-                  [
-                    3,
-                    9
-                  ],
-                  [
-                    4,
-                    9
-                  ],
-                  [
-                    5,
-                    9
-                  ],
-                  [
-                    6,
-                    9
-                  ],
-                  [
-                    7,
-                    9
-                  ]
-                ]
-              }
-            ],
-            "reponse": "FRIGO",
-            "role": "navigation",
-            "surFiche": true,
-            "solution": "La réponse est FRIGO : Dans le frigo."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 4,
-          "cachette": "frigo",
-          "ambiance": "L'agent de liaison a laissé cette note :",
-          "navigation": {
-            "id": "e4-soleil-nav",
             "type": "morse",
             "titre": "Le message en morse",
             "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
@@ -5735,21 +6266,21 @@
           "messageFinal": null
         },
         {
-          "etape": 5,
+          "etape": 3,
           "cachette": "canape",
           "ambiance": "Un billet plié en quatre indique :",
           "navigation": {
-            "id": "e5-soleil-nav",
+            "id": "e3-soleil-nav",
             "type": "cesar",
             "titre": "Le message décalé",
-            "consigne": "Chaque lettre a été décalée de 1 rangs dans l'alphabet. Recule de 1 rangs pour retrouver le mot.",
-            "texteChiffre": "DSBZPOT",
+            "consigne": "Chaque lettre a été décalée dans l'alphabet, toujours du même nombre de rangs. Ce nombre est le chiffre que ton équipe a déjà trouvé. Recule d'autant de rangs pour retrouver le mot.",
+            "texteChiffre": "MJWSF",
             "decalage": 1,
             "origineDecalage": "étape 1",
-            "reponse": "CRAYONS",
+            "reponse": "LIVRE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est CRAYONS : Dans le pot à crayons."
+            "solution": "Décalage de 1 rangs. La réponse est LIVRE : Derrière un livre, sur une étagère basse."
           },
           "code": null,
           "bonus": null,
@@ -5757,407 +6288,222 @@
           "messageFinal": null
         },
         {
-          "etape": 6,
-          "cachette": "crayons",
-          "ambiance": "La fiche de mission précise :",
+          "etape": 4,
+          "cachette": "livre",
+          "ambiance": "L'agent de liaison a laissé cette note :",
           "navigation": {
-            "id": "e6-soleil-nav",
+            "id": "e4-soleil-nav",
             "type": "motsmeles",
             "titre": "Les mots mêlés",
             "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
             "taille": 10,
             "grille": [
               [
-                "E",
-                "S",
-                "R",
-                "V",
-                "E",
-                "B",
-                "S",
-                "E",
-                "A",
-                "N"
-              ],
-              [
+                "L",
+                "U",
                 "N",
                 "E",
-                "U",
-                "O",
-                "L",
-                "O",
-                "A",
-                "S",
-                "V",
-                "A"
-              ],
-              [
-                "A",
+                "T",
                 "T",
                 "E",
-                "I",
-                "L",
-                "U",
-                "R",
-                "R",
+                "S",
                 "E",
-                "V"
-              ],
-              [
-                "V",
-                "T",
-                "P",
-                "L",
-                "I",
-                "C",
-                "D",
-                "E",
-                "N",
-                "I"
-              ],
-              [
-                "A",
-                "E",
-                "M",
-                "I",
-                "U",
-                "L",
-                "I",
-                "V",
-                "T",
-                "G"
-              ],
-              [
-                "R",
-                "N",
-                "I",
-                "E",
-                "Q",
-                "I",
-                "N",
-                "A",
-                "U",
-                "U"
-              ],
-              [
-                "A",
-                "U",
-                "R",
-                "R",
-                "O",
-                "E",
-                "E",
-                "R",
-                "R",
                 "E"
               ],
               [
-                "C",
-                "L",
-                "G",
-                "S",
-                "C",
-                "R",
-                "S",
-                "T",
                 "E",
+                "C",
+                "A",
+                "S",
+                "S",
+                "S",
+                "E",
+                "R",
+                "N",
+                "S"
+              ],
+              [
+                "T",
+                "O",
+                "V",
+                "N",
+                "E",
+                "E",
+                "L",
+                "U",
+                "G",
                 "R"
               ],
               [
-                "E",
+                "T",
                 "L",
+                "E",
                 "O",
-                "S",
-                "S",
-                "U",
+                "D",
+                "N",
                 "O",
-                "B",
+                "E",
+                "A",
+                "E"
+              ],
+              [
+                "O",
+                "L",
+                "N",
+                "Z",
+                "A",
+                "I",
+                "S",
                 "P",
+                "T",
+                "V"
+              ],
+              [
+                "M",
+                "I",
+                "T",
+                "I",
+                "C",
+                "D",
+                "S",
+                "M",
+                "N",
                 "A"
               ],
               [
-                "N",
+                "R",
+                "E",
+                "U",
+                "R",
+                "S",
+                "R",
+                "U",
+                "I",
                 "O",
-                "G",
+                "R"
+              ],
+              [
                 "A",
                 "R",
-                "D",
-                "N",
-                "I",
+                "R",
+                "O",
+                "A",
+                "A",
+                "O",
+                "R",
+                "M",
+                "T"
+              ],
+              [
+                "M",
+                "S",
                 "E",
-                "R"
+                "H",
+                "C",
+                "S",
+                "B",
+                "G",
+                "P",
+                "O"
+              ],
+              [
+                "G",
+                "A",
+                "L",
+                "O",
+                "P",
+                "E",
+                "R",
+                "R",
+                "T",
+                "E"
               ]
             ],
             "mots": [
               "AVENTURE",
-              "BOUCLIER",
               "BOUSSOLE",
-              "CARAVANE",
-              "COQUILLE",
-              "DRAGON",
+              "CASCADES",
+              "COLLIERS",
+              "GALOPER",
               "GRIMPEUR",
+              "HORIZONS",
               "LUNETTES",
-              "NAVIGUER",
+              "MARMOTTE",
+              "MONTAGNE",
               "SARDINES",
-              "TRAVERSE",
-              "VOILIERS"
+              "TRAVERSE"
             ],
             "placements": [
-              {
-                "mot": "CARAVANE",
-                "cases": [
-                  [
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1
-                  ],
-                  [
-                    0,
-                    2
-                  ],
-                  [
-                    0,
-                    3
-                  ],
-                  [
-                    0,
-                    4
-                  ],
-                  [
-                    0,
-                    5
-                  ],
-                  [
-                    0,
-                    6
-                  ],
-                  [
-                    0,
-                    7
-                  ]
-                ]
-              },
               {
                 "mot": "LUNETTES",
                 "cases": [
                   [
-                    1,
+                    0,
                     0
                   ],
                   [
                     1,
-                    1
+                    0
                   ],
                   [
-                    1,
-                    2
+                    2,
+                    0
                   ],
                   [
-                    1,
-                    3
+                    3,
+                    0
                   ],
                   [
-                    1,
-                    4
+                    4,
+                    0
                   ],
                   [
-                    1,
-                    5
+                    5,
+                    0
                   ],
                   [
-                    1,
-                    6
+                    6,
+                    0
                   ],
                   [
-                    1,
-                    7
+                    7,
+                    0
                   ]
                 ]
               },
               {
-                "mot": "GRIMPEUR",
+                "mot": "MONTAGNE",
                 "cases": [
                   [
-                    2,
+                    8,
                     0
                   ],
                   [
-                    2,
+                    8,
                     1
                   ],
                   [
-                    2,
+                    8,
                     2
                   ],
                   [
-                    2,
+                    8,
                     3
                   ],
                   [
-                    2,
+                    8,
                     4
                   ],
                   [
-                    2,
+                    8,
                     5
                   ],
                   [
-                    2,
+                    8,
                     6
                   ],
                   [
-                    2,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "VOILIERS",
-                "cases": [
-                  [
-                    3,
-                    0
-                  ],
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    3,
-                    3
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    3,
-                    5
-                  ],
-                  [
-                    3,
-                    6
-                  ],
-                  [
-                    3,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "COQUILLE",
-                "cases": [
-                  [
-                    4,
-                    0
-                  ],
-                  [
-                    4,
-                    1
-                  ],
-                  [
-                    4,
-                    2
-                  ],
-                  [
-                    4,
-                    3
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    4,
-                    5
-                  ],
-                  [
-                    4,
-                    6
-                  ],
-                  [
-                    4,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "BOUCLIER",
-                "cases": [
-                  [
-                    5,
-                    0
-                  ],
-                  [
-                    5,
-                    1
-                  ],
-                  [
-                    5,
-                    2
-                  ],
-                  [
-                    5,
-                    3
-                  ],
-                  [
-                    5,
-                    4
-                  ],
-                  [
-                    5,
-                    5
-                  ],
-                  [
-                    5,
-                    6
-                  ],
-                  [
-                    5,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "SARDINES",
-                "cases": [
-                  [
-                    6,
-                    0
-                  ],
-                  [
-                    6,
-                    1
-                  ],
-                  [
-                    6,
-                    2
-                  ],
-                  [
-                    6,
-                    3
-                  ],
-                  [
-                    6,
-                    4
-                  ],
-                  [
-                    6,
-                    5
-                  ],
-                  [
-                    6,
-                    6
-                  ],
-                  [
-                    6,
+                    8,
                     7
                   ]
                 ]
@@ -6166,36 +6512,110 @@
                 "mot": "TRAVERSE",
                 "cases": [
                   [
-                    7,
+                    9,
                     0
                   ],
                   [
-                    7,
+                    9,
                     1
                   ],
                   [
-                    7,
+                    9,
                     2
                   ],
                   [
-                    7,
+                    9,
                     3
                   ],
                   [
-                    7,
+                    9,
                     4
                   ],
                   [
-                    7,
+                    9,
                     5
                   ],
                   [
-                    7,
+                    9,
                     6
                   ],
                   [
-                    7,
+                    9,
                     7
+                  ]
+                ]
+              },
+              {
+                "mot": "MARMOTTE",
+                "cases": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    0,
+                    3
+                  ],
+                  [
+                    0,
+                    4
+                  ],
+                  [
+                    0,
+                    5
+                  ],
+                  [
+                    0,
+                    6
+                  ],
+                  [
+                    0,
+                    7
+                  ],
+                  [
+                    0,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "COLLIERS",
+                "cases": [
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    1,
+                    7
+                  ],
+                  [
+                    1,
+                    8
                   ]
                 ]
               },
@@ -6203,73 +6623,147 @@
                 "mot": "AVENTURE",
                 "cases": [
                   [
-                    8,
-                    0
-                  ],
-                  [
-                    8,
+                    2,
                     1
                   ],
                   [
-                    8,
+                    2,
                     2
                   ],
                   [
-                    8,
+                    2,
                     3
                   ],
                   [
-                    8,
+                    2,
                     4
                   ],
                   [
-                    8,
+                    2,
                     5
                   ],
                   [
-                    8,
+                    2,
                     6
                   ],
                   [
-                    8,
+                    2,
                     7
+                  ],
+                  [
+                    2,
+                    8
                   ]
                 ]
               },
               {
-                "mot": "NAVIGUER",
+                "mot": "HORIZONS",
                 "cases": [
                   [
-                    9,
-                    0
-                  ],
-                  [
-                    9,
+                    3,
                     1
                   ],
                   [
-                    9,
+                    3,
                     2
                   ],
                   [
-                    9,
+                    3,
                     3
                   ],
                   [
-                    9,
+                    3,
                     4
                   ],
                   [
-                    9,
+                    3,
                     5
                   ],
                   [
-                    9,
+                    3,
                     6
                   ],
                   [
-                    9,
+                    3,
                     7
+                  ],
+                  [
+                    3,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "CASCADES",
+                "cases": [
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    4,
+                    7
+                  ],
+                  [
+                    4,
+                    8
+                  ]
+                ]
+              },
+              {
+                "mot": "SARDINES",
+                "cases": [
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    5,
+                    5
+                  ],
+                  [
+                    5,
+                    6
+                  ],
+                  [
+                    5,
+                    7
+                  ],
+                  [
+                    5,
+                    8
                   ]
                 ]
               },
@@ -6277,32 +6771,69 @@
                 "mot": "BOUSSOLE",
                 "cases": [
                   [
-                    0,
-                    8
+                    6,
+                    1
                   ],
                   [
-                    1,
-                    8
+                    6,
+                    2
                   ],
                   [
-                    2,
-                    8
+                    6,
+                    3
                   ],
                   [
-                    3,
-                    8
+                    6,
+                    4
                   ],
                   [
-                    4,
-                    8
+                    6,
+                    5
                   ],
                   [
-                    5,
-                    8
+                    6,
+                    6
+                  ],
+                  [
+                    6,
+                    7
                   ],
                   [
                     6,
                     8
+                  ]
+                ]
+              },
+              {
+                "mot": "GRIMPEUR",
+                "cases": [
+                  [
+                    7,
+                    1
+                  ],
+                  [
+                    7,
+                    2
+                  ],
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7,
+                    4
+                  ],
+                  [
+                    7,
+                    5
+                  ],
+                  [
+                    7,
+                    6
+                  ],
+                  [
+                    7,
+                    7
                   ],
                   [
                     7,
@@ -6311,7 +6842,7 @@
                 ]
               },
               {
-                "mot": "DRAGON",
+                "mot": "GALOPER",
                 "cases": [
                   [
                     0,
@@ -6336,14 +6867,93 @@
                   [
                     5,
                     9
+                  ],
+                  [
+                    6,
+                    9
                   ]
                 ]
               }
             ],
-            "reponse": "PANIER",
+            "reponse": "PORTE",
             "role": "navigation",
             "surFiche": true,
-            "solution": "La réponse est PANIER : Dans le panier à linge propre."
+            "solution": "La réponse est PORTE : Derrière la porte de la chambre."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 5,
+          "cachette": "porte",
+          "ambiance": "Un billet plié en quatre indique :",
+          "navigation": {
+            "id": "e5-soleil-nav",
+            "type": "morse",
+            "titre": "Le message en morse",
+            "consigne": "Ce message est en morse. La légende donne la lettre de chaque signal.",
+            "codes": [
+              "-.-.",
+              "....",
+              ".-",
+              "..",
+              "...",
+              "."
+            ],
+            "legende": [
+              {
+                "lettre": "A",
+                "code": ".-"
+              },
+              {
+                "lettre": "C",
+                "code": "-.-."
+              },
+              {
+                "lettre": "E",
+                "code": "."
+              },
+              {
+                "lettre": "H",
+                "code": "...."
+              },
+              {
+                "lettre": "I",
+                "code": ".."
+              },
+              {
+                "lettre": "S",
+                "code": "..."
+              }
+            ],
+            "reponse": "CHAISE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est CHAISE : Sous une chaise."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 6,
+          "cachette": "chaise",
+          "ambiance": "La fiche de mission précise :",
+          "navigation": {
+            "id": "e6-soleil-nav",
+            "type": "cesar",
+            "titre": "Le message décalé",
+            "consigne": "Chaque lettre a été décalée dans l'alphabet, toujours du même nombre de rangs. Ce nombre est le chiffre que ton équipe a déjà trouvé. Recule d'autant de rangs pour retrouver le mot.",
+            "texteChiffre": "UBCMF",
+            "decalage": 1,
+            "origineDecalage": "étape 1",
+            "reponse": "TABLE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "Décalage de 1 rangs. La réponse est TABLE : Sous la table."
           },
           "code": null,
           "bonus": null,
@@ -6352,7 +6962,7 @@
         },
         {
           "etape": 7,
-          "cachette": "panier",
+          "cachette": "table",
           "ambiance": "Une fois décodé, le message donne ceci :",
           "navigation": null,
           "code": null,
@@ -7161,7 +7771,7 @@
     }
   ],
   "pages": {
-    "kit": 45,
+    "kit": 46,
     "apercu": 4
   }
 }

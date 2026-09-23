@@ -1,9 +1,9 @@
-import { StyleSheet, Svg, Line, Text, View } from "@react-pdf/renderer";
+import { Circle, Line, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { libelleIcone } from "../../engine/icones";
 import { LETTRES } from "../../engine/texte";
 import type { Enigme, Labyrinthe } from "../../engine/types";
 import { COULEURS } from "../styles";
-import { Icone } from "./base";
+import { Icone, LettresDetachees } from "./base";
 
 /**
  * Rendu des énigmes.
@@ -18,7 +18,6 @@ const s = StyleSheet.create({
   titre: { fontFamily: "Fredoka", fontSize: 11, marginBottom: 2 },
   consigne: { fontSize: 9, color: COULEURS.encreClaire, marginBottom: 5 },
   devinette: { fontSize: 12, lineHeight: 1.5 },
-  motCode: { fontFamily: "Fredoka", fontSize: 22, letterSpacing: 6 },
   ligneIcones: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   caseGrille: {
     width: 26,
@@ -54,7 +53,7 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Fredoka",
   },
-  tableau: { borderWidth: 0.8, borderColor: COULEURS.trait },
+  tableau: { borderWidth: 0.8, borderColor: COULEURS.trait, alignSelf: "flex-start" },
   cellule: {
     borderWidth: 0.4,
     borderColor: COULEURS.trait,
@@ -62,8 +61,8 @@ const s = StyleSheet.create({
     fontSize: 8.5,
     justifyContent: "center",
   },
-  morse: { fontFamily: "Fredoka", fontSize: 14, letterSpacing: 1.5 },
-  alphabet: { fontSize: 7.5, color: COULEURS.encreClaire, marginTop: 4, letterSpacing: 1.6 },
+  morse: { fontFamily: "Fredoka", fontSize: 14, lineHeight: 1.5 },
+  alphabet: { fontSize: 8, lineHeight: 1.7, color: COULEURS.encreClaire },
 });
 
 function EnTete({ enigme }: { enigme: Enigme }) {
@@ -123,6 +122,25 @@ function VueLabyrinthe({ laby, cote }: { laby: Labyrinthe; cote: number }) {
   );
 }
 
+/**
+ * Repère de la case à deviner.
+ *
+ * Dessiné en SVG, et non écrit : le caractère « ● » n'existe ni dans Fredoka
+ * ni dans Nunito, et @react-pdf/renderer se rabattait alors sur Helvetica,
+ * qui n'est pas incorporée au fichier — la case imprimait « Ï ». Le rond
+ * s'accompagne d'un trait épais autour de la case, de façon que le repère
+ * reste visible même imprimé en noir et blanc.
+ */
+function RondRepere({ taille }: { taille: number }) {
+  const rayon = Math.max(2.4, taille * 0.16);
+  const cote = rayon * 2 + 2;
+  return (
+    <Svg width={cote} height={cote} viewBox={`0 0 ${cote} ${cote}`}>
+      <Circle cx={cote / 2} cy={cote / 2} r={rayon} fill={COULEURS.encre} />
+    </Svg>
+  );
+}
+
 function VueSudoku({
   grille,
   caseCle,
@@ -152,11 +170,12 @@ function VueSudoku({
                     height: cote,
                     borderRightWidth: (x + 1) % blocLargeur === 0 ? 1.6 : 0.6,
                     borderBottomWidth: (y + 1) % blocHauteur === 0 ? 1.6 : 0.6,
-                    backgroundColor: cle ? COULEURS.fondLeger : undefined,
                   },
+                  cle ? { borderWidth: 2.2, borderColor: COULEURS.encre } : {},
                 ]}
               >
-                <Text>{valeur ?? (cle ? "●" : "")}</Text>
+                {valeur !== null ? <Text>{valeur}</Text> : null}
+                {valeur === null && cle ? <RondRepere taille={cote} /> : null}
               </View>
             );
           })}
@@ -298,7 +317,7 @@ export function VueEnigme({ enigme, compact = false }: { enigme: Enigme; compact
       return (
         <View style={s.bloc}>
           <EnTete enigme={enigme} />
-          <Text style={s.motCode}>{enigme.texteMiroir}</Text>
+          <LettresDetachees mot={enigme.texteMiroir} />
         </View>
       );
 
@@ -306,7 +325,7 @@ export function VueEnigme({ enigme, compact = false }: { enigme: Enigme; compact
       return (
         <View style={s.bloc}>
           <EnTete enigme={enigme} />
-          <Text style={s.motCode}>{enigme.texteChiffre}</Text>
+          <LettresDetachees mot={enigme.texteChiffre} souligne />
           <Text style={s.alphabet}>{LETTRES.split("").join(" ")}</Text>
           <Text style={{ fontSize: 8, color: COULEURS.encreClaire, marginTop: 2 }}>
             Le décalage est le chiffre trouvé à l&apos;{enigme.origineDecalage}.

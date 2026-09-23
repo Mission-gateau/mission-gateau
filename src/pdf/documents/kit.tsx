@@ -5,7 +5,7 @@ import { remplir } from "../../engine/texte";
 import type { Kit } from "../../engine/types";
 import { GUIDE } from "../../contenu/guide";
 import { theme } from "../../contenu/themes";
-import { Icone, PiedDePage, Puce, TraitDeDecoupe } from "../composants/base";
+import { Icone, LettresDetachees, PiedDePage, Puce, TraitDeDecoupe } from "../composants/base";
 import { VueEnigme } from "../composants/enigmes";
 import {
   FicheTechnique,
@@ -82,45 +82,55 @@ export function documentKit(kit: Kit) {
           </View>
         ))}
 
-        <Text style={styles.titre2}>{GUIDE.titreMateriel}</Text>
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 6 }}>
-          <Icone cle="ciseaux" taille={16} />
-          <Icone cle="trombone" taille={16} />
-          <Icone cle="enveloppe" taille={16} />
-          <Icone cle="cadenas" taille={16} />
+        <View wrap={false}>
+          <Text style={styles.titre2}>{GUIDE.titreMateriel}</Text>
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 6 }}>
+            <Icone cle="ciseaux" taille={16} />
+            <Icone cle="trombone" taille={16} />
+            <Icone cle="enveloppe" taille={16} />
+            <Icone cle="cadenas" taille={16} />
+          </View>
+          {GUIDE.materiel.map((ligne) => (
+            <Puce key={ligne}>
+              <Text>{ligne}</Text>
+            </Puce>
+          ))}
         </View>
-        {GUIDE.materiel.map((ligne) => (
-          <Puce key={ligne}>
-            <Text>{ligne}</Text>
-          </Puce>
-        ))}
       </Page>
 
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Guide" />
-        <Text style={styles.titre2}>{GUIDE.titrePreparation}</Text>
-        {GUIDE.preparation.map((ligne) => (
-          <Puce key={ligne}>
-            <Text>{ligne}</Text>
-          </Puce>
-        ))}
-        <PlanDePose kit={kit} />
-        <Text style={styles.titre2}>{GUIDE.titreMaitreDuJeu}</Text>
-        {kit.codeFinal ? (
-          GUIDE.maitreDuJeu.map((ligne) => (
+        <View wrap={false}>
+          <Text style={styles.titre2}>{GUIDE.titrePreparation}</Text>
+          {GUIDE.preparation.map((ligne) => (
             <Puce key={ligne}>
               <Text>{ligne}</Text>
             </Puce>
-          ))
-        ) : (
-          <Text style={styles.paragraphe}>{GUIDE.maitreDuJeuSansCode}</Text>
-        )}
-        <Text style={styles.titre2}>{GUIDE.titreSecurite}</Text>
-        {GUIDE.securite.map((ligne) => (
-          <Puce key={ligne}>
-            <Text>{ligne}</Text>
-          </Puce>
-        ))}
+          ))}
+        </View>
+        <View wrap={false}>
+          <PlanDePose kit={kit} />
+        </View>
+        <View wrap={false}>
+          <Text style={styles.titre2}>{GUIDE.titreMaitreDuJeu}</Text>
+          {kit.codeFinal ? (
+            GUIDE.maitreDuJeu.map((ligne) => (
+              <Puce key={ligne}>
+                <Text>{ligne}</Text>
+              </Puce>
+            ))
+          ) : (
+            <Text style={styles.paragraphe}>{GUIDE.maitreDuJeuSansCode}</Text>
+          )}
+        </View>
+        <View wrap={false}>
+          <Text style={styles.titre2}>{GUIDE.titreSecurite}</Text>
+          {GUIDE.securite.map((ligne) => (
+            <Puce key={ligne}>
+              <Text>{ligne}</Text>
+            </Puce>
+          ))}
+        </View>
       </Page>
 
       <Page size="A4" style={styles.page}>
@@ -144,8 +154,12 @@ export function documentKit(kit: Kit) {
 
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Guide" />
-        <Text style={styles.titre1}>{GUIDE.titreEtapes}</Text>
-        <Text style={styles.paragraphe}>{GUIDE.etapesIntro}</Text>
+        {/* Un titre ne doit jamais rester seul en bas de page : on exige
+            derrière lui la place d'entrer dans le vif du sujet. */}
+        <View minPresenceAhead={110}>
+          <Text style={styles.titre1}>{GUIDE.titreEtapes}</Text>
+          <Text style={styles.paragraphe}>{GUIDE.etapesIntro}</Text>
+        </View>
         {kit.etapes.map((etape) => {
           const indices = indicesProgressifs(etape.cachette);
           const suivante = etape.cachetteSuivante ? cachette(etape.cachetteSuivante) : null;
@@ -255,9 +269,7 @@ export function documentKit(kit: Kit) {
           </Text>
           {kit.codeFinal ? (
             <View style={{ marginTop: 20, borderWidth: 1.4, borderColor: COULEURS.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}>
-              <Text style={{ fontFamily: "Fredoka", fontSize: 26, letterSpacing: 10, textAlign: "center" }}>
-                {kit.codeFinal}
-              </Text>
+              <LettresDetachees mot={kit.codeFinal} taille={26} />
             </View>
           ) : null}
         </View>
@@ -284,11 +296,13 @@ export function documentKit(kit: Kit) {
         <TableauSolutions kit={kit} />
         <Text style={styles.titre2}>{GUIDE.codeFinalLibelle}</Text>
         {kit.codeFinal ? (
-          <Text style={{ fontFamily: "Fredoka", fontSize: 24, letterSpacing: 8 }}>{kit.codeFinal}</Text>
+          <LettresDetachees mot={kit.codeFinal} taille={24} />
         ) : (
           <Text style={styles.paragraphe}>{GUIDE.sansCode}</Text>
         )}
-        <Text style={styles.titre2}>Solution de chaque énigme</Text>
+        <Text style={styles.titre2} minPresenceAhead={60}>
+          Solution de chaque énigme
+        </Text>
         {kit.equipes.map((equipe) => (
           <View key={equipe.id} style={{ marginBottom: 8 }} wrap={false}>
             {plusieurs ? <Text style={styles.titre3}>Équipe {equipe.nom}</Text> : null}

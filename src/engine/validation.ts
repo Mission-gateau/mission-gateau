@@ -1,7 +1,7 @@
 import { cachette } from "./cachettes";
 import { reglesPartie } from "./configuration";
 import { toutesLesEnigmes } from "./kit";
-import type { Kit } from "./types";
+import type { Enigme, Kit } from "./types";
 import { verifierEnigme } from "./verif";
 
 /**
@@ -12,6 +12,18 @@ import { verifierEnigme } from "./verif";
  * final corresponde bien aux réponses trouvées, et que chaque énigme résiste
  * à son propre contrôle indépendant.
  */
+/**
+ * Empreinte d'une énigme, identifiant mis à part.
+ *
+ * L'identifiant porte le symbole de l'équipe : il diffère toujours. Deux
+ * énigmes de même empreinte sont donc, pour l'enfant, exactement la même.
+ */
+function empreinteEnigme(enigme: Enigme): string {
+  const copie: Record<string, unknown> = { ...enigme };
+  delete copie.id;
+  return JSON.stringify(copie);
+}
+
 export function verifierKit(kit: Kit): string[] {
   const problemes: string[] = [];
   const regles = reglesPartie(kit.configuration);
@@ -88,6 +100,26 @@ export function verifierKit(kit: Kit): string[] {
         problemes.push(`équipe ${equipe.nom} : le chiffre de l'étape ${chiffre.etape} ne suit pas son énigme`);
       }
     }
+  }
+
+  // ---- des énigmes propres à chaque équipe ---------------------------------
+  if (kit.equipes.length > 1) {
+    kit.etapes.forEach((etape, index) => {
+      const vues = new Map<string, string>();
+      for (const equipe of kit.equipes) {
+        const enigme = equipe.cartes[index]?.navigation;
+        if (!enigme) continue;
+        const empreinte = empreinteEnigme(enigme);
+        const deja = vues.get(empreinte);
+        if (deja) {
+          problemes.push(
+            `étape ${etape.numero} : les équipes ${deja} et ${equipe.nom} reçoivent la même énigme de route`,
+          );
+        } else {
+          vues.set(empreinte, equipe.nom);
+        }
+      }
+    });
   }
 
   // ---- le code final -------------------------------------------------------

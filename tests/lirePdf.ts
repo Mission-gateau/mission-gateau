@@ -73,8 +73,18 @@ function decouperObjets(pdf: Buffer): Map<number, ObjetPdf> {
   return objets;
 }
 
+/**
+ * Marque d'un glyphe dessiné dont le fichier ne dit pas quel caractère il
+ * représente. Il s'imprime correctement ; c'est seulement le texte que l'on
+ * peut copier ou faire lire à voix haute qui perd cette lettre.
+ */
+export const CARACTERE_INCONNU = "\uFFFD";
+
+/** Écarts relevés en lisant le fichier. */
+const anomalies: string[] = [];
+
 /** Lit une table ToUnicode : code de glyphe → caractère. */
-function lireToUnicode(flux: Buffer): Map<number, string> {
+function lireToUnicode(flux: Buffer, numero: number): Map<number, string> {
   const table = new Map<number, string>();
   const texte = flux.toString("latin1");
   // Une destination peut valoir plusieurs caractères : la ligature « fi »
@@ -104,8 +114,24 @@ function lireToUnicode(flux: Buffer): Map<number, string> {
       const fin = Number.parseInt(plage[2]!, 16);
       if (plage[3] !== undefined) {
         const destinations = [...plage[3].matchAll(/<([0-9a-fA-F\s]*)>/g)].map((m) => m[1]!);
+        const attendu = fin - debut + 1;
+        if (destinations.length !== attendu) {
+          anomalies.push(
+            `objet ${numero} : ${destinations.length} destinations pour une plage de ${attendu}`,
+          );
+        }
         destinations.forEach((hex, i) => {
-          if (debut + i <= fin) table.set(debut + i, versTexte(hex));
+          if (debut + i > fin) return;
+          const caractere = versTexte(hex);
+          // Une destination vide — « <> » — signifie que le fichier ne sait
+          // plus à quel caractère correspond ce glyphe : il s'imprime bien,
+          // mais il ne peut être ni copié ni lu à voix haute.
+          if (caractere === "") {
+            anomalies.push(`objet ${numero} : le glyphe ${debut + i} n'a pas de caractère`);
+            table.set(debut + i, CARACTERE_INCONNU);
+            return;
+          }
+          table.set(debut + i, caractere);
         });
       } else {
         const premier = Number.parseInt(plage[4]!, 16);
@@ -125,7 +151,7 @@ function tablesDuDocument(objets: Map<number, ObjetPdf>): Map<string, Map<number
     if (!objet.flux) continue;
     const apercu = objet.flux.subarray(0, 400).toString("latin1");
     if (!apercu.includes("beginbfchar") && !apercu.includes("beginbfrange")) continue;
-    tables.set(String(objet.numero), lireToUnicode(objet.flux));
+    tables.set(String(objet.numero), lireToUnicode(objet.flux, objet.numero));
   }
   return tables;
 }
@@ -201,4 +227,120 @@ export function textesDesPages(pdf: Buffer): string[] {
 /** Tout le texte du PDF, pages confondues. */
 export function texteDuPdf(pdf: Buffer): string {
   return textesDesPages(pdf).join("\n");
+}
+
+// --------------------------------------------------------------------------
+// Contrôles sur les polices
+// --------------------------------------------------------------------------
+
+export interface PolicePdf {
+  /** Nom de base, préfixe de sous-ensemble compris (« CZZZZZ+Nunito-Regular »). */
+  nom: string;
+  /** true si le programme de police voyage dans le fichier. */
+  incorporee: boolean;
+}
+
+/** Suit une chaîne de renvois jusqu'au descripteur, puis cherche le programme. */
+function policeIncorporee(objets: Map<number, ObjetPdf>, numero: number): boolean {
+  const police = objets.get(numero);
+  if (!police) return false;
+  const descendante = /\/DescendantFonts \[(\d+) 0 R\]/.exec(police.dictionnaire);
+  const porteur = descendante
+    ? objets.get(Number(descendante[1]))?.dictionnaire
+    : police.dictionnaire;
+  if (!porteur) return false;
+  const descripteur = /\/FontDescriptor (\d+) 0 R/.exec(porteur);
+  if (!descripteur) return false;
+  const dictionnaire = objets.get(Number(descripteur[1]))?.dictionnaire ?? "";
+  return /\/FontFile[23]? /.test(dictionnaire);
+}
+
+/**
+ * Toutes les polices auxquelles une page fait appel.
+ *
+ * Une police non incorporée est remplacée par celle du lecteur : le texte
+ * change d'allure d'une machine à l'autre, et un caractère absent s'imprime
+ * de travers. Aucune ne doit rester.
+ */
+export function policesDuPdf(pdf: Buffer): PolicePdf[] {
+  const objets = decouperObjets(pdf);
+  const trouvees = new Map<number, PolicePdf>();
+
+  for (const objet of objets.values()) {
+    if (!/\/Type\s*\/Page\b/.test(objet.dictionnaire)) continue;
+    const renvoi = /\/Resources (\d+) 0 R/.exec(objet.dictionnaire);
+    const ressources = renvoi
+      ? (objets.get(Number(renvoi[1]))?.dictionnaire ?? "")
+      : objet.dictionnaire;
+    for (const entree of ressources.matchAll(/\/F\d+ (\d+) 0 R/g)) {
+      const numero = Number(entree[1]);
+      if (trouvees.has(numero)) continue;
+      const nom = /\/BaseFont \/([^\s/>]+)/.exec(objets.get(numero)?.dictionnaire ?? "");
+      trouvees.set(numero, {
+        nom: nom?.[1] ?? `objet ${numero}`,
+        incorporee: policeIncorporee(objets, numero),
+      });
+    }
+  }
+  return [...trouvees.values()];
+}
+
+/**
+ * Glyphes dessinés que la table ToUnicode ne sait pas nommer.
+ *
+ * Le glyphe 0 est le « caractère absent » d'une police : le voir apparaître
+ * signifie qu'un caractère du texte n'existe pas dans la police qui
+ * l'imprime. Un code absent de la table révèle le même genre d'accident.
+ */
+export function glyphesInconnus(pdf: Buffer): string[] {
+  const objets = decouperObjets(pdf);
+  const tables = tablesDuDocument(objets);
+  const problemes: string[] = [];
+  let numeroPage = 0;
+
+  for (const objet of objets.values()) {
+    if (!/\/Type\s*\/Page\b/.test(objet.dictionnaire)) continue;
+    numeroPage += 1;
+    const contenus = /\/Contents (\d+) 0 R/.exec(objet.dictionnaire);
+    if (!contenus) continue;
+    const flux = objets.get(Number(contenus[1]))?.flux;
+    if (!flux) continue;
+    const renvoi = /\/Resources (\d+) 0 R/.exec(objet.dictionnaire);
+    const ressources = renvoi
+      ? (objets.get(Number(renvoi[1]))?.dictionnaire ?? "")
+      : objet.dictionnaire;
+    const polices = policesDeLaPage(ressources, objets, tables);
+
+    let courante: Map<number, string> | undefined;
+    let nomCourant = "?";
+    const contenu = flux.toString("latin1");
+    const jetons = contenu.matchAll(/\/(F\d+) [\d.]+ Tf|\[([^\]]*)\]\s*TJ|<([0-9a-fA-F\s]*)>\s*Tj/g);
+    for (const jeton of jetons) {
+      if (jeton[1]) {
+        courante = polices.get(jeton[1]);
+        nomCourant = jeton[1];
+        continue;
+      }
+      const groupes = jeton[2] ?? jeton[3] ?? "";
+      for (const chaine of groupes.matchAll(/<([0-9a-fA-F\s]*)>/g)) {
+        const hex = chaine[1]!.replace(/\s+/g, "");
+        for (let i = 0; i + 3 < hex.length; i += 4) {
+          const code = Number.parseInt(hex.slice(i, i + 4), 16);
+          if (code === 0) {
+            problemes.push(`page ${numeroPage}, police ${nomCourant} : glyphe absent dessiné`);
+          } else if (courante && !courante.has(code)) {
+            problemes.push(`page ${numeroPage}, police ${nomCourant} : glyphe ${code} hors table`);
+          }
+        }
+      }
+    }
+  }
+  return [...new Set(problemes)];
+}
+
+/** Écarts relevés pendant la dernière lecture (tables ToUnicode incomplètes). */
+export function anomaliesDeLecture(pdf: Buffer): string[] {
+  anomalies.length = 0;
+  tablesDuDocument(decouperObjets(pdf));
+  return [...anomalies];
 }

@@ -234,6 +234,38 @@ describe("neutralité", () => {
     expect(problemes).toEqual([]);
   });
 
+  /**
+   * Un diplôme porte le prénom d'un enfant : rien de ce qui l'entoure ne doit
+   * s'accorder à son genre. Les noms de rôle qui existent au masculin et au
+   * féminin sont donc écartés au profit de formes neutres.
+   */
+  it("aucun diplôme n'emploie un nom de rôle genré", () => {
+    const genres = [
+      "explorateur", "exploratrice", "briseur", "briseuse", "gagnant", "gagnante",
+      "vainqueur", "champion", "championne", "aventurier", "aventurière",
+      "chasseur", "chasseuse", "héros", "héroïne", "meilleur", "meilleure",
+      "courageux", "courageuse", "malin", "maligne", "petit", "petite",
+    ];
+    const motif = new RegExp(
+      `(?<![\\p{L}\\p{N}])(${genres.join("|")})s?(?![\\p{L}\\p{N}])`,
+      "iu",
+    );
+    const problemes: string[] = [];
+    for (const theme of LISTE_THEMES) {
+      for (const format of FORMATS) {
+        const textes = theme.formats[format];
+        for (const [cle, valeur] of [
+          ["diplomeTitre", textes.diplomeTitre],
+          ["diplomeTexte", textes.diplomeTexte],
+        ] as const) {
+          const trouve = motif.exec(valeur);
+          if (trouve) problemes.push(`${theme.id}/${format}/${cle} : ${trouve[1]}`);
+        }
+      }
+    }
+    expect(problemes).toEqual([]);
+  });
+
   it("le formulaire ne demande jamais le genre de l'enfant", () => {
     const suspects = /(?<![\p{L}\p{N}])(gar[çc]on|fille|sexe|genre)(?![\p{L}\p{N}])/iu;
     const problemes = textesDeProse()

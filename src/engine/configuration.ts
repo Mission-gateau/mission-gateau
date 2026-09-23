@@ -126,9 +126,12 @@ export const schemaConfiguration = z
       error: "Merci de choisir une durée.",
     }),
     cachettes: z
-      .array(z.enum(IDS_CACHETTES as [string, ...string[]]), {
-        error: "Merci de choisir des cachettes.",
-      })
+      .array(
+        z.enum(IDS_CACHETTES as [string, ...string[]], {
+          error: "Cette cachette ne fait pas partie de la liste proposée.",
+        }),
+        { error: "Merci de choisir des cachettes." },
+      )
       .min(1, { error: "Merci de choisir au moins une cachette." }),
     fete: schemaInfosFete.optional(),
   })

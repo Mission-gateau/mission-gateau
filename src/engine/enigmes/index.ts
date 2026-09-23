@@ -96,14 +96,19 @@ export function enigmeCesar(ctx: ContexteEnigme, cible: Cachette, cesar: Context
     id: ctx.id,
     type: "cesar",
     titre: TITRES.cesar,
-    consigne: remplir(CONSIGNES.cesar, { decalage: cesar.decalage }),
+    consigne: CONSIGNES.cesar,
     texteChiffre: chiffre,
     decalage: cesar.decalage,
     origineDecalage: cesar.origine,
     reponse: cible.motCle,
     role: "navigation",
     surFiche: false,
-    solution: solutionCachette(cible),
+    // Seule la page réservée à l'adulte donne le décalage.
+    solution: remplir(SOLUTIONS.cesar, {
+      decalage: cesar.decalage,
+      reponse: cible.motCle,
+      cachette: cible.libelle,
+    }),
   };
 }
 

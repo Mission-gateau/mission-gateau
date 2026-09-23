@@ -99,6 +99,13 @@ formats dans `src/contenu/devinettes.ts`, son indice de dépannage dans
 refusent toute cachette incomplète. Le mot-clé doit faire huit lettres au plus,
 sans accent, pour tenir dans une grille de mots mêlés 8x8.
 
+La cachette doit surtout être sûre, et ses textes doivent le rester :
+`tests/cachettes.test.ts` relit le libellé, les trois devinettes, l'indice et
+le nom de l'icône, et refuse tout mot qui contredirait la promesse faite au
+parent — four, plaque, machine, prise, appareil électrique, fenêtre, balcon,
+escalier, porte d'entrée, extérieur, salle de bains, médicament, produit
+ménager. Aucune cachette n'oblige à grimper.
+
 ## Données personnelles
 
 Rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers.
@@ -133,10 +140,18 @@ test le vérifie sur chaque kit produit.
 
 ## Limite connue
 
-`@react-pdf/renderer` 4.9 réutilise ses polices d'un document à l'autre. Au
-bout d'une vingtaine de documents produits dans le même processus, la table
-qui relie les glyphes aux caractères (`ToUnicode`) peut se décaler d'un cran :
-les pages imprimées restent justes, mais le texte copié depuis le PDF peut
-devenir faux. Cela ne se voit pas à l'impression et n'affecte pas le jeu ;
-c'est signalé ici parce que cela gêne la relecture automatique et le
-copier-coller.
+`@react-pdf/renderer` 4.9 écrit parfois un glyphe sans dire quel caractère il
+représente : la table `ToUnicode` du fichier reçoit une destination vide. Le
+glyphe est dessiné normalement — la page imprimée est juste — mais ce
+caractère-là ne peut plus être ni copié depuis le PDF, ni lu par une synthèse
+vocale. Cela touche au plus une lettre par document, presque toujours une
+lettre isolée : une case d'une grille de mots mêlés, ou la première lettre du
+filigrane « APERÇU ». Le premier document produit dans un processus n'est
+jamais touché ; les suivants le sont souvent.
+
+Ce n'est pas réparable depuis le code de l'application : la correspondance est
+écrite par la bibliothèque à partir des glyphes que son moteur de composition
+lui remet. Le défaut est donc surveillé plutôt que corrigé — `tests/lirePdf.ts`
+relit chaque fichier produit et `tests/polices.test.ts` refuse qu'il dépasse un
+glyphe par document. Si une version future de la bibliothèque le corrige, ce
+contrôle passera à zéro tout seul.

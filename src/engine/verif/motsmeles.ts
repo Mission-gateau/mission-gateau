@@ -3,32 +3,48 @@
  * la grille, la liste de mots, et les cases occupées par chaque mot.
  */
 
-const DIRECTIONS: [number, number][] = [
-  [1, 0], [-1, 0], [0, 1], [0, -1],
-  [1, 1], [-1, -1], [1, -1], [-1, 1],
+/**
+ * Les deux axes de lecture annoncés par la consigne : horizontale et
+ * verticale. Chaque alignement n'est parcouru qu'une fois, et le mot y est
+ * accepté dans un sens comme dans l'autre : une même suite de cases compte
+ * donc pour une seule occurrence, jamais pour deux.
+ */
+const AXES: [number, number][] = [
+  [1, 0],
+  [0, 1],
 ];
 
-/** Cherche un mot dans la grille, dans les huit directions. */
-export function motPresent(grille: string[][], mot: string): boolean {
+/**
+ * Compte les endroits où un mot se lit dans la grille.
+ *
+ * Un mot qui apparaît deux fois rend le jeu faux : l'enfant qui entoure la
+ * mauvaise occurrence raye des lettres du mot-réponse et obtient une réponse
+ * erronée. Le générateur comme le contrôle indépendant exigent donc
+ * exactement une occurrence par mot de la liste.
+ */
+export function occurrences(grille: string[][], mot: string): number {
   const hauteur = grille.length;
   const largeur = grille[0]!.length;
-  for (let y = 0; y < hauteur; y += 1) {
-    for (let x = 0; x < largeur; x += 1) {
-      for (const [dx, dy] of DIRECTIONS) {
-        let trouve = true;
-        for (let i = 0; i < mot.length; i += 1) {
-          const cx = x + dx * i;
-          const cy = y + dy * i;
-          if (cx < 0 || cy < 0 || cx >= largeur || cy >= hauteur || grille[cy]![cx] !== mot[i]) {
-            trouve = false;
-            break;
-          }
-        }
-        if (trouve) return true;
+  const inverse = [...mot].reverse().join("");
+  let total = 0;
+
+  for (const [dx, dy] of AXES) {
+    for (let y = 0; y < hauteur; y += 1) {
+      for (let x = 0; x < largeur; x += 1) {
+        if (x + dx * (mot.length - 1) >= largeur) continue;
+        if (y + dy * (mot.length - 1) >= hauteur) continue;
+        let lettres = "";
+        for (let i = 0; i < mot.length; i += 1) lettres += grille[y + dy * i]![x + dx * i]!;
+        if (lettres === mot || lettres === inverse) total += 1;
       }
     }
   }
-  return false;
+  return total;
+}
+
+/** Le mot se lit-il au moins une fois dans la grille ? */
+export function motPresent(grille: string[][], mot: string): boolean {
+  return occurrences(grille, mot) > 0;
 }
 
 export interface MotsMelesPublies {
@@ -65,8 +81,11 @@ export function verifierMotsMeles(e: MotsMelesPublies): string[] {
   }
 
   for (const mot of e.mots) {
-    if (!motPresent(e.grille, mot)) {
+    const combien = occurrences(e.grille, mot);
+    if (combien === 0) {
       problemes.push(`mots mêlés : « ${mot} » est introuvable dans la grille`);
+    } else if (combien > 1) {
+      problemes.push(`mots mêlés : « ${mot} » se lit ${combien} fois dans la grille`);
     }
   }
   if (new Set(e.mots).size !== e.mots.length) {
