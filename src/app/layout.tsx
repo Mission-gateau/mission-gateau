@@ -18,7 +18,12 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/**
+ * Les props sont écrites à la main plutôt que reprises du type `LayoutProps`
+ * généré par Next : ce type n'existe qu'après un build, et la vérification des
+ * types tourne avant le build en intégration continue.
+ */
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className="h-full">
       <body className="flex min-h-full flex-col antialiased">
