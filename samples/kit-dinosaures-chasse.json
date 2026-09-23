@@ -17,7 +17,6 @@
       "table",
       "chaise",
       "tapis",
-      "rideau",
       "livre",
       "jouets",
       "lit",
@@ -26,11 +25,10 @@
       "boite",
       "crayons",
       "cartable",
-      "frigo",
+      "porte",
       "torchon",
       "marmite",
       "fruits",
-      "porte",
       "manteau"
     ],
     "fete": {
@@ -63,13 +61,13 @@
       "debut": 8,
       "duree": 8,
       "titre": "Étape 1",
-      "detail": "Derrière le rideau. La carte mène à la cachette suivante."
+      "detail": "Sous le tapis. La carte mène à la cachette suivante."
     },
     {
       "debut": 16,
       "duree": 8,
       "titre": "Étape 2",
-      "detail": "Sous le tapis. La carte mène à la cachette suivante."
+      "detail": "Dans une marmite du placard. La carte mène à la cachette suivante."
     },
     {
       "debut": 24,
@@ -81,13 +79,13 @@
       "debut": 32,
       "duree": 8,
       "titre": "Étape 4",
-      "detail": "Dans la poche d'un manteau du porte-manteau. La carte mène à la cachette suivante."
+      "detail": "Derrière la porte de la chambre. La carte mène à la cachette suivante."
     },
     {
       "debut": 40,
       "duree": 8,
       "titre": "Étape 5",
-      "detail": "Sous l'oreiller. La carte mène à la cachette suivante."
+      "detail": "Dans la poche d'un manteau posé sur une chaise. La carte mène à la cachette suivante."
     },
     {
       "debut": 48,
@@ -111,20 +109,9 @@
   "parcours": [
     {
       "etape": 1,
-      "cachette": "Derrière le rideau",
-      "motCle": "RIDEAU",
-      "cachetteSuivante": "Sous le tapis",
-      "indices": [
-        "Cherchez du côté de : Salon et salle à manger.",
-        "C'est un grand tissu qui pend, tout près d'une fenêtre.",
-        "La réponse : Derrière le rideau."
-      ]
-    },
-    {
-      "etape": 2,
       "cachette": "Sous le tapis",
       "motCle": "TAPIS",
-      "cachetteSuivante": "Dans une boîte à chaussures",
+      "cachetteSuivante": "Dans une marmite du placard",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
         "C'est par terre, et il faut en soulever un coin.",
@@ -132,10 +119,21 @@
       ]
     },
     {
+      "etape": 2,
+      "cachette": "Dans une marmite du placard",
+      "motCle": "MARMITE",
+      "cachetteSuivante": "Dans une boîte à chaussures",
+      "indices": [
+        "Cherchez du côté de : Cuisine.",
+        "C'est dans un placard bas, et cela sert à faire la soupe.",
+        "La réponse : Dans une marmite du placard."
+      ]
+    },
+    {
       "etape": 3,
       "cachette": "Dans une boîte à chaussures",
       "motCle": "BOITE",
-      "cachetteSuivante": "Dans la poche d'un manteau du porte-manteau",
+      "cachetteSuivante": "Derrière la porte de la chambre",
       "indices": [
         "Cherchez du côté de : Chambre.",
         "C'est un contenant en carton, avec un couvercle.",
@@ -144,24 +142,24 @@
     },
     {
       "etape": 4,
-      "cachette": "Dans la poche d'un manteau du porte-manteau",
-      "motCle": "MANTEAU",
-      "cachetteSuivante": "Sous l'oreiller",
+      "cachette": "Derrière la porte de la chambre",
+      "motCle": "PORTE",
+      "cachetteSuivante": "Dans la poche d'un manteau posé sur une chaise",
       "indices": [
-        "Cherchez du côté de : Entrée.",
-        "Cherchez dans un vêtement qui attend au porte-manteau.",
-        "La réponse : Dans la poche d'un manteau du porte-manteau."
+        "Cherchez du côté de : Chambre.",
+        "C'est ce qu'on pousse pour passer d'une pièce à l'autre.",
+        "La réponse : Derrière la porte de la chambre."
       ]
     },
     {
       "etape": 5,
-      "cachette": "Sous l'oreiller",
-      "motCle": "OREILLER",
+      "cachette": "Dans la poche d'un manteau posé sur une chaise",
+      "motCle": "MANTEAU",
       "cachetteSuivante": "Dans le tiroir des torchons",
       "indices": [
-        "Cherchez du côté de : Chambre.",
-        "C'est sur le lit, et on y pose la tête.",
-        "La réponse : Sous l'oreiller."
+        "Cherchez du côté de : Entrée.",
+        "Cherchez dans un vêtement chaud, posé à portée de main.",
+        "La réponse : Dans la poche d'un manteau posé sur une chaise."
       ]
     },
     {
@@ -181,11 +179,11 @@
     "type": "devinette",
     "titre": "Devinette",
     "consigne": "Écoute bien la comptine. Elle dit où aller.",
-    "texte": "Je suis près de la fenêtre. Je bouge un peu avec l'air. Regarde derrière moi !",
-    "reponse": "RIDEAU",
+    "texte": "Je suis tout plat, par terre. On marche sur moi. Soulève-moi !",
+    "reponse": "TAPIS",
     "role": "navigation",
     "surFiche": false,
-    "solution": "La réponse est RIDEAU : Derrière le rideau."
+    "solution": "La réponse est TAPIS : Sous le tapis."
   },
   "equipes": [
     {
@@ -202,18 +200,18 @@
       "cartes": [
         {
           "etape": 1,
-          "cachette": "rideau",
+          "cachette": "tapis",
           "ambiance": "Le carnet du paléontologue indique :",
           "navigation": {
             "id": "e1-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "Je suis tout plat, par terre. On marche sur moi. Soulève-moi !",
-            "reponse": "TAPIS",
+            "texte": "Je suis une très grande casserole. Je vis dans le placard. Regarde dedans !",
+            "reponse": "MARMITE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est TAPIS : Sous le tapis."
+            "solution": "La réponse est MARMITE : Dans une marmite du placard."
           },
           "code": null,
           "bonus": {
@@ -263,7 +261,7 @@
         },
         {
           "etape": 2,
-          "cachette": "tapis",
+          "cachette": "marmite",
           "ambiance": "La carte de la vallée précise :",
           "navigation": {
             "id": "e2-etoile-nav",
@@ -318,11 +316,11 @@
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "Je tiens chaud dehors. J'ai des poches. Fouille-les !",
-            "reponse": "MANTEAU",
+            "texte": "Je suis en bois. On me pousse et je tourne. Regarde derrière moi !",
+            "reponse": "PORTE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est MANTEAU : Dans la poche d'un manteau du porte-manteau."
+            "solution": "La réponse est PORTE : Derrière la porte de la chambre."
           },
           "code": null,
           "bonus": {
@@ -372,18 +370,18 @@
         },
         {
           "etape": 4,
-          "cachette": "manteau",
+          "cachette": "porte",
           "ambiance": "Le petit dinosaure pousse un cri qui ressemble à ceci :",
           "navigation": {
             "id": "e4-etoile-nav",
             "type": "devinette",
             "titre": "Devinette",
             "consigne": "Écoute bien la comptine. Elle dit où aller.",
-            "texte": "On pose sa tête sur moi. Je suis tout doux. Soulève-moi !",
-            "reponse": "OREILLER",
+            "texte": "Je tiens chaud. J'ai deux poches. Fouille-les !",
+            "reponse": "MANTEAU",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est OREILLER : Sous l'oreiller."
+            "solution": "La réponse est MANTEAU : Dans la poche d'un manteau posé sur une chaise."
           },
           "code": null,
           "bonus": {
@@ -563,7 +561,7 @@
         },
         {
           "etape": 5,
-          "cachette": "oreiller",
+          "cachette": "manteau",
           "ambiance": "Le guide de la vallée a noté :",
           "navigation": {
             "id": "e5-etoile-nav",

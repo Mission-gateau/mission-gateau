@@ -22,16 +22,39 @@ import { theme } from "../contenu/themes";
 import type { Carte, ChiffreCode, Configuration, Enigme, Equipe, Etape, IdFormat, Kit } from "./types";
 
 /** Change quand la structure du kit évolue. Les exemples versionnés s'y réfèrent. */
-export const VERSION_KIT = "1.0";
+export const VERSION_KIT = "1.1";
 
 /** Suite des énigmes de navigation, par format. */
 const CYCLES_NAVIGATION: Record<IdFormat, string[]> = {
   chasse: ["devinette"],
   mission: ["pictogrammes", "motsmeles", "miroir"],
-  // Jamais de César en première étape : son décalage vient d'un chiffre
-  // trouvé plus tôt par la même équipe.
   escape: ["morse", "cesar", "motsmeles"],
 };
+
+/**
+ * Choisit la famille d'énigme de route d'une carte.
+ *
+ * Le cycle est décalé d'un cran par équipe : à une même étape, deux équipes
+ * ne tombent pas sur la même famille. Sans cela, les pictogrammes, le miroir
+ * et le morse — qui ne dépendent que du mot-réponse, identique pour tout le
+ * monde — donnaient exactement la même énigme à toutes les équipes.
+ *
+ * Le César est écarté tant que l'équipe n'a pas trouvé de chiffre à une étape
+ * antérieure : son décalage vient de là. On passe alors à la famille suivante
+ * du cycle.
+ */
+function genreNavigation(
+  cycle: readonly string[],
+  index: number,
+  indexEquipe: number,
+  cesarPossible: boolean,
+): string {
+  for (let saut = 0; saut < cycle.length; saut += 1) {
+    const genre = cycle[(index + indexEquipe + saut) % cycle.length]!;
+    if (genre !== "cesar" || cesarPossible) return genre;
+  }
+  throw new Error("aucune énigme de navigation disponible pour cette étape");
+}
 
 /** Suite des énigmes d'agrément en 4-6 ans. */
 const CYCLE_BONUS_CHASSE = ["intrus", "suite", "comptage", "labyrinthe"];
@@ -81,6 +104,9 @@ export function construireKit(configuration: Configuration, graine: string): Kit
 
     for (let index = 0; index < etapes.length; index += 1) {
       const etape = etapes[index]!;
+      // Le chiffre déjà connu au début de l'étape : celui de la carte en cours
+      // ne compte pas, l'équipe ne l'a pas encore trouvé.
+      const chiffreAnterieur = dernierChiffre;
       const numero = etape.numero;
       const aleaCarte = aleaEquipe.deriver(`etape|${numero}`);
       const ctx = (suffixe: string): ContexteEnigme => ({
@@ -118,7 +144,7 @@ export function construireKit(configuration: Configuration, graine: string): Kit
       } else {
         const cible = cachette(etape.cachetteSuivante!);
         const cycle = CYCLES_NAVIGATION[regles.format]!;
-        const genre = cycle[index % cycle.length]!;
+        const genre = genreNavigation(cycle, index, indexEquipe, chiffreAnterieur !== null);
         const contexte = ctx("nav");
         switch (genre) {
           case "devinette":
@@ -137,10 +163,10 @@ export function construireKit(configuration: Configuration, graine: string): Kit
             navigation = enigmeMotsMeles(contexte, cible, regles.format === "escape" ? 10 : 8);
             break;
           case "cesar": {
-            if (!dernierChiffre) throw new Error("césar : aucun chiffre trouvé plus tôt");
+            if (!chiffreAnterieur) throw new Error("césar : aucun chiffre trouvé plus tôt");
             navigation = enigmeCesar(contexte, cible, {
-              decalage: dernierChiffre.valeur,
-              origine: `étape ${dernierChiffre.etape}`,
+              decalage: chiffreAnterieur.valeur,
+              origine: `étape ${chiffreAnterieur.etape}`,
             });
             break;
           }

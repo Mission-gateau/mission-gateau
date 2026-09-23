@@ -18,6 +18,7 @@ import {
   type ContexteEnigme,
 } from "@/engine/enigmes";
 import { verifierEnigme } from "@/engine/verif";
+import { occurrences } from "@/engine/verif/motsmeles";
 import { ICONES_THEME } from "@/engine/icones";
 import { THEMES_CONTENU } from "@/contenu/themes";
 import type { CleIcone } from "@/engine/icones";
@@ -116,7 +117,7 @@ describe("propriétés attendues", () => {
 
   it("les mots mêlés listent assez de mots pour être un vrai jeu", () => {
     for (const graine of GRAINES.slice(0, 40)) {
-      const e = enigmeMotsMeles(contexte(graine), cachette("frigo"), 8);
+      const e = enigmeMotsMeles(contexte(graine), cachette("boite"), 8);
       if (e.type !== "motsmeles") throw new Error("type inattendu");
       expect(e.mots.length).toBeGreaterThanOrEqual(6);
     }
@@ -152,7 +153,7 @@ describe("le contrôle indépendant attrape les erreurs", () => {
   });
 
   it("repère des mots mêlés dont une lettre a été changée", () => {
-    const e = enigmeMotsMeles(contexte("abc"), cachette("frigo"), 8);
+    const e = enigmeMotsMeles(contexte("abc"), cachette("boite"), 8);
     if (e.type !== "motsmeles") throw new Error("type inattendu");
     const grille = e.grille.map((ligne) => [...ligne]);
     grille[0]![0] = grille[0]![0] === "A" ? "B" : "A";
@@ -176,5 +177,57 @@ describe("le contrôle indépendant attrape les erreurs", () => {
     const e = enigmeLogique(contexte("abc", "escape"), 1);
     if (e.type !== "logique") throw new Error("type inattendu");
     expect(verifierEnigme({ ...e, indices: [], indicesStructures: [] }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("mots mêlés : aucun mot ne se lit deux fois", () => {
+  /**
+   * Un mot présent deux fois rend la grille fausse : l'enfant qui entoure la
+   * mauvaise occurrence raye des lettres du mot-réponse. Sur 1 458 kits, un
+   * audit en avait trouvé 247 concernés, dont 14 où la réponse était abîmée.
+   */
+  for (const taille of [8, 10] as const) {
+    it(`${NOMBRE_GRAINES} grilles ${taille}x${taille} n'ont qu'une occurrence par mot`, () => {
+      const problemes: string[] = [];
+      GRAINES.forEach((graine, index) => {
+        const e = enigmeMotsMeles(contexte(graine, taille === 10 ? "escape" : "mission"), cible(index), taille);
+        if (e.type !== "motsmeles") throw new Error("type inattendu");
+        for (const mot of e.mots) {
+          const combien = occurrences(e.grille, mot);
+          if (combien !== 1) problemes.push(`${graine} : « ${mot} » ${combien} fois`);
+        }
+      });
+      expect(problemes).toEqual([]);
+    });
+  }
+
+  it("le contrôle indépendant refuse une grille où un mot apparaît deux fois", () => {
+    const e = enigmeMotsMeles(contexte("abc"), cachette("boite"), 8);
+    if (e.type !== "motsmeles") throw new Error("type inattendu");
+    // On recopie un mot de la liste par-dessus une autre ligne : il s'y lit
+    // alors une seconde fois, et le contrôle doit le voir.
+    const mot = e.mots.find((m) => m.length <= 8)!;
+    const grille = e.grille.map((ligne) => [...ligne]);
+    for (let i = 0; i < mot.length; i += 1) grille[0]![i] = mot[i]!;
+    const problemes = verifierEnigme({ ...e, grille });
+    expect(problemes.some((p) => p.includes("fois"))).toBe(true);
+  });
+});
+
+describe("César : la consigne ne donne pas le décalage", () => {
+  it("aucun chiffre dans la consigne, et le décalage sur la page des solutions", () => {
+    const problemes: string[] = [];
+    GRAINES.forEach((graine, index) => {
+      const decalage = (index % 9) + 1;
+      const e = enigmeCesar(contexte(graine, "escape"), cible(index), {
+        decalage,
+        origine: "étape 1",
+      });
+      if (/[0-9]/.test(e.consigne)) problemes.push(`${graine} : chiffre dans la consigne`);
+      if (!e.solution.includes(String(decalage))) {
+        problemes.push(`${graine} : décalage absent de la solution`);
+      }
+    });
+    expect(problemes).toEqual([]);
   });
 });

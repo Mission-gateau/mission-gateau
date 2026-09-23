@@ -5,7 +5,7 @@ import { typographier } from "../engine/texte";
 export const FORMULAIRE = typographier({
   titre: "Créer mon jeu",
   intro:
-    "Six questions, et votre aperçu est prêt. Rien de ce que vous saisissez n'est enregistré : vos réponses servent à composer le jeu, puis disparaissent.",
+    "Six questions, une septième étape facultative, et votre aperçu est prêt. Rien de ce que vous saisissez n'est enregistré : vos réponses servent à composer le jeu, puis disparaissent.",
   etapeSur: "Étape {courante} sur {total}",
   precedent: "Retour",
   suivant: "Continuer",
@@ -18,7 +18,7 @@ export const FORMULAIRE = typographier({
     { cle: "prenom", titre: "Le prénom de l'enfant", aide: "Il apparaît dans l'histoire, sur le trésor et sur les diplômes." },
     { cle: "enfants", titre: "Combien d'enfants en tout ?", aide: "Enfant fêté compris. Les équipes se forment toutes seules." },
     { cle: "duree", titre: "Combien de temps de jeu ?", aide: "Le nombre d'étapes s'ajuste à la durée." },
-    { cle: "cachettes", titre: "Quelles cachettes avez-vous ?", aide: "Décochez ce que vous n'avez pas. Toutes sont sûres et à hauteur d'enfant." },
+    { cle: "cachettes", titre: "Quelles cachettes avez-vous ?", aide: "Décochez ce que vous n'avez pas. Toutes sont à hauteur d'enfant, et aucune n'est un appareil, une prise ou une fenêtre." },
     { cle: "fete", titre: "Quelques détails, si vous voulez", aide: "Tout est facultatif : ce que vous laissez vide devient une ligne à compléter à la main." },
   ],
 

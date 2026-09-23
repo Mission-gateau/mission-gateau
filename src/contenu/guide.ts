@@ -52,9 +52,10 @@ export const GUIDE = typographier({
   titreSecurite: "Consignes de sécurité",
   securite: [
     "Toutes les cachettes proposées sont à hauteur d'enfant : personne n'a besoin de grimper.",
+    "Aucune cachette n'est un appareil, une prise, une fenêtre, un balcon ou un escalier, et aucune ne se trouve dans la salle de bains ni à l'extérieur.",
+    "Si l'une des cachettes que vous avez cochées se trouve près du four ou des plaques, décochez-la et prenez-en une autre : le jeu s'adapte.",
     "Avant de commencer, fermez les pièces qui ne servent pas au jeu.",
     "Rappelez la règle aux enfants : on marche, on ne court pas, et on ne monte sur rien.",
-    "Aucune cachette ne se trouve près du four, des plaques, d'une machine, d'une prise ou d'une fenêtre.",
     "Restez avec le groupe du début à la fin : le jeu se joue à l'intérieur, sous votre surveillance.",
     "Rangez hors de portée les produits ménagers, les médicaments et les objets coupants avant l'arrivée des invités.",
   ],

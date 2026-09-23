@@ -17,7 +17,6 @@
       "table",
       "chaise",
       "tapis",
-      "rideau",
       "livre",
       "jouets",
       "lit",
@@ -26,11 +25,10 @@
       "boite",
       "crayons",
       "cartable",
-      "frigo",
+      "porte",
       "torchon",
       "marmite",
       "fruits",
-      "porte",
       "manteau"
     ],
     "fete": {
@@ -64,43 +62,43 @@
       "debut": 8,
       "duree": 7,
       "titre": "Étape 1",
-      "detail": "Dans une marmite du placard. La carte mène à la cachette suivante."
+      "detail": "Derrière la porte de la chambre. La carte mène à la cachette suivante."
     },
     {
       "debut": 15,
       "duree": 7,
       "titre": "Étape 2",
-      "detail": "Derrière la porte d'entrée. La carte mène à la cachette suivante."
+      "detail": "Dans le pot à crayons. La carte mène à la cachette suivante."
     },
     {
       "debut": 22,
       "duree": 7,
       "titre": "Étape 3",
-      "detail": "Sous le tapis. La carte mène à la cachette suivante."
+      "detail": "Sous le canapé. La carte mène à la cachette suivante."
     },
     {
       "debut": 29,
       "duree": 7,
       "titre": "Étape 4",
-      "detail": "Dans la corbeille à fruits. La carte mène à la cachette suivante."
+      "detail": "Sous le tapis. La carte mène à la cachette suivante."
     },
     {
       "debut": 36,
       "duree": 7,
       "titre": "Étape 5",
-      "detail": "Sous le canapé. La carte mène à la cachette suivante."
+      "detail": "Sous un coussin du canapé. La carte mène à la cachette suivante."
     },
     {
       "debut": 43,
       "duree": 7,
       "titre": "Étape 6",
-      "detail": "Sous le lit. La carte mène à la cachette suivante."
+      "detail": "Dans le tiroir des torchons. La carte mène à la cachette suivante."
     },
     {
       "debut": 50,
       "duree": 7,
       "titre": "Étape 7",
-      "detail": "Sous un coussin du canapé. Dernière carte : les enfants reviennent vous voir."
+      "detail": "Sous le lit. Dernière carte : les enfants reviennent vous voir."
     },
     {
       "debut": 57,
@@ -118,53 +116,31 @@
   "parcours": [
     {
       "etape": 1,
-      "cachette": "Dans une marmite du placard",
-      "motCle": "MARMITE",
-      "cachetteSuivante": "Derrière la porte d'entrée",
+      "cachette": "Derrière la porte de la chambre",
+      "motCle": "PORTE",
+      "cachetteSuivante": "Dans le pot à crayons",
       "indices": [
-        "Cherchez du côté de : Cuisine.",
-        "C'est dans un placard bas, et cela sert à faire la soupe.",
-        "La réponse : Dans une marmite du placard."
+        "Cherchez du côté de : Chambre.",
+        "C'est ce qu'on pousse pour passer d'une pièce à l'autre.",
+        "La réponse : Derrière la porte de la chambre."
       ]
     },
     {
       "etape": 2,
-      "cachette": "Derrière la porte d'entrée",
-      "motCle": "PORTE",
-      "cachetteSuivante": "Sous le tapis",
+      "cachette": "Dans le pot à crayons",
+      "motCle": "CRAYONS",
+      "cachetteSuivante": "Sous le canapé",
       "indices": [
-        "Cherchez du côté de : Entrée.",
-        "C'est ce qu'on pousse pour entrer dans la maison.",
-        "La réponse : Derrière la porte d'entrée."
+        "Cherchez du côté de : Chambre.",
+        "Cherchez près du bureau, dans quelque chose qui tient debout.",
+        "La réponse : Dans le pot à crayons."
       ]
     },
     {
       "etape": 3,
-      "cachette": "Sous le tapis",
-      "motCle": "TAPIS",
-      "cachetteSuivante": "Dans la corbeille à fruits",
-      "indices": [
-        "Cherchez du côté de : Salon et salle à manger.",
-        "C'est par terre, et il faut en soulever un coin.",
-        "La réponse : Sous le tapis."
-      ]
-    },
-    {
-      "etape": 4,
-      "cachette": "Dans la corbeille à fruits",
-      "motCle": "FRUITS",
-      "cachetteSuivante": "Sous le canapé",
-      "indices": [
-        "Cherchez du côté de : Cuisine.",
-        "Cherchez du côté des pommes et des bananes.",
-        "La réponse : Dans la corbeille à fruits."
-      ]
-    },
-    {
-      "etape": 5,
       "cachette": "Sous le canapé",
       "motCle": "CANAPE",
-      "cachetteSuivante": "Sous le lit",
+      "cachetteSuivante": "Sous le tapis",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
         "C'est un meuble sur lequel on s'assoit à plusieurs, et il faut se baisser.",
@@ -172,25 +148,47 @@
       ]
     },
     {
-      "etape": 6,
-      "cachette": "Sous le lit",
-      "motCle": "LIT",
+      "etape": 4,
+      "cachette": "Sous le tapis",
+      "motCle": "TAPIS",
       "cachetteSuivante": "Sous un coussin du canapé",
       "indices": [
-        "Cherchez du côté de : Chambre.",
-        "C'est le meuble où l'on dort, et il faut regarder dessous.",
-        "La réponse : Sous le lit."
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est par terre, et il faut en soulever un coin.",
+        "La réponse : Sous le tapis."
       ]
     },
     {
-      "etape": 7,
+      "etape": 5,
       "cachette": "Sous un coussin du canapé",
       "motCle": "COUSSIN",
-      "cachetteSuivante": "le trésor",
+      "cachetteSuivante": "Dans le tiroir des torchons",
       "indices": [
         "Cherchez du côté de : Salon et salle à manger.",
         "C'est mou, c'est carré, et cela se soulève d'une main.",
         "La réponse : Sous un coussin du canapé."
+      ]
+    },
+    {
+      "etape": 6,
+      "cachette": "Dans le tiroir des torchons",
+      "motCle": "TORCHON",
+      "cachetteSuivante": "Sous le lit",
+      "indices": [
+        "Cherchez du côté de : Cuisine.",
+        "Cherchez dans un tiroir de la cuisine, sous du tissu plié.",
+        "La réponse : Dans le tiroir des torchons."
+      ]
+    },
+    {
+      "etape": 7,
+      "cachette": "Sous le lit",
+      "motCle": "LIT",
+      "cachetteSuivante": "le trésor",
+      "indices": [
+        "Cherchez du côté de : Chambre.",
+        "C'est le meuble où l'on dort, et il faut regarder dessous.",
+        "La réponse : Sous le lit."
       ]
     }
   ],
@@ -199,11 +197,11 @@
     "type": "devinette",
     "titre": "Devinette",
     "consigne": "Cette devinette indique la cachette suivante.",
-    "texte": "Je suis la grande casserole rangée dans le placard du bas. Soulève mon couvercle.",
-    "reponse": "MARMITE",
+    "texte": "Je tourne sur mes gonds et je sépare la chambre du couloir. Regarde derrière moi.",
+    "reponse": "PORTE",
     "role": "navigation",
     "surFiche": false,
-    "solution": "La réponse est MARMITE : Dans une marmite du placard."
+    "solution": "La réponse est PORTE : Derrière la porte de la chambre."
   },
   "equipes": [
     {
@@ -241,7 +239,7 @@
       "cartes": [
         {
           "etape": 1,
-          "cachette": "marmite",
+          "cachette": "porte",
           "ambiance": "L'agent de liaison a laissé cette note :",
           "navigation": {
             "id": "e1-etoile-nav",
@@ -250,37 +248,47 @@
             "consigne": "Chaque dessin remplace une lettre. Utilise la légende pour lire le mot caché.",
             "legende": [
               {
-                "lettre": "E",
-                "icone": "lettre_e"
+                "lettre": "A",
+                "icone": "lettre_a"
+              },
+              {
+                "lettre": "C",
+                "icone": "lettre_c"
+              },
+              {
+                "lettre": "N",
+                "icone": "lettre_n"
               },
               {
                 "lettre": "O",
                 "icone": "lettre_o"
               },
               {
-                "lettre": "P",
-                "icone": "lettre_p"
-              },
-              {
                 "lettre": "R",
                 "icone": "lettre_r"
               },
               {
-                "lettre": "T",
-                "icone": "lettre_t"
+                "lettre": "S",
+                "icone": "lettre_s"
+              },
+              {
+                "lettre": "Y",
+                "icone": "lettre_y"
               }
             ],
             "suite": [
-              "lettre_p",
-              "lettre_o",
+              "lettre_c",
               "lettre_r",
-              "lettre_t",
-              "lettre_e"
+              "lettre_a",
+              "lettre_y",
+              "lettre_o",
+              "lettre_n",
+              "lettre_s"
             ],
-            "reponse": "PORTE",
+            "reponse": "CRAYONS",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est PORTE : Derrière la porte d'entrée."
+            "solution": "La réponse est CRAYONS : Dans le pot à crayons."
           },
           "code": {
             "id": "e1-etoile-code",
@@ -304,7 +312,7 @@
         },
         {
           "etape": 2,
-          "cachette": "porte",
+          "cachette": "crayons",
           "ambiance": "La radio grésille, puis annonce :",
           "navigation": {
             "id": "e2-etoile-nav",
@@ -314,99 +322,99 @@
             "taille": 8,
             "grille": [
               [
-                "R",
+                "G",
+                "T",
                 "H",
-                "N",
                 "S",
                 "E",
-                "M",
-                "E",
+                "C",
+                "G",
                 "C"
               ],
               [
-                "E",
+                "R",
+                "R",
                 "O",
+                "R",
+                "N",
+                "A",
+                "A",
+                "A"
+              ],
+              [
                 "I",
+                "A",
+                "R",
                 "E",
+                "G",
                 "S",
-                "A",
-                "N",
-                "I"
-              ],
-              [
-                "I",
-                "R",
                 "L",
-                "N",
-                "R",
-                "R",
-                "A",
-                "E"
-              ],
-              [
-                "L",
-                "I",
-                "P",
-                "T",
-                "E",
-                "M",
-                "V",
                 "L"
               ],
               [
-                "C",
-                "Z",
                 "M",
-                "I",
                 "V",
-                "O",
+                "I",
+                "I",
                 "A",
-                "T"
+                "C",
+                "O",
+                "C"
+              ],
+              [
+                "P",
+                "E",
+                "Z",
+                "L",
+                "T",
+                "A",
+                "P",
+                "A"
+              ],
+              [
+                "E",
+                "R",
+                "O",
+                "L",
+                "N",
+                "D",
+                "E",
+                "N"
               ],
               [
                 "U",
+                "S",
+                "N",
+                "O",
                 "O",
                 "E",
-                "E",
-                "A",
-                "T",
                 "R",
                 "A"
               ],
               [
-                "O",
-                "N",
                 "R",
-                "R",
-                "R",
-                "T",
-                "A",
-                "P"
-              ],
-              [
-                "B",
-                "S",
-                "T",
-                "I",
-                "T",
                 "E",
+                "S",
                 "C",
-                "S"
+                "M",
+                "S",
+                "P",
+                "E"
               ]
             ],
             "mots": [
-              "BOUCLIER",
-              "CARAVANE",
-              "CIEL",
+              "CASCADES",
+              "COLLIERS",
+              "GALOPER",
+              "GRIMPEUR",
               "HORIZONS",
-              "MARMOTTE",
-              "SENTIER",
-              "TRAVERSE",
-              "TREMPLIN"
+              "LAC",
+              "MONTAGNE",
+              "TRAVERSE"
             ],
             "placements": [
               {
-                "mot": "BOUCLIER",
+                "mot": "GRIMPEUR",
                 "cases": [
                   [
                     0,
@@ -438,6 +446,43 @@
                   ],
                   [
                     0,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "TRAVERSE",
+                "cases": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    1,
                     7
                   ]
                 ]
@@ -446,43 +491,6 @@
                 "mot": "HORIZONS",
                 "cases": [
                   [
-                    1,
-                    0
-                  ],
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    1,
-                    3
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    1,
-                    5
-                  ],
-                  [
-                    1,
-                    6
-                  ],
-                  [
-                    1,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "TREMPLIN",
-                "cases": [
-                  [
                     2,
                     0
                   ],
@@ -517,7 +525,7 @@
                 ]
               },
               {
-                "mot": "SENTIER",
+                "mot": "COLLIERS",
                 "cases": [
                   [
                     3,
@@ -546,11 +554,15 @@
                   [
                     3,
                     6
+                  ],
+                  [
+                    3,
+                    7
                   ]
                 ]
               },
               {
-                "mot": "TRAVERSE",
+                "mot": "MONTAGNE",
                 "cases": [
                   [
                     4,
@@ -587,7 +599,7 @@
                 ]
               },
               {
-                "mot": "MARMOTTE",
+                "mot": "CASCADES",
                 "cases": [
                   [
                     5,
@@ -624,7 +636,7 @@
                 ]
               },
               {
-                "mot": "CARAVANE",
+                "mot": "GALOPER",
                 "cases": [
                   [
                     6,
@@ -653,15 +665,11 @@
                   [
                     6,
                     6
-                  ],
-                  [
-                    6,
-                    7
                   ]
                 ]
               },
               {
-                "mot": "CIEL",
+                "mot": "LAC",
                 "cases": [
                   [
                     7,
@@ -674,18 +682,14 @@
                   [
                     7,
                     2
-                  ],
-                  [
-                    7,
-                    3
                   ]
                 ]
               }
             ],
-            "reponse": "TAPIS",
+            "reponse": "CANAPE",
             "role": "navigation",
             "surFiche": true,
-            "solution": "La réponse est TAPIS : Sous le tapis."
+            "solution": "La réponse est CANAPE : Sous le canapé."
           },
           "code": {
             "id": "e2-etoile-code",
@@ -709,18 +713,18 @@
         },
         {
           "etape": 3,
-          "cachette": "tapis",
+          "cachette": "canape",
           "ambiance": "Le quartier général transmet ce message :",
           "navigation": {
             "id": "e3-etoile-nav",
             "type": "miroir",
             "titre": "Le mot à l'envers",
             "consigne": "Ce mot est écrit à l'envers. Lis-le de droite à gauche, ou dans un miroir.",
-            "texteMiroir": "STIURF",
-            "reponse": "FRUITS",
+            "texteMiroir": "SIPAT",
+            "reponse": "TAPIS",
             "role": "navigation",
             "surFiche": false,
-            "solution": "La réponse est FRUITS : Dans la corbeille à fruits."
+            "solution": "La réponse est TAPIS : Sous le tapis."
           },
           "code": null,
           "bonus": null,
@@ -729,7 +733,7 @@
         },
         {
           "etape": 4,
-          "cachette": "fruits",
+          "cachette": "tapis",
           "ambiance": "Le quartier général transmet ce message :",
           "navigation": {
             "id": "e4-etoile-nav",
@@ -738,452 +742,39 @@
             "consigne": "Chaque dessin remplace une lettre. Utilise la légende pour lire le mot caché.",
             "legende": [
               {
-                "lettre": "A",
-                "icone": "lettre_a"
-              },
-              {
                 "lettre": "C",
                 "icone": "lettre_c"
               },
               {
-                "lettre": "E",
-                "icone": "lettre_e"
+                "lettre": "I",
+                "icone": "lettre_i"
               },
               {
                 "lettre": "N",
                 "icone": "lettre_n"
               },
               {
-                "lettre": "P",
-                "icone": "lettre_p"
+                "lettre": "O",
+                "icone": "lettre_o"
+              },
+              {
+                "lettre": "S",
+                "icone": "lettre_s"
+              },
+              {
+                "lettre": "U",
+                "icone": "lettre_u"
               }
             ],
             "suite": [
               "lettre_c",
-              "lettre_a",
-              "lettre_n",
-              "lettre_a",
-              "lettre_p",
-              "lettre_e"
+              "lettre_o",
+              "lettre_u",
+              "lettre_s",
+              "lettre_s",
+              "lettre_i",
+              "lettre_n"
             ],
-            "reponse": "CANAPE",
-            "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est CANAPE : Sous le canapé."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 5,
-          "cachette": "canape",
-          "ambiance": "La radio grésille, puis annonce :",
-          "navigation": {
-            "id": "e5-etoile-nav",
-            "type": "motsmeles",
-            "titre": "Les mots mêlés",
-            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
-            "taille": 8,
-            "grille": [
-              [
-                "T",
-                "R",
-                "E",
-                "M",
-                "P",
-                "L",
-                "I",
-                "N"
-              ],
-              [
-                "V",
-                "O",
-                "I",
-                "L",
-                "I",
-                "E",
-                "R",
-                "S"
-              ],
-              [
-                "S",
-                "A",
-                "R",
-                "D",
-                "I",
-                "N",
-                "E",
-                "S"
-              ],
-              [
-                "L",
-                "U",
-                "N",
-                "E",
-                "T",
-                "T",
-                "E",
-                "S"
-              ],
-              [
-                "E",
-                "L",
-                "L",
-                "I",
-                "U",
-                "Q",
-                "O",
-                "C"
-              ],
-              [
-                "R",
-                "E",
-                "I",
-                "L",
-                "C",
-                "U",
-                "O",
-                "B"
-              ],
-              [
-                "E",
-                "N",
-                "A",
-                "V",
-                "A",
-                "R",
-                "A",
-                "C"
-              ],
-              [
-                "N",
-                "O",
-                "T",
-                "E",
-                "S",
-                "L",
-                "I",
-                "T"
-              ]
-            ],
-            "mots": [
-              "BOUCLIER",
-              "CARAVANE",
-              "COQUILLE",
-              "LUNETTES",
-              "NOTES",
-              "SARDINES",
-              "TREMPLIN",
-              "VOILIERS"
-            ],
-            "placements": [
-              {
-                "mot": "TREMPLIN",
-                "cases": [
-                  [
-                    0,
-                    0
-                  ],
-                  [
-                    1,
-                    0
-                  ],
-                  [
-                    2,
-                    0
-                  ],
-                  [
-                    3,
-                    0
-                  ],
-                  [
-                    4,
-                    0
-                  ],
-                  [
-                    5,
-                    0
-                  ],
-                  [
-                    6,
-                    0
-                  ],
-                  [
-                    7,
-                    0
-                  ]
-                ]
-              },
-              {
-                "mot": "VOILIERS",
-                "cases": [
-                  [
-                    0,
-                    1
-                  ],
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    2,
-                    1
-                  ],
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    4,
-                    1
-                  ],
-                  [
-                    5,
-                    1
-                  ],
-                  [
-                    6,
-                    1
-                  ],
-                  [
-                    7,
-                    1
-                  ]
-                ]
-              },
-              {
-                "mot": "SARDINES",
-                "cases": [
-                  [
-                    0,
-                    2
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    4,
-                    2
-                  ],
-                  [
-                    5,
-                    2
-                  ],
-                  [
-                    6,
-                    2
-                  ],
-                  [
-                    7,
-                    2
-                  ]
-                ]
-              },
-              {
-                "mot": "LUNETTES",
-                "cases": [
-                  [
-                    0,
-                    3
-                  ],
-                  [
-                    1,
-                    3
-                  ],
-                  [
-                    2,
-                    3
-                  ],
-                  [
-                    3,
-                    3
-                  ],
-                  [
-                    4,
-                    3
-                  ],
-                  [
-                    5,
-                    3
-                  ],
-                  [
-                    6,
-                    3
-                  ],
-                  [
-                    7,
-                    3
-                  ]
-                ]
-              },
-              {
-                "mot": "COQUILLE",
-                "cases": [
-                  [
-                    0,
-                    4
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    5,
-                    4
-                  ],
-                  [
-                    6,
-                    4
-                  ],
-                  [
-                    7,
-                    4
-                  ]
-                ]
-              },
-              {
-                "mot": "BOUCLIER",
-                "cases": [
-                  [
-                    0,
-                    5
-                  ],
-                  [
-                    1,
-                    5
-                  ],
-                  [
-                    2,
-                    5
-                  ],
-                  [
-                    3,
-                    5
-                  ],
-                  [
-                    4,
-                    5
-                  ],
-                  [
-                    5,
-                    5
-                  ],
-                  [
-                    6,
-                    5
-                  ],
-                  [
-                    7,
-                    5
-                  ]
-                ]
-              },
-              {
-                "mot": "CARAVANE",
-                "cases": [
-                  [
-                    0,
-                    6
-                  ],
-                  [
-                    1,
-                    6
-                  ],
-                  [
-                    2,
-                    6
-                  ],
-                  [
-                    3,
-                    6
-                  ],
-                  [
-                    4,
-                    6
-                  ],
-                  [
-                    5,
-                    6
-                  ],
-                  [
-                    6,
-                    6
-                  ],
-                  [
-                    7,
-                    6
-                  ]
-                ]
-              },
-              {
-                "mot": "NOTES",
-                "cases": [
-                  [
-                    0,
-                    7
-                  ],
-                  [
-                    1,
-                    7
-                  ],
-                  [
-                    2,
-                    7
-                  ],
-                  [
-                    3,
-                    7
-                  ],
-                  [
-                    4,
-                    7
-                  ]
-                ]
-              }
-            ],
-            "reponse": "LIT",
-            "role": "navigation",
-            "surFiche": true,
-            "solution": "La réponse est LIT : Sous le lit."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 6,
-          "cachette": "lit",
-          "ambiance": "Une fois décodé, le message donne ceci :",
-          "navigation": {
-            "id": "e6-etoile-nav",
-            "type": "miroir",
-            "titre": "Le mot à l'envers",
-            "consigne": "Ce mot est écrit à l'envers. Lis-le de droite à gauche, ou dans un miroir.",
-            "texteMiroir": "NISSUOC",
             "reponse": "COUSSIN",
             "role": "navigation",
             "surFiche": false,
@@ -1195,8 +786,410 @@
           "messageFinal": null
         },
         {
-          "etape": 7,
+          "etape": 5,
           "cachette": "coussin",
+          "ambiance": "La radio grésille, puis annonce :",
+          "navigation": {
+            "id": "e5-etoile-nav",
+            "type": "motsmeles",
+            "titre": "Les mots mêlés",
+            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
+            "taille": 8,
+            "grille": [
+              [
+                "M",
+                "A",
+                "R",
+                "M",
+                "O",
+                "T",
+                "T",
+                "E"
+              ],
+              [
+                "C",
+                "O",
+                "Q",
+                "U",
+                "I",
+                "L",
+                "L",
+                "E"
+              ],
+              [
+                "R",
+                "E",
+                "U",
+                "G",
+                "I",
+                "V",
+                "A",
+                "N"
+              ],
+              [
+                "H",
+                "O",
+                "R",
+                "I",
+                "Z",
+                "O",
+                "N",
+                "S"
+              ],
+              [
+                "R",
+                "U",
+                "E",
+                "P",
+                "M",
+                "I",
+                "R",
+                "G"
+              ],
+              [
+                "E",
+                "L",
+                "O",
+                "S",
+                "S",
+                "U",
+                "O",
+                "B"
+              ],
+              [
+                "E",
+                "R",
+                "I",
+                "V",
+                "A",
+                "N",
+                "T",
+                "O"
+              ],
+              [
+                "R",
+                "U",
+                "M",
+                "R",
+                "C",
+                "H",
+                "O",
+                "N"
+              ]
+            ],
+            "mots": [
+              "BOUSSOLE",
+              "COQUILLE",
+              "GRIMPEUR",
+              "HORIZONS",
+              "MARMOTTE",
+              "MUR",
+              "NAVIGUER",
+              "NAVIRE"
+            ],
+            "placements": [
+              {
+                "mot": "MARMOTTE",
+                "cases": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    0
+                  ],
+                  [
+                    3,
+                    0
+                  ],
+                  [
+                    4,
+                    0
+                  ],
+                  [
+                    5,
+                    0
+                  ],
+                  [
+                    6,
+                    0
+                  ],
+                  [
+                    7,
+                    0
+                  ]
+                ]
+              },
+              {
+                "mot": "COQUILLE",
+                "cases": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    3,
+                    1
+                  ],
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    7,
+                    1
+                  ]
+                ]
+              },
+              {
+                "mot": "NAVIGUER",
+                "cases": [
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    2,
+                    2
+                  ],
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    6,
+                    2
+                  ],
+                  [
+                    7,
+                    2
+                  ]
+                ]
+              },
+              {
+                "mot": "HORIZONS",
+                "cases": [
+                  [
+                    0,
+                    3
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    2,
+                    3
+                  ],
+                  [
+                    3,
+                    3
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    6,
+                    3
+                  ],
+                  [
+                    7,
+                    3
+                  ]
+                ]
+              },
+              {
+                "mot": "GRIMPEUR",
+                "cases": [
+                  [
+                    0,
+                    4
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    2,
+                    4
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    6,
+                    4
+                  ],
+                  [
+                    7,
+                    4
+                  ]
+                ]
+              },
+              {
+                "mot": "BOUSSOLE",
+                "cases": [
+                  [
+                    0,
+                    5
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    2,
+                    5
+                  ],
+                  [
+                    3,
+                    5
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    5,
+                    5
+                  ],
+                  [
+                    6,
+                    5
+                  ],
+                  [
+                    7,
+                    5
+                  ]
+                ]
+              },
+              {
+                "mot": "NAVIRE",
+                "cases": [
+                  [
+                    0,
+                    6
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    2,
+                    6
+                  ],
+                  [
+                    3,
+                    6
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    5,
+                    6
+                  ]
+                ]
+              },
+              {
+                "mot": "MUR",
+                "cases": [
+                  [
+                    0,
+                    7
+                  ],
+                  [
+                    1,
+                    7
+                  ],
+                  [
+                    2,
+                    7
+                  ]
+                ]
+              }
+            ],
+            "reponse": "TORCHON",
+            "role": "navigation",
+            "surFiche": true,
+            "solution": "La réponse est TORCHON : Dans le tiroir des torchons."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 6,
+          "cachette": "torchon",
+          "ambiance": "Une fois décodé, le message donne ceci :",
+          "navigation": {
+            "id": "e6-etoile-nav",
+            "type": "miroir",
+            "titre": "Le mot à l'envers",
+            "consigne": "Ce mot est écrit à l'envers. Lis-le de droite à gauche, ou dans un miroir.",
+            "texteMiroir": "TIL",
+            "reponse": "LIT",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est LIT : Sous le lit."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 7,
+          "cachette": "lit",
           "ambiance": "Un billet plié en quatre indique :",
           "navigation": null,
           "code": null,
@@ -1688,12 +1681,12 @@
       "fiches": [
         {
           "numero": 1,
-          "etape": 2,
+          "etape": 1,
           "enigme": "Les mots mêlés"
         },
         {
           "numero": 2,
-          "etape": 5,
+          "etape": 4,
           "enigme": "Les mots mêlés"
         },
         {
@@ -1705,46 +1698,380 @@
       "cartes": [
         {
           "etape": 1,
-          "cachette": "marmite",
+          "cachette": "porte",
           "ambiance": "Le quartier général transmet ce message :",
           "navigation": {
             "id": "e1-lune-nav",
-            "type": "pictogrammes",
-            "titre": "L'alphabet secret",
-            "consigne": "Chaque dessin remplace une lettre. Utilise la légende pour lire le mot caché.",
-            "legende": [
+            "type": "motsmeles",
+            "titre": "Les mots mêlés",
+            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
+            "taille": 8,
+            "grille": [
+              [
+                "S",
+                "R",
+                "E",
+                "I",
+                "L",
+                "L",
+                "O",
+                "C"
+              ],
+              [
+                "R",
+                "E",
+                "I",
+                "L",
+                "C",
+                "U",
+                "O",
+                "B"
+              ],
+              [
+                "E",
+                "R",
+                "U",
+                "T",
+                "N",
+                "E",
+                "V",
+                "A"
+              ],
+              [
+                "B",
+                "A",
+                "L",
+                "E",
+                "I",
+                "N",
+                "E",
+                "P"
+              ],
+              [
+                "P",
+                "O",
+                "I",
+                "S",
+                "S",
+                "O",
+                "N",
+                "I"
+              ],
+              [
+                "C",
+                "A",
+                "D",
+                "E",
+                "N",
+                "A",
+                "S",
+                "S"
+              ],
+              [
+                "T",
+                "N",
+                "E",
+                "P",
+                "R",
+                "E",
+                "S",
+                "T"
+              ],
+              [
+                "C",
+                "R",
+                "A",
+                "Y",
+                "O",
+                "N",
+                "S",
+                "E"
+              ]
+            ],
+            "mots": [
+              "AVENTURE",
+              "BALEINE",
+              "BOUCLIER",
+              "CADENAS",
+              "COLLIERS",
+              "PISTE",
+              "POISSON",
+              "SERPENT"
+            ],
+            "placements": [
               {
-                "lettre": "E",
-                "icone": "lettre_e"
+                "mot": "COLLIERS",
+                "cases": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    0
+                  ],
+                  [
+                    3,
+                    0
+                  ],
+                  [
+                    4,
+                    0
+                  ],
+                  [
+                    5,
+                    0
+                  ],
+                  [
+                    6,
+                    0
+                  ],
+                  [
+                    7,
+                    0
+                  ]
+                ]
               },
               {
-                "lettre": "O",
-                "icone": "lettre_o"
+                "mot": "BOUCLIER",
+                "cases": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    3,
+                    1
+                  ],
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    7,
+                    1
+                  ]
+                ]
               },
               {
-                "lettre": "P",
-                "icone": "lettre_p"
+                "mot": "AVENTURE",
+                "cases": [
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    2,
+                    2
+                  ],
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    6,
+                    2
+                  ],
+                  [
+                    7,
+                    2
+                  ]
+                ]
               },
               {
-                "lettre": "R",
-                "icone": "lettre_r"
+                "mot": "BALEINE",
+                "cases": [
+                  [
+                    0,
+                    3
+                  ],
+                  [
+                    1,
+                    3
+                  ],
+                  [
+                    2,
+                    3
+                  ],
+                  [
+                    3,
+                    3
+                  ],
+                  [
+                    4,
+                    3
+                  ],
+                  [
+                    5,
+                    3
+                  ],
+                  [
+                    6,
+                    3
+                  ]
+                ]
               },
               {
-                "lettre": "T",
-                "icone": "lettre_t"
+                "mot": "PISTE",
+                "cases": [
+                  [
+                    7,
+                    3
+                  ],
+                  [
+                    7,
+                    4
+                  ],
+                  [
+                    7,
+                    5
+                  ],
+                  [
+                    7,
+                    6
+                  ],
+                  [
+                    7,
+                    7
+                  ]
+                ]
+              },
+              {
+                "mot": "POISSON",
+                "cases": [
+                  [
+                    0,
+                    4
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    2,
+                    4
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    6,
+                    4
+                  ]
+                ]
+              },
+              {
+                "mot": "CADENAS",
+                "cases": [
+                  [
+                    0,
+                    5
+                  ],
+                  [
+                    1,
+                    5
+                  ],
+                  [
+                    2,
+                    5
+                  ],
+                  [
+                    3,
+                    5
+                  ],
+                  [
+                    4,
+                    5
+                  ],
+                  [
+                    5,
+                    5
+                  ],
+                  [
+                    6,
+                    5
+                  ]
+                ]
+              },
+              {
+                "mot": "SERPENT",
+                "cases": [
+                  [
+                    0,
+                    6
+                  ],
+                  [
+                    1,
+                    6
+                  ],
+                  [
+                    2,
+                    6
+                  ],
+                  [
+                    3,
+                    6
+                  ],
+                  [
+                    4,
+                    6
+                  ],
+                  [
+                    5,
+                    6
+                  ],
+                  [
+                    6,
+                    6
+                  ]
+                ]
               }
             ],
-            "suite": [
-              "lettre_p",
-              "lettre_o",
-              "lettre_r",
-              "lettre_t",
-              "lettre_e"
-            ],
-            "reponse": "PORTE",
+            "reponse": "CRAYONS",
             "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est PORTE : Derrière la porte d'entrée."
+            "surFiche": true,
+            "solution": "La réponse est CRAYONS : Dans le pot à crayons."
           },
           "code": {
             "id": "e1-lune-code",
@@ -1768,453 +2095,14 @@
         },
         {
           "etape": 2,
-          "cachette": "porte",
+          "cachette": "crayons",
           "ambiance": "La radio grésille, puis annonce :",
           "navigation": {
             "id": "e2-lune-nav",
-            "type": "motsmeles",
-            "titre": "Les mots mêlés",
-            "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
-            "taille": 8,
-            "grille": [
-              [
-                "C",
-                "C",
-                "E",
-                "L",
-                "M",
-                "H",
-                "R",
-                "R"
-              ],
-              [
-                "A",
-                "A",
-                "L",
-                "U",
-                "A",
-                "O",
-                "E",
-                "U"
-              ],
-              [
-                "V",
-                "S",
-                "O",
-                "N",
-                "R",
-                "R",
-                "U",
-                "O"
-              ],
-              [
-                "E",
-                "C",
-                "S",
-                "E",
-                "M",
-                "I",
-                "G",
-                "T"
-              ],
-              [
-                "R",
-                "A",
-                "S",
-                "T",
-                "O",
-                "Z",
-                "I",
-                "T"
-              ],
-              [
-                "N",
-                "D",
-                "U",
-                "T",
-                "T",
-                "O",
-                "V",
-                "A"
-              ],
-              [
-                "E",
-                "E",
-                "O",
-                "E",
-                "T",
-                "N",
-                "A",
-                "P"
-              ],
-              [
-                "I",
-                "S",
-                "B",
-                "S",
-                "E",
-                "S",
-                "N",
-                "S"
-              ]
-            ],
-            "mots": [
-              "BOUSSOLE",
-              "CASCADES",
-              "CAVERNE",
-              "HORIZONS",
-              "LUNETTES",
-              "MARMOTTE",
-              "NAVIGUER",
-              "TOUR"
-            ],
-            "placements": [
-              {
-                "mot": "CAVERNE",
-                "cases": [
-                  [
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1
-                  ],
-                  [
-                    0,
-                    2
-                  ],
-                  [
-                    0,
-                    3
-                  ],
-                  [
-                    0,
-                    4
-                  ],
-                  [
-                    0,
-                    5
-                  ],
-                  [
-                    0,
-                    6
-                  ]
-                ]
-              },
-              {
-                "mot": "CASCADES",
-                "cases": [
-                  [
-                    1,
-                    0
-                  ],
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    1,
-                    3
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    1,
-                    5
-                  ],
-                  [
-                    1,
-                    6
-                  ],
-                  [
-                    1,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "BOUSSOLE",
-                "cases": [
-                  [
-                    2,
-                    0
-                  ],
-                  [
-                    2,
-                    1
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    2,
-                    3
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    2,
-                    5
-                  ],
-                  [
-                    2,
-                    6
-                  ],
-                  [
-                    2,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "LUNETTES",
-                "cases": [
-                  [
-                    3,
-                    0
-                  ],
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    3,
-                    3
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    3,
-                    5
-                  ],
-                  [
-                    3,
-                    6
-                  ],
-                  [
-                    3,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "MARMOTTE",
-                "cases": [
-                  [
-                    4,
-                    0
-                  ],
-                  [
-                    4,
-                    1
-                  ],
-                  [
-                    4,
-                    2
-                  ],
-                  [
-                    4,
-                    3
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    4,
-                    5
-                  ],
-                  [
-                    4,
-                    6
-                  ],
-                  [
-                    4,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "HORIZONS",
-                "cases": [
-                  [
-                    5,
-                    0
-                  ],
-                  [
-                    5,
-                    1
-                  ],
-                  [
-                    5,
-                    2
-                  ],
-                  [
-                    5,
-                    3
-                  ],
-                  [
-                    5,
-                    4
-                  ],
-                  [
-                    5,
-                    5
-                  ],
-                  [
-                    5,
-                    6
-                  ],
-                  [
-                    5,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "NAVIGUER",
-                "cases": [
-                  [
-                    6,
-                    0
-                  ],
-                  [
-                    6,
-                    1
-                  ],
-                  [
-                    6,
-                    2
-                  ],
-                  [
-                    6,
-                    3
-                  ],
-                  [
-                    6,
-                    4
-                  ],
-                  [
-                    6,
-                    5
-                  ],
-                  [
-                    6,
-                    6
-                  ],
-                  [
-                    6,
-                    7
-                  ]
-                ]
-              },
-              {
-                "mot": "TOUR",
-                "cases": [
-                  [
-                    7,
-                    0
-                  ],
-                  [
-                    7,
-                    1
-                  ],
-                  [
-                    7,
-                    2
-                  ],
-                  [
-                    7,
-                    3
-                  ]
-                ]
-              }
-            ],
-            "reponse": "TAPIS",
-            "role": "navigation",
-            "surFiche": true,
-            "solution": "La réponse est TAPIS : Sous le tapis."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 3,
-          "cachette": "tapis",
-          "ambiance": "Le quartier général transmet ce message :",
-          "navigation": {
-            "id": "e3-lune-nav",
             "type": "miroir",
             "titre": "Le mot à l'envers",
             "consigne": "Ce mot est écrit à l'envers. Lis-le de droite à gauche, ou dans un miroir.",
-            "texteMiroir": "STIURF",
-            "reponse": "FRUITS",
-            "role": "navigation",
-            "surFiche": false,
-            "solution": "La réponse est FRUITS : Dans la corbeille à fruits."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 4,
-          "cachette": "fruits",
-          "ambiance": "Le dossier secret s'ouvre sur cette ligne :",
-          "navigation": {
-            "id": "e4-lune-nav",
-            "type": "pictogrammes",
-            "titre": "L'alphabet secret",
-            "consigne": "Chaque dessin remplace une lettre. Utilise la légende pour lire le mot caché.",
-            "legende": [
-              {
-                "lettre": "A",
-                "icone": "lettre_a"
-              },
-              {
-                "lettre": "C",
-                "icone": "lettre_c"
-              },
-              {
-                "lettre": "E",
-                "icone": "lettre_e"
-              },
-              {
-                "lettre": "N",
-                "icone": "lettre_n"
-              },
-              {
-                "lettre": "P",
-                "icone": "lettre_p"
-              }
-            ],
-            "suite": [
-              "lettre_c",
-              "lettre_a",
-              "lettre_n",
-              "lettre_a",
-              "lettre_p",
-              "lettre_e"
-            ],
+            "texteMiroir": "EPANAC",
             "reponse": "CANAPE",
             "role": "navigation",
             "surFiche": false,
@@ -2226,225 +2114,272 @@
           "messageFinal": null
         },
         {
-          "etape": 5,
+          "etape": 3,
           "cachette": "canape",
-          "ambiance": "Un billet plié en quatre indique :",
+          "ambiance": "Le quartier général transmet ce message :",
           "navigation": {
-            "id": "e5-lune-nav",
+            "id": "e3-lune-nav",
+            "type": "pictogrammes",
+            "titre": "L'alphabet secret",
+            "consigne": "Chaque dessin remplace une lettre. Utilise la légende pour lire le mot caché.",
+            "legende": [
+              {
+                "lettre": "A",
+                "icone": "lettre_a"
+              },
+              {
+                "lettre": "I",
+                "icone": "lettre_i"
+              },
+              {
+                "lettre": "P",
+                "icone": "lettre_p"
+              },
+              {
+                "lettre": "S",
+                "icone": "lettre_s"
+              },
+              {
+                "lettre": "T",
+                "icone": "lettre_t"
+              }
+            ],
+            "suite": [
+              "lettre_t",
+              "lettre_a",
+              "lettre_p",
+              "lettre_i",
+              "lettre_s"
+            ],
+            "reponse": "TAPIS",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est TAPIS : Sous le tapis."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 4,
+          "cachette": "tapis",
+          "ambiance": "Le dossier secret s'ouvre sur cette ligne :",
+          "navigation": {
+            "id": "e4-lune-nav",
             "type": "motsmeles",
             "titre": "Les mots mêlés",
             "consigne": "Entoure tous les mots de la liste dans la grille. Ils se lisent à l'horizontale ou à la verticale, dans un sens ou dans l'autre. Les lettres qui restent, lues de gauche à droite et de haut en bas, forment le mot cherché.",
             "taille": 8,
             "grille": [
               [
-                "C",
-                "A",
-                "S",
-                "C",
-                "A",
-                "D",
-                "E",
-                "S"
-              ],
-              [
-                "N",
-                "A",
-                "V",
-                "I",
-                "G",
+                "B",
+                "O",
                 "U",
+                "C",
+                "L",
+                "I",
                 "E",
                 "R"
               ],
               [
-                "R",
-                "U",
-                "E",
-                "P",
-                "M",
-                "I",
-                "R",
-                "G"
-              ],
-              [
-                "M",
-                "A",
-                "R",
-                "M",
+                "V",
                 "O",
-                "T",
-                "T",
-                "E"
+                "I",
+                "L",
+                "I",
+                "E",
+                "R",
+                "S"
               ],
               [
-                "S",
-                "A",
-                "R",
-                "D",
-                "I",
-                "N",
                 "E",
-                "S"
+                "N",
+                "G",
+                "A",
+                "T",
+                "N",
+                "O",
+                "M"
               ],
               [
                 "C",
                 "A",
-                "V",
-                "E",
-                "R",
-                "N",
+                "S",
+                "C",
+                "A",
+                "D",
                 "E",
                 "S"
               ],
               [
-                "D",
+                "E",
+                "N",
+                "A",
+                "V",
+                "A",
                 "R",
                 "A",
-                "P",
-                "E",
-                "A",
-                "U",
-                "O"
+                "C"
               ],
               [
                 "E",
                 "S",
-                "O",
                 "R",
-                "L",
-                "I",
+                "E",
+                "V",
+                "A",
+                "R",
+                "T"
+              ],
+              [
+                "E",
+                "C",
+                "A",
+                "R",
                 "T",
-                "D"
+                "C",
+                "O",
+                "U"
+              ],
+              [
+                "J",
+                "O",
+                "U",
+                "R",
+                "S",
+                "S",
+                "I",
+                "N"
               ]
             ],
             "mots": [
+              "BOUCLIER",
+              "CARAVANE",
               "CASCADES",
-              "CAVERNE",
-              "DOS",
-              "DRAPEAU",
-              "GRIMPEUR",
-              "MARMOTTE",
-              "NAVIGUER",
-              "ROSE",
-              "SARDINES"
+              "JOUR",
+              "MONTAGNE",
+              "TRACE",
+              "TRAVERSE",
+              "VOILIERS"
             ],
             "placements": [
+              {
+                "mot": "BOUCLIER",
+                "cases": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    0
+                  ],
+                  [
+                    3,
+                    0
+                  ],
+                  [
+                    4,
+                    0
+                  ],
+                  [
+                    5,
+                    0
+                  ],
+                  [
+                    6,
+                    0
+                  ],
+                  [
+                    7,
+                    0
+                  ]
+                ]
+              },
+              {
+                "mot": "VOILIERS",
+                "cases": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    1,
+                    1
+                  ],
+                  [
+                    2,
+                    1
+                  ],
+                  [
+                    3,
+                    1
+                  ],
+                  [
+                    4,
+                    1
+                  ],
+                  [
+                    5,
+                    1
+                  ],
+                  [
+                    6,
+                    1
+                  ],
+                  [
+                    7,
+                    1
+                  ]
+                ]
+              },
+              {
+                "mot": "MONTAGNE",
+                "cases": [
+                  [
+                    0,
+                    2
+                  ],
+                  [
+                    1,
+                    2
+                  ],
+                  [
+                    2,
+                    2
+                  ],
+                  [
+                    3,
+                    2
+                  ],
+                  [
+                    4,
+                    2
+                  ],
+                  [
+                    5,
+                    2
+                  ],
+                  [
+                    6,
+                    2
+                  ],
+                  [
+                    7,
+                    2
+                  ]
+                ]
+              },
               {
                 "mot": "CASCADES",
                 "cases": [
                   [
                     0,
-                    0
-                  ],
-                  [
-                    1,
-                    0
-                  ],
-                  [
-                    2,
-                    0
-                  ],
-                  [
-                    3,
-                    0
-                  ],
-                  [
-                    4,
-                    0
-                  ],
-                  [
-                    5,
-                    0
-                  ],
-                  [
-                    6,
-                    0
-                  ],
-                  [
-                    7,
-                    0
-                  ]
-                ]
-              },
-              {
-                "mot": "NAVIGUER",
-                "cases": [
-                  [
-                    0,
-                    1
-                  ],
-                  [
-                    1,
-                    1
-                  ],
-                  [
-                    2,
-                    1
-                  ],
-                  [
-                    3,
-                    1
-                  ],
-                  [
-                    4,
-                    1
-                  ],
-                  [
-                    5,
-                    1
-                  ],
-                  [
-                    6,
-                    1
-                  ],
-                  [
-                    7,
-                    1
-                  ]
-                ]
-              },
-              {
-                "mot": "GRIMPEUR",
-                "cases": [
-                  [
-                    0,
-                    2
-                  ],
-                  [
-                    1,
-                    2
-                  ],
-                  [
-                    2,
-                    2
-                  ],
-                  [
-                    3,
-                    2
-                  ],
-                  [
-                    4,
-                    2
-                  ],
-                  [
-                    5,
-                    2
-                  ],
-                  [
-                    6,
-                    2
-                  ],
-                  [
-                    7,
-                    2
-                  ]
-                ]
-              },
-              {
-                "mot": "MARMOTTE",
-                "cases": [
-                  [
-                    0,
                     3
                   ],
                   [
@@ -2478,7 +2413,7 @@
                 ]
               },
               {
-                "mot": "SARDINES",
+                "mot": "CARAVANE",
                 "cases": [
                   [
                     0,
@@ -2515,7 +2450,7 @@
                 ]
               },
               {
-                "mot": "CAVERNE",
+                "mot": "TRAVERSE",
                 "cases": [
                   [
                     0,
@@ -2544,28 +2479,15 @@
                   [
                     6,
                     5
-                  ]
-                ]
-              },
-              {
-                "mot": "DOS",
-                "cases": [
+                  ],
                   [
                     7,
                     5
-                  ],
-                  [
-                    7,
-                    6
-                  ],
-                  [
-                    7,
-                    7
                   ]
                 ]
               },
               {
-                "mot": "DRAPEAU",
+                "mot": "TRACE",
                 "cases": [
                   [
                     0,
@@ -2586,19 +2508,11 @@
                   [
                     4,
                     6
-                  ],
-                  [
-                    5,
-                    6
-                  ],
-                  [
-                    6,
-                    6
                   ]
                 ]
               },
               {
-                "mot": "ROSE",
+                "mot": "JOUR",
                 "cases": [
                   [
                     0,
@@ -2619,29 +2533,9 @@
                 ]
               }
             ],
-            "reponse": "LIT",
-            "role": "navigation",
-            "surFiche": true,
-            "solution": "La réponse est LIT : Sous le lit."
-          },
-          "code": null,
-          "bonus": null,
-          "versTresor": false,
-          "messageFinal": null
-        },
-        {
-          "etape": 6,
-          "cachette": "lit",
-          "ambiance": "Le dossier secret s'ouvre sur cette ligne :",
-          "navigation": {
-            "id": "e6-lune-nav",
-            "type": "miroir",
-            "titre": "Le mot à l'envers",
-            "consigne": "Ce mot est écrit à l'envers. Lis-le de droite à gauche, ou dans un miroir.",
-            "texteMiroir": "NISSUOC",
             "reponse": "COUSSIN",
             "role": "navigation",
-            "surFiche": false,
+            "surFiche": true,
             "solution": "La réponse est COUSSIN : Sous un coussin du canapé."
           },
           "code": null,
@@ -2650,8 +2544,66 @@
           "messageFinal": null
         },
         {
-          "etape": 7,
+          "etape": 5,
           "cachette": "coussin",
+          "ambiance": "Un billet plié en quatre indique :",
+          "navigation": {
+            "id": "e5-lune-nav",
+            "type": "miroir",
+            "titre": "Le mot à l'envers",
+            "consigne": "Ce mot est écrit à l'envers. Lis-le de droite à gauche, ou dans un miroir.",
+            "texteMiroir": "NOHCROT",
+            "reponse": "TORCHON",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est TORCHON : Dans le tiroir des torchons."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 6,
+          "cachette": "torchon",
+          "ambiance": "Le dossier secret s'ouvre sur cette ligne :",
+          "navigation": {
+            "id": "e6-lune-nav",
+            "type": "pictogrammes",
+            "titre": "L'alphabet secret",
+            "consigne": "Chaque dessin remplace une lettre. Utilise la légende pour lire le mot caché.",
+            "legende": [
+              {
+                "lettre": "I",
+                "icone": "lettre_i"
+              },
+              {
+                "lettre": "L",
+                "icone": "lettre_l"
+              },
+              {
+                "lettre": "T",
+                "icone": "lettre_t"
+              }
+            ],
+            "suite": [
+              "lettre_l",
+              "lettre_i",
+              "lettre_t"
+            ],
+            "reponse": "LIT",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est LIT : Sous le lit."
+          },
+          "code": null,
+          "bonus": null,
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 7,
+          "cachette": "lit",
           "ambiance": "La fiche de mission précise :",
           "navigation": null,
           "code": null,

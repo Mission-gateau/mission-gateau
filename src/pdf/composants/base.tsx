@@ -22,7 +22,6 @@ const local = StyleSheet.create({
   etiquette: {
     fontSize: 8,
     color: COULEURS.encreClaire,
-    letterSpacing: 0.4,
     textTransform: "uppercase",
   },
 });
@@ -62,6 +61,45 @@ export function Puce({ children }: { children: React.ReactNode }) {
     <View style={styles.puce}>
       <Text style={styles.puceMarque}>•</Text>
       <View style={styles.puceTexte}>{children}</View>
+    </View>
+  );
+}
+
+/**
+ * Un mot écrit lettre par lettre, chacune dans sa case.
+ *
+ * On n'emploie plus `letterSpacing` : cette propriété fait découper le texte
+ * glyphe par glyphe, et @react-pdf/renderer 4.9 perd alors le caractère
+ * derrière certains glyphes. Le PDF s'imprime bien, mais le texte n'est plus
+ * ni copiable ni lisible par une synthèse vocale. Une case par lettre donne
+ * le même air aéré, et laisse de la place pour écrire la réponse dessous.
+ */
+export function LettresDetachees({
+  mot,
+  taille = 22,
+  souligne = false,
+}: {
+  mot: string;
+  taille?: number;
+  souligne?: boolean;
+}) {
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginVertical: 4 }}>
+      {[...mot].map((lettre, index) => (
+        <View key={`${lettre}-${index}`} style={{ alignItems: "center" }}>
+          <Text style={{ fontFamily: "Fredoka", fontSize: taille, lineHeight: 1.25 }}>{lettre}</Text>
+          {souligne ? (
+            <View
+              style={{
+                width: taille * 0.8,
+                borderBottomWidth: 0.8,
+                borderBottomColor: COULEURS.trait,
+                marginTop: 1,
+              }}
+            />
+          ) : null}
+        </View>
+      ))}
     </View>
   );
 }

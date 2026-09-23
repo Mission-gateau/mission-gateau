@@ -23,22 +23,22 @@ export const AGENTS: Theme = {
   icones: ["loupe", "cle", "valise", "lampe", "radio", "satellite", "chapeau", "montre"],
   formats: {
     chasse: {
-      titreKit: "La mission des petits agents",
+      titreKit: "La mission des jeunes agents",
       histoire:
         "Attention, message important. Le quartier général vous appelle. Un colis est arrivé ce matin. Il est très bien caché. Personne ne sait où, sauf les agents. Et les agents, aujourd'hui, c'est vous. Le chef a laissé des messages partout dans la maison. Chaque message dit où aller. Il faut les trouver un par un. Au bout, il y a le colis. Et le colis est pour {prenom} !",
       briefing:
-        "Règles de la mission, les agents. On avance ensemble. On marche doucement, comme des agents discrets. Quand on trouve un message, on me l'apporte et je le lis. Puis on repart. Prêts ? Le premier message est tout près.",
+        "Règles de la mission, l'équipe. On avance ensemble. On marche doucement, comme des agents discrets. Quand on trouve un message, on me l'apporte et je le lis. Puis on repart. On y va ? Le premier message est tout près.",
       reussites: [
         "Bravo ! Le quartier général est content.",
         "Message reçu. Mission en bonne voie.",
-        "Vous êtes de très bons agents. On continue !",
+        "L'équipe travaille bien. On continue !",
         "Le colis n'est plus très loin.",
       ],
       tresor:
         "Le colis est là ! Le quartier général l'a envoyé pour {prenom}, qui a {age} ans aujourd'hui. Ouvrez-le tous ensemble. À l'intérieur, il y a le gâteau et les cadeaux. Bon anniversaire, {prenom} !",
       diplomeTitre: "Diplôme d'agent",
       diplomeTexte:
-        "Ce diplôme est décerné à {nom}, agent en mission, pour avoir suivi tous les messages et retrouvé le colis de {prenom}.",
+        "Ce diplôme est décerné à {nom}, pour avoir suivi tous les messages du quartier général et retrouvé le colis de {prenom}.",
       invitation:
         "Mission secrète ! Un colis est caché quelque part et il faut une équipe d'agents pour le retrouver. Viens fêter les {age} ans de {prenom}.",
     },

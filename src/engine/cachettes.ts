@@ -17,7 +17,6 @@ export const CACHETTES: readonly Cachette[] = [
   { id: "table", libelle: "Sous la table", motCle: "TABLE", icone: "table", piece: "salon", preselectionnee: true },
   { id: "chaise", libelle: "Sous une chaise", motCle: "CHAISE", icone: "chaise", piece: "salon", preselectionnee: true },
   { id: "tapis", libelle: "Sous le tapis", motCle: "TAPIS", icone: "tapis", piece: "salon", preselectionnee: true },
-  { id: "rideau", libelle: "Derrière le rideau", motCle: "RIDEAU", icone: "rideau", piece: "salon", preselectionnee: true },
   { id: "livre", libelle: "Derrière un livre, sur une étagère basse", motCle: "LIVRE", icone: "livre", piece: "salon", preselectionnee: true },
   { id: "jouets", libelle: "Dans la caisse à jouets", motCle: "JOUETS", icone: "jouets", piece: "salon", preselectionnee: true },
 
@@ -27,14 +26,13 @@ export const CACHETTES: readonly Cachette[] = [
   { id: "boite", libelle: "Dans une boîte à chaussures", motCle: "BOITE", icone: "boite", piece: "chambre", preselectionnee: false },
   { id: "crayons", libelle: "Dans le pot à crayons", motCle: "CRAYONS", icone: "crayons", piece: "chambre", preselectionnee: false },
   { id: "cartable", libelle: "Dans le cartable", motCle: "CARTABLE", icone: "cartable", piece: "chambre", preselectionnee: false },
+  { id: "porte", libelle: "Derrière la porte de la chambre", motCle: "PORTE", icone: "porte", piece: "chambre", preselectionnee: false },
 
-  { id: "frigo", libelle: "Dans le frigo", motCle: "FRIGO", icone: "frigo", piece: "cuisine", preselectionnee: true },
   { id: "torchon", libelle: "Dans le tiroir des torchons", motCle: "TORCHON", icone: "torchon", piece: "cuisine", preselectionnee: false },
   { id: "marmite", libelle: "Dans une marmite du placard", motCle: "MARMITE", icone: "marmite", piece: "cuisine", preselectionnee: false },
   { id: "fruits", libelle: "Dans la corbeille à fruits", motCle: "FRUITS", icone: "fruits", piece: "cuisine", preselectionnee: true },
 
-  { id: "porte", libelle: "Derrière la porte d'entrée", motCle: "PORTE", icone: "porte", piece: "entree", preselectionnee: false },
-  { id: "manteau", libelle: "Dans la poche d'un manteau du porte-manteau", motCle: "MANTEAU", icone: "manteau", piece: "entree", preselectionnee: false },
+  { id: "manteau", libelle: "Dans la poche d'un manteau posé sur une chaise", motCle: "MANTEAU", icone: "manteau", piece: "entree", preselectionnee: true },
 ];
 
 export const LIBELLES_PIECES: Record<Cachette["piece"], string> = {

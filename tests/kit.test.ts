@@ -91,7 +91,7 @@ describe("le parcours", () => {
   });
 
   it("n'emploie que des cachettes cochées par le parent", () => {
-    const choisies = ["canape", "lit", "frigo", "porte", "tapis", "livre", "jouets", "boite"];
+    const choisies = ["canape", "lit", "marmite", "porte", "tapis", "livre", "jouets", "boite"];
     for (const graine of graines(20, "choix")) {
       const kit = construireKit(configuration({ age: 11, duree: 60, cachettes: choisies }), graine);
       for (const etape of kit.etapes) expect(choisies).toContain(etape.cachette);
@@ -147,6 +147,67 @@ describe("équipes et code final", () => {
         expect(equipe.chiffres.length).toBeLessThan(kit.codeFinal!.length);
       }
     }
+  });
+
+  it("à chaque étape, deux équipes n'ont jamais la même énigme de route", () => {
+    /**
+     * Les pictogrammes, le miroir et le morse ne dépendent que du mot-réponse,
+     * le même pour toutes les équipes : sans décalage du cycle, toutes les
+     * équipes recevaient la carte identique à une étape donnée.
+     */
+    const problemes: string[] = [];
+    for (const theme of THEMES) {
+      for (const age of [8, 11]) {
+        for (const nombreEnfants of [8, 12, 14, 16]) {
+          for (const duree of DUREES) {
+            for (const graine of graines(3, `propre${age}`)) {
+              const kit = construireKit(
+                configuration({ theme, age, nombreEnfants, duree }),
+                graine,
+              );
+              if (kit.equipes.length < 2) continue;
+              kit.etapes.forEach((etape, index) => {
+                const empreintes = kit.equipes.map((equipe) => {
+                  const enigme = equipe.cartes[index]!.navigation;
+                  if (!enigme) return null;
+                  const copie: Record<string, unknown> = { ...enigme };
+                  delete copie.id;
+                  return JSON.stringify(copie);
+                });
+                const presentes = empreintes.filter((e) => e !== null);
+                if (new Set(presentes).size !== presentes.length) {
+                  problemes.push(
+                    `${theme}/${age} ans/${nombreEnfants} enfants/${duree} min/${graine} : étape ${etape.numero}`,
+                  );
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+    expect(problemes.slice(0, 10)).toEqual([]);
+  });
+
+  it("aucune équipe ne reçoit un César avant d'avoir trouvé un chiffre", () => {
+    const problemes: string[] = [];
+    for (const nombreEnfants of [3, 8, 12, 14, 16]) {
+      for (const duree of DUREES) {
+        for (const graine of graines(5, "cesar2")) {
+          const kit = construireKit(configuration({ age: 11, nombreEnfants, duree }), graine);
+          for (const equipe of kit.equipes) {
+            let chiffreAnterieur = false;
+            for (const carte of equipe.cartes) {
+              if (carte.navigation?.type === "cesar" && !chiffreAnterieur) {
+                problemes.push(`${equipe.nom} : César à l'étape ${carte.etape} sans chiffre connu`);
+              }
+              if (carte.code) chiffreAnterieur = true;
+            }
+          }
+        }
+      }
+    }
+    expect(problemes).toEqual([]);
   });
 
   it("toutes les équipes suivent le même parcours avec leurs propres énigmes", () => {
@@ -236,7 +297,7 @@ describe("validation de la configuration", () => {
       ["durée inconnue", configuration({ duree: 90 as never })],
       ["thème inconnu", configuration({ theme: "licornes" as never })],
       ["cachette inconnue", configuration({ cachettes: ["four", "canape"] })],
-      ["cachette en double", configuration({ cachettes: ["canape", "canape", "lit", "frigo", "porte", "tapis"] })],
+      ["cachette en double", configuration({ cachettes: ["canape", "canape", "lit", "marmite", "porte", "tapis"] })],
       ["pas assez de cachettes", configuration({ cachettes: ["canape", "lit"] })],
     ];
     for (const [nom, valeur] of cas) {
