@@ -142,7 +142,7 @@ describe("gabarits", () => {
 
   it("les gabarits des fichiers de contenu n'emploient que des clés connues", () => {
     const connues = new Set([
-      "prenom", "age", "code", "nom", "cachette", "reponse", "position", "libelle", "piece",
+      "prenom", "age", "code", "nom", "cachette", "reponse", "position", "libelle", "piece", "rangs",
       "cible", "total", "ligne", "colonne", "intrus", "commun", "cases", "max", "decalage",
       "valeur", "valeurA", "valeurB", "nomA", "nomB", "courante", "total", "etapes", "minutes",
       "cochees", "minimum", "nombre", "format", "tranche",
@@ -244,6 +244,7 @@ describe("neutralité", () => {
       "explorateur", "exploratrice", "briseur", "briseuse", "gagnant", "gagnante",
       "vainqueur", "champion", "championne", "aventurier", "aventurière",
       "chasseur", "chasseuse", "héros", "héroïne", "meilleur", "meilleure",
+      "agent", "agente",
       "courageux", "courageuse", "malin", "maligne", "petit", "petite",
     ];
     const motif = new RegExp(

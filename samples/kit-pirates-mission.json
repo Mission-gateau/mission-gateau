@@ -60,48 +60,48 @@
     },
     {
       "debut": 8,
-      "duree": 6,
+      "duree": 5,
       "titre": "Étape 1",
       "detail": "Dans le pot à crayons. La carte mène à la cachette suivante."
     },
     {
-      "debut": 14,
-      "duree": 6,
+      "debut": 13,
+      "duree": 5,
       "titre": "Étape 2",
       "detail": "Dans la caisse à jouets. La carte mène à la cachette suivante."
     },
     {
-      "debut": 20,
-      "duree": 6,
+      "debut": 18,
+      "duree": 5,
       "titre": "Étape 3",
       "detail": "Sous le lit. La carte mène à la cachette suivante."
     },
     {
-      "debut": 26,
-      "duree": 6,
+      "debut": 23,
+      "duree": 5,
       "titre": "Étape 4",
       "detail": "Sous une chaise. La carte mène à la cachette suivante."
     },
     {
-      "debut": 32,
-      "duree": 6,
+      "debut": 28,
+      "duree": 5,
       "titre": "Étape 5",
       "detail": "Dans la poche d'un manteau posé sur une chaise. La carte mène à la cachette suivante."
     },
     {
-      "debut": 38,
-      "duree": 6,
+      "debut": 33,
+      "duree": 5,
       "titre": "Étape 6",
       "detail": "Dans une marmite du placard. Dernière carte : les enfants reviennent vous voir."
     },
     {
-      "debut": 44,
-      "duree": 5,
+      "debut": 38,
+      "duree": 7,
       "titre": "Le code et le trésor",
       "detail": "Les équipes mettent leurs chiffres en commun, annoncent le code, et vous remettez le trésor."
     },
     {
-      "debut": 49,
+      "debut": 45,
       "duree": 0,
       "titre": "Et ensuite",
       "detail": "Gâteau, cadeaux, et remise des diplômes."

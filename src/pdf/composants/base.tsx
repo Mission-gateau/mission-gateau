@@ -89,20 +89,27 @@ export function LettresDetachees({
         <View key={`${lettre}-${index}`} style={{ alignItems: "center" }}>
           <Text style={{ fontFamily: "Fredoka", fontSize: taille, lineHeight: 1.25 }}>{lettre}</Text>
           {souligne ? (
-            <View
-              style={{
-                width: taille * 0.8,
-                borderBottomWidth: 0.8,
-                borderBottomColor: COULEURS.trait,
-                marginTop: 1,
-              }}
-            />
+            <>
+              {/* La hauteur d'une lettre écrite à la main : l'enfant doit
+                  pouvoir noter sa trouvaille sous la lettre chiffrée. */}
+              <View style={{ height: HAUTEUR_ECRITURE }} />
+              <View
+                style={{
+                  width: taille * 0.9,
+                  borderBottomWidth: 0.8,
+                  borderBottomColor: COULEURS.trait,
+                }}
+              />
+            </>
           ) : null}
         </View>
       ))}
     </View>
   );
 }
+
+/** 24 pt, soit un peu plus de 8 mm : de quoi écrire une lettre à la main. */
+const HAUTEUR_ECRITURE = 24;
 
 export function Champ({ libelle, valeur }: { libelle: string; valeur: string }) {
   return (

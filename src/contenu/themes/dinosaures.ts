@@ -46,8 +46,12 @@ export const DINOSAURES: Theme = {
       titreKit: "L'expédition de la vallée",
       histoire:
         "Voici le carnet d'une expédition qui n'est jamais revenue au camp. L'équipe cherchait une vallée dont on parlait depuis des années, une vallée où les dinosaures auraient survécu bien plus longtemps qu'ailleurs. Ils l'ont trouvée. Ils ont même rapporté un œuf fossile entier, le seul connu. Puis la saison des pluies est arrivée et il a fallu partir vite. Avant de plier le camp, ils ont mis l'œuf à l'abri dans cette maison et ils ont noté la piste dans leur carnet, page après page, chaque page menant à la suivante. Le carnet est là. L'œuf aussi. Il revient à {prenom}, qui a {age} ans.",
-      briefing:
-        "Vous reprenez l'expédition. Chaque page trouvée vous donne le nom d'un endroit de la maison : la page suivante y est cachée. Certaines pages portent un chiffre : notez-le, c'est un morceau du code de la caisse. Apportez-moi chaque page résolue, je vérifie. L'expédition repart maintenant.",
+      briefing: {
+        uneEquipe:
+          "Vous reprenez l'expédition. Chaque page trouvée vous donne le nom d'un endroit de la maison : la page suivante y est cachée. Certaines pages portent un chiffre : notez-le, c'est un morceau du code de la caisse. Apportez-moi chaque page résolue, je vérifie. L'expédition repart maintenant.",
+        plusieursEquipes:
+          "Vous formez plusieurs équipes, et chacune a ses propres pages : dans une cachette, ne prenez que celles qui portent votre symbole. Chaque page trouvée vous donne le nom d'un endroit de la maison : la page suivante y est cachée. Certaines pages portent un chiffre : notez-le avec son rang, c'est un morceau du code de la caisse. Apportez-moi chaque page résolue, je vérifie. L'expédition repart maintenant.",
+      },
       reussites: [
         "Exact ! L'expédition progresse.",
         "Bien lu. La piste continue.",
@@ -64,18 +68,30 @@ export const DINOSAURES: Theme = {
     },
     escape: {
       titreKit: "La vallée scellée",
-      histoire:
-        "La dernière expédition de la vallée a rapporté davantage qu'un œuf : elle a rapporté des relevés que personne n'a jamais pu lire. Sa responsable, la paléontologue Irène Sorel, savait que son matériel serait convoité. Elle a donc enfermé ses relevés dans une caisse à serrure, puis elle a éparpillé le code à quatre chiffres dans une série d'énigmes tirées de son propre carnet de terrain. Chaque énigme désigne une cachette, chaque cachette contient la suivante, et quatre d'entre elles livrent un chiffre. Elle avait prévu qu'il faudrait plusieurs équipes pour tout rassembler. La caisse n'a jamais été rouverte. Elle est ici.",
-      briefing:
-        "Vous formez plusieurs équipes et vous travaillez sur des énigmes différentes. Une énigme résolue donne le nom d'une cachette : la carte suivante vous y attend, marquée de votre symbole. Quatre énigmes donnent chacune un chiffre du code, avec son rang. Aucune équipe ne détient le code complet : il faudra tout mettre en commun devant la caisse. Venez valider chaque réponse auprès de moi.",
+      histoire: {
+        uneEquipe:
+          "La dernière expédition de la vallée a rapporté davantage qu'un œuf : elle a rapporté des relevés que personne n'a jamais pu lire. Sa responsable, la paléontologue Irène Sorel, savait que son matériel serait convoité. Elle a donc enfermé ses relevés dans une caisse à serrure, puis elle a éparpillé le code à quatre chiffres dans une série d'énigmes tirées de son propre carnet de terrain. Chaque énigme désigne une cachette, chaque cachette contient la suivante, et quatre d'entre elles livrent un chiffre. Elle avait prévu qu'il faudrait de la patience pour tout rassembler. La caisse n'a jamais été rouverte. Elle est ici.",
+        plusieursEquipes:
+          "La dernière expédition de la vallée a rapporté davantage qu'un œuf : elle a rapporté des relevés que personne n'a jamais pu lire. Sa responsable, la paléontologue Irène Sorel, savait que son matériel serait convoité. Elle a donc enfermé ses relevés dans une caisse à serrure, puis elle a éparpillé le code à quatre chiffres dans une série d'énigmes tirées de son propre carnet de terrain. Chaque énigme désigne une cachette, chaque cachette contient la suivante, et quatre d'entre elles livrent un chiffre. Elle avait prévu qu'il faudrait plusieurs équipes pour tout rassembler. La caisse n'a jamais été rouverte. Elle est ici.",
+      },
+      briefing: {
+        uneEquipe:
+          "Vous reprenez l'enquête à vous seuls. Une énigme résolue donne le nom d'une cachette : la carte suivante vous y attend. Quatre énigmes donnent chacune un chiffre du code, avec son rang : il en faut quatre pour ouvrir la caisse. Venez valider chaque réponse auprès de moi.",
+        plusieursEquipes:
+          "Vous formez plusieurs équipes et vous travaillez sur des énigmes différentes : dans une cachette, ne prenez que les cartes marquées de votre symbole. Une énigme résolue donne le nom d'une cachette, et la carte suivante vous y attend. Quatre énigmes donnent chacune un chiffre du code, avec son rang. Aucune équipe ne détient le code complet : il faudra tout mettre en commun devant la caisse. Venez valider chaque réponse auprès de moi.",
+      },
       reussites: [
         "Exact. Irène Sorel aurait approuvé.",
         "Relevé confirmé. L'équipe avance.",
         "Un chiffre de plus au tableau.",
         "La caisse se rapproche.",
       ],
-      tresor:
-        "Le code {code} fait céder la serrure et la caisse d'Irène Sorel s'ouvre enfin. Ses relevés, et ce qu'elle gardait avec, reviennent à {prenom}, qui a {age} ans aujourd'hui. Il aura fallu toutes vos équipes pour y arriver.",
+      tresor: {
+        uneEquipe:
+          "Le code {code} fait céder la serrure et la caisse d'Irène Sorel s'ouvre enfin. Ses relevés, et ce qu'elle gardait avec, reviennent à {prenom}, qui a {age} ans aujourd'hui. Il vous aura fallu les quatre chiffres, jusqu'au dernier.",
+        plusieursEquipes:
+          "Le code {code} fait céder la serrure et la caisse d'Irène Sorel s'ouvre enfin. Ses relevés, et ce qu'elle gardait avec, reviennent à {prenom}, qui a {age} ans aujourd'hui. Il aura fallu toutes vos équipes pour y arriver.",
+      },
       diplomeTitre: "Diplôme de la vallée scellée",
       diplomeTexte:
         "Ce diplôme est décerné à {nom}, pour avoir résolu les énigmes d'Irène Sorel et reconstitué le code de la caisse, chez {prenom}.",

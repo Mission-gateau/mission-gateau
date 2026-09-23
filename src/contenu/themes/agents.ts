@@ -36,7 +36,7 @@ export const AGENTS: Theme = {
       ],
       tresor:
         "Le colis est là ! Le quartier général l'a envoyé pour {prenom}, qui a {age} ans aujourd'hui. Ouvrez-le tous ensemble. À l'intérieur, il y a le gâteau et les cadeaux. Bon anniversaire, {prenom} !",
-      diplomeTitre: "Diplôme d'agent",
+      diplomeTitre: "Diplôme de la mission",
       diplomeTexte:
         "Ce diplôme est décerné à {nom}, pour avoir suivi tous les messages du quartier général et retrouvé le colis de {prenom}.",
       invitation:
@@ -46,8 +46,12 @@ export const AGENTS: Theme = {
       titreKit: "Mission : colis disparu",
       histoire:
         "Message du quartier général, à lire une seule fois. Un colis devait arriver ce matin. Il n'est jamais arrivé jusqu'au bureau. Notre agent de liaison a eu juste le temps de le mettre à l'abri dans cette maison avant de filer. Avant de partir, il a semé une série de messages : chacun indique où se trouve le suivant, et certains contiennent un chiffre du code de la mallette. L'agent n'a laissé aucun raccourci, par sécurité. Il faut suivre la piste dans l'ordre. Le colis est à remettre en main propre à {prenom}, qui a {age} ans aujourd'hui.",
-      briefing:
-        "Vous êtes l'équipe de terrain. Chaque message trouvé vous donne le nom d'un endroit de la maison : c'est là que se trouve le suivant. Certains messages cachent un chiffre : notez-le avec son rang, c'est une partie du code. Apportez-moi chaque message résolu, je confirme. La mission commence maintenant.",
+      briefing: {
+        uneEquipe:
+          "Vous êtes l'équipe de terrain. Chaque message trouvé vous donne le nom d'un endroit de la maison : c'est là que se trouve le suivant. Certains messages cachent un chiffre : notez-le avec son rang, c'est une partie du code. Apportez-moi chaque message résolu, je confirme. La mission commence maintenant.",
+        plusieursEquipes:
+          "Vous formez plusieurs équipes de terrain, et chacune suit ses propres messages : dans une cachette, ne prenez que ceux qui portent votre symbole. Chaque message trouvé vous donne le nom d'un endroit de la maison : c'est là que se trouve le suivant. Certains messages cachent un chiffre : notez-le avec son rang, c'est une partie du code. Apportez-moi chaque message résolu, je confirme. La mission commence maintenant.",
+      },
       reussites: [
         "Confirmé. L'équipe progresse.",
         "Bonne lecture du message. Continuez.",
@@ -56,7 +60,7 @@ export const AGENTS: Theme = {
       ],
       tresor:
         "La mallette s'ouvre avec le code {code}. Le colis est intact : il est bien pour {prenom}, qui a {age} ans. Mission accomplie, l'équipe. Vous pouvez tout ouvrir.",
-      diplomeTitre: "Diplôme d'agent de terrain",
+      diplomeTitre: "Diplôme de la mission de terrain",
       diplomeTexte:
         "Ce diplôme est décerné à {nom}, pour avoir décodé les messages du quartier général et retrouvé le colis de {prenom}.",
       invitation:
@@ -64,18 +68,30 @@ export const AGENTS: Theme = {
     },
     escape: {
       titreKit: "Protocole Vermeil",
-      histoire:
-        "Dossier Vermeil, niveau confidentiel. Une mallette contenant les travaux du service a été mise à l'abri dans cette maison il y a trois jours. L'agent qui l'a cachée n'a pas pu revenir. Il avait prévu ce cas de figure : la mallette est fermée par un code à quatre chiffres, et ces quatre chiffres sont répartis dans une chaîne d'énigmes qu'il a disséminées lui-même. Chaque énigme mène à une cachette, chaque cachette contient la suivante. Aucune équipe ne détient le code entier, c'était la règle du service. Vous avez le temps d'une après-midi pour rouvrir la mallette.",
-      briefing:
-        "Vous formez plusieurs équipes, mais la mission est commune. Chaque équipe a ses propres énigmes : une énigme résolue donne le nom d'une cachette, et vous y trouverez la carte suivante marquée de votre symbole. Quatre énigmes livrent chacune un chiffre du code, avec son rang. Il faudra tout rassembler à la fin pour ouvrir la mallette. Venez me voir pour valider chaque réponse. Le protocole démarre.",
+      histoire: {
+        uneEquipe:
+          "Dossier Vermeil, niveau confidentiel. Une mallette contenant les travaux du service a été mise à l'abri dans cette maison il y a trois jours. L'agent qui l'a cachée n'a pas pu revenir. Il avait prévu ce cas de figure : la mallette est fermée par un code à quatre chiffres, et ces quatre chiffres sont répartis dans une chaîne d'énigmes qu'il a disséminées lui-même. Chaque énigme mène à une cachette, chaque cachette contient la suivante. Personne, au service, ne connaissait le code en entier. Vous avez le temps d'une après-midi pour rouvrir la mallette.",
+        plusieursEquipes:
+          "Dossier Vermeil, niveau confidentiel. Une mallette contenant les travaux du service a été mise à l'abri dans cette maison il y a trois jours. L'agent qui l'a cachée n'a pas pu revenir. Il avait prévu ce cas de figure : la mallette est fermée par un code à quatre chiffres, et ces quatre chiffres sont répartis dans une chaîne d'énigmes qu'il a disséminées lui-même. Chaque énigme mène à une cachette, chaque cachette contient la suivante. Aucune équipe ne détient le code entier, c'était la règle du service. Vous avez le temps d'une après-midi pour rouvrir la mallette.",
+      },
+      briefing: {
+        uneEquipe:
+          "Vous êtes l'équipe de terrain, et la mission est à vous seuls. Une énigme résolue donne le nom d'une cachette, et vous y trouverez la carte suivante. Quatre énigmes livrent chacune un chiffre du code, avec son rang : il en faut quatre pour ouvrir la mallette. Venez me voir pour valider chaque réponse. Le protocole démarre.",
+        plusieursEquipes:
+          "Vous formez plusieurs équipes, mais la mission est commune. Chaque équipe a ses propres énigmes : dans une cachette, ne prenez que les cartes marquées de votre symbole. Une énigme résolue donne le nom d'une cachette, et vous y trouverez la carte suivante. Quatre énigmes livrent chacune un chiffre du code, avec son rang. Il faudra tout rassembler à la fin pour ouvrir la mallette. Venez me voir pour valider chaque réponse. Le protocole démarre.",
+      },
       reussites: [
         "Réponse confirmée. L'équipe avance.",
         "Décodage correct. Poursuivez.",
         "Le quartier général enregistre le chiffre.",
         "Une énigme de moins avant la mallette.",
       ],
-      tresor:
-        "Le code {code} déverrouille la mallette. Le dossier Vermeil est clos, et ce qu'il protégeait revient à {prenom}, qui a {age} ans aujourd'hui. Aucune équipe n'aurait pu l'ouvrir seule : c'est votre code à toutes.",
+      tresor: {
+        uneEquipe:
+          "Le code {code} déverrouille la mallette. Le dossier Vermeil est clos, et ce qu'il protégeait revient à {prenom}, qui a {age} ans aujourd'hui. Vous avez réuni les quatre chiffres à vous seuls.",
+        plusieursEquipes:
+          "Le code {code} déverrouille la mallette. Le dossier Vermeil est clos, et ce qu'il protégeait revient à {prenom}, qui a {age} ans aujourd'hui. Aucune équipe n'aurait pu l'ouvrir seule : c'est votre code à toutes.",
+      },
       diplomeTitre: "Diplôme du protocole Vermeil",
       diplomeTexte:
         "Ce diplôme est décerné à {nom}, pour avoir résolu les énigmes du dossier Vermeil et reconstitué le code de la mallette, chez {prenom}.",

@@ -6,7 +6,7 @@ import { verifierKit } from "@/engine/validation";
 import { remplir } from "@/engine/texte";
 import type { Kit } from "@/engine/types";
 import { GUIDE } from "@/contenu/guide";
-import { THEMES_CONTENU } from "@/contenu/themes";
+import { selonEquipes, THEMES_CONTENU } from "@/contenu/themes";
 import { valeursTextes } from "@/pdf/composants/sections";
 import { documentApercu } from "@/pdf/documents/apercu";
 import { documentKit } from "@/pdf/documents/kit";
@@ -139,8 +139,12 @@ describe("ce qui est réellement imprimé", () => {
     );
     const texte = aplatir(texteDuPdf(await renderToBuffer(documentKit(kit))));
     const contenu = THEMES_CONTENU[kit.configuration.theme].formats[kit.format];
-    expect(texte).toContain(aplatir(remplir(contenu.histoire, valeursTextes(kit))));
-    expect(texte).toContain(aplatir(remplir(contenu.tresor, valeursTextes(kit))));
+    expect(texte).toContain(
+      aplatir(remplir(selonEquipes(contenu.histoire, kit.equipes.length), valeursTextes(kit))),
+    );
+    expect(texte).toContain(
+      aplatir(remplir(selonEquipes(contenu.tresor, kit.equipes.length), valeursTextes(kit))),
+    );
     for (const invite of ["Nina", "Sacha", "Tom"]) expect(texte).toContain(invite);
     expect(texte).toContain(kit.configuration.prenom);
   });
@@ -239,7 +243,9 @@ describe("aperçu gratuit", () => {
       const contenu = THEMES_CONTENU[kit.configuration.theme].formats[kit.format];
       expect(texte).not.toContain(aplatir(GUIDE.titreSolutions));
       expect(texte).not.toContain(aplatir(GUIDE.titreDiplomes));
-      expect(texte).not.toContain(aplatir(remplir(contenu.tresor, valeursTextes(kit))));
+      expect(texte).not.toContain(
+        aplatir(remplir(selonEquipes(contenu.tresor, kit.equipes.length), valeursTextes(kit))),
+      );
     }
   });
 

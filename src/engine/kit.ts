@@ -18,11 +18,11 @@ import {
   type ContexteEnigme,
 } from "./enigmes";
 import { MESSAGES_FINAUX } from "../contenu/consignes";
-import { theme } from "../contenu/themes";
+import { selonEquipes, theme } from "../contenu/themes";
 import type { Carte, ChiffreCode, Configuration, Enigme, Equipe, Etape, IdFormat, Kit } from "./types";
 
 /** Change quand la structure du kit évolue. Les exemples versionnés s'y réfèrent. */
-export const VERSION_KIT = "1.1";
+export const VERSION_KIT = "1.2";
 
 /** Suite des énigmes de navigation, par format. */
 const CYCLES_NAVIGATION: Record<IdFormat, string[]> = {
@@ -34,10 +34,15 @@ const CYCLES_NAVIGATION: Record<IdFormat, string[]> = {
 /**
  * Choisit la famille d'énigme de route d'une carte.
  *
- * Le cycle est décalé d'un cran par équipe : à une même étape, deux équipes
- * ne tombent pas sur la même famille. Sans cela, les pictogrammes, le miroir
- * et le morse — qui ne dépendent que du mot-réponse, identique pour tout le
- * monde — donnaient exactement la même énigme à toutes les équipes.
+ * Le cycle est décalé d'un cran par équipe. Sans cela, les pictogrammes, le
+ * miroir et le morse — qui ne dépendent que du mot-réponse, identique pour
+ * tout le monde — donnaient exactement la même énigme à toutes les équipes.
+ *
+ * Ce décalage ne garantit pas une famille différente par équipe : à trois
+ * équipes, deux d'entre elles ont souvent des mots mêlés à la même étape. Ce
+ * qui est garanti, et que `verifierKit` contrôle, c'est que les énigmes elles-
+ * mêmes diffèrent — deux grilles de mots mêlés tirées de graines distinctes
+ * n'ont ni la même disposition ni les mêmes mots.
  *
  * Le César est écarté tant que l'équipe n'a pas trouvé de chiffre à une étape
  * antérieure : son décalage vient de là. On passe alors à la famille suivante
@@ -140,7 +145,7 @@ export function construireKit(configuration: Configuration, graine: string): Kit
       let messageFinal: string | null = null;
       const versTresor = etape.cachetteSuivante === null;
       if (versTresor) {
-        messageFinal = MESSAGES_FINAUX[regles.format];
+        messageFinal = selonEquipes(MESSAGES_FINAUX[regles.format], regles.equipes);
       } else {
         const cible = cachette(etape.cachetteSuivante!);
         const cycle = CYCLES_NAVIGATION[regles.format]!;

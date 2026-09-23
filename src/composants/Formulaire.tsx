@@ -13,6 +13,7 @@ import {
   TRANCHES_AGE,
   cachettesMinimum,
   formatPourAge,
+  minutesParEtape,
   nombreEquipes,
   nombreEtapes,
   schemaConfiguration,
@@ -149,7 +150,7 @@ export function Formulaire() {
       format,
       etapes: nombreEtapes(format, brouillon.duree),
       minimum: cachettesMinimum(format, brouillon.duree),
-      minutes: Math.max(3, Math.round((brouillon.duree - 10) / nombreEtapes(format, brouillon.duree))),
+      minutes: minutesParEtape(format, brouillon.duree),
     };
   }, [brouillon.age, brouillon.duree]);
 

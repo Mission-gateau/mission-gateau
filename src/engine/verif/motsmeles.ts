@@ -15,6 +15,16 @@ const AXES: [number, number][] = [
 ];
 
 /**
+ * Les deux diagonales. La consigne ne les annonce pas : un mot qui s'y
+ * formerait par hasard serait entouré par erreur, et l'enfant rayerait des
+ * lettres du mot-réponse. Les mots courts en sont les premiers coupables.
+ */
+const DIAGONALES: [number, number][] = [
+  [1, 1],
+  [1, -1],
+];
+
+/**
  * Compte les endroits où un mot se lit dans la grille.
  *
  * Un mot qui apparaît deux fois rend le jeu faux : l'enfant qui entoure la
@@ -22,17 +32,18 @@ const AXES: [number, number][] = [
  * erronée. Le générateur comme le contrôle indépendant exigent donc
  * exactement une occurrence par mot de la liste.
  */
-export function occurrences(grille: string[][], mot: string): number {
+function compter(grille: string[][], mot: string, axes: [number, number][]): number {
   const hauteur = grille.length;
   const largeur = grille[0]!.length;
   const inverse = [...mot].reverse().join("");
   let total = 0;
 
-  for (const [dx, dy] of AXES) {
+  for (const [dx, dy] of axes) {
     for (let y = 0; y < hauteur; y += 1) {
       for (let x = 0; x < largeur; x += 1) {
-        if (x + dx * (mot.length - 1) >= largeur) continue;
-        if (y + dy * (mot.length - 1) >= hauteur) continue;
+        const finX = x + dx * (mot.length - 1);
+        const finY = y + dy * (mot.length - 1);
+        if (finX < 0 || finX >= largeur || finY < 0 || finY >= hauteur) continue;
         let lettres = "";
         for (let i = 0; i < mot.length; i += 1) lettres += grille[y + dy * i]![x + dx * i]!;
         if (lettres === mot || lettres === inverse) total += 1;
@@ -40,6 +51,15 @@ export function occurrences(grille: string[][], mot: string): number {
     }
   }
   return total;
+}
+
+export function occurrences(grille: string[][], mot: string): number {
+  return compter(grille, mot, AXES);
+}
+
+/** Occurrences en diagonale : il ne doit jamais y en avoir. */
+export function occurrencesDiagonales(grille: string[][], mot: string): number {
+  return compter(grille, mot, DIAGONALES);
 }
 
 /** Le mot se lit-il au moins une fois dans la grille ? */
@@ -86,6 +106,10 @@ export function verifierMotsMeles(e: MotsMelesPublies): string[] {
       problemes.push(`mots mêlés : « ${mot} » est introuvable dans la grille`);
     } else if (combien > 1) {
       problemes.push(`mots mêlés : « ${mot} » se lit ${combien} fois dans la grille`);
+    }
+    const enDiagonale = occurrencesDiagonales(e.grille, mot);
+    if (enDiagonale > 0) {
+      problemes.push(`mots mêlés : « ${mot} » se lit aussi en diagonale`);
     }
   }
   if (new Set(e.mots).size !== e.mots.length) {

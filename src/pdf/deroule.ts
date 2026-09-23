@@ -1,4 +1,4 @@
-import { reglesPartie } from "../engine/configuration";
+import { MINUTES_ACCUEIL, MINUTES_LECTURE, reglesPartie } from "../engine/configuration";
 import { cachette } from "../engine/cachettes";
 import type { Kit } from "../engine/types";
 
@@ -25,13 +25,17 @@ export function deroule(kit: Kit): MomentDeroule[] {
   };
 
   ajouter(
-    5,
+    MINUTES_ACCUEIL,
     "Accueil",
     regles.equipes > 1
       ? `Former ${regles.equipes} équipes et distribuer les symboles (étoile, lune, soleil).`
       : "Rassembler les enfants et distribuer le matériel.",
   );
-  ajouter(3, "Lecture de l'histoire", "Lire l'introduction à voix haute, puis le briefing et la devinette de départ.");
+  ajouter(
+    MINUTES_LECTURE,
+    "Lecture de l'histoire",
+    "Lire l'introduction à voix haute, puis le briefing et la devinette de départ.",
+  );
 
   for (const etape of kit.etapes) {
     const lieu = cachette(etape.cachette);
@@ -45,10 +49,12 @@ export function deroule(kit: Kit): MomentDeroule[] {
   }
 
   ajouter(
-    5,
+    regles.minutesCodeEtTresor,
     kit.codeFinal ? "Le code et le trésor" : "Le trésor",
     kit.codeFinal
-      ? "Les équipes mettent leurs chiffres en commun, annoncent le code, et vous remettez le trésor."
+      ? kit.equipes.length > 1
+        ? "Les équipes mettent leurs chiffres en commun, annoncent le code, et vous remettez le trésor."
+        : "L'équipe rassemble ses chiffres, annonce le code au complet, et vous remettez le trésor."
       : "Vous conduisez le groupe jusqu'au trésor et vous l'ouvrez tous ensemble.",
   );
   ajouter(0, "Et ensuite", "Gâteau, cadeaux, et remise des diplômes.");

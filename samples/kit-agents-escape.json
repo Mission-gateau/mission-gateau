@@ -60,54 +60,54 @@
     },
     {
       "debut": 8,
-      "duree": 5,
+      "duree": 4,
       "titre": "Étape 1",
       "detail": "Dans une boîte à chaussures. La carte mène à la cachette suivante."
     },
     {
-      "debut": 13,
-      "duree": 5,
+      "debut": 12,
+      "duree": 4,
       "titre": "Étape 2",
       "detail": "Sous le tapis. La carte mène à la cachette suivante."
     },
     {
-      "debut": 18,
-      "duree": 5,
+      "debut": 16,
+      "duree": 4,
       "titre": "Étape 3",
       "detail": "Sous le canapé. La carte mène à la cachette suivante."
     },
     {
-      "debut": 23,
-      "duree": 5,
+      "debut": 20,
+      "duree": 4,
       "titre": "Étape 4",
       "detail": "Derrière un livre, sur une étagère basse. La carte mène à la cachette suivante."
     },
     {
-      "debut": 28,
-      "duree": 5,
+      "debut": 24,
+      "duree": 4,
       "titre": "Étape 5",
       "detail": "Derrière la porte de la chambre. La carte mène à la cachette suivante."
     },
     {
-      "debut": 33,
-      "duree": 5,
+      "debut": 28,
+      "duree": 4,
       "titre": "Étape 6",
       "detail": "Sous une chaise. La carte mène à la cachette suivante."
     },
     {
-      "debut": 38,
-      "duree": 5,
+      "debut": 32,
+      "duree": 4,
       "titre": "Étape 7",
       "detail": "Sous la table. Dernière carte : les enfants reviennent vous voir."
     },
     {
-      "debut": 43,
-      "duree": 5,
+      "debut": 36,
+      "duree": 9,
       "titre": "Le code et le trésor",
       "detail": "Les équipes mettent leurs chiffres en commun, annoncent le code, et vous remettez le trésor."
     },
     {
-      "debut": 48,
+      "debut": 45,
       "duree": 0,
       "titre": "Et ensuite",
       "detail": "Gâteau, cadeaux, et remise des diplômes."
@@ -6280,7 +6280,7 @@
             "reponse": "LIVRE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "Décalage de 1 rangs. La réponse est LIVRE : Derrière un livre, sur une étagère basse."
+            "solution": "Décalage de 1 rang. La réponse est LIVRE : Derrière un livre, sur une étagère basse."
           },
           "code": null,
           "bonus": null,
@@ -6953,7 +6953,7 @@
             "reponse": "TABLE",
             "role": "navigation",
             "surFiche": false,
-            "solution": "Décalage de 1 rangs. La réponse est TABLE : Sous la table."
+            "solution": "Décalage de 1 rang. La réponse est TABLE : Sous la table."
           },
           "code": null,
           "bonus": null,

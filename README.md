@@ -8,10 +8,11 @@ d'enfants, la durée et les cachettes dont il dispose chez lui. Le site compose
 aussitôt un kit complet : guide de l'organisateur, invitations, cartes-indices
 à cacher, fiches d'énigmes, page du trésor, diplômes et page de solutions.
 
-Ce dépôt correspond au **lot 1** : le moteur de jeu, le kit PDF, le formulaire
-et l'aperçu gratuit filigrané. Le paiement, les mentions légales et les pages
-de contenu viendront plus tard. Le site reste volontairement invisible des
-moteurs de recherche : `robots.txt` interdit tout, et chaque page porte une
+Le dépôt en est au **lot 3**. Les lots 1 et 2 ont livré le moteur de jeu, le
+kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs d'un
+premier audit. Le paiement, la livraison du kit acheté, les mentions légales et
+les pages de contenu viennent au lot 4. Le site reste volontairement invisible
+des moteurs de recherche : `robots.txt` interdit tout, et chaque page porte une
 balise `noindex, nofollow`.
 
 ## Démarrer
@@ -59,8 +60,9 @@ samples/        neuf kits, neuf aperçus et leur structure en JSON
 
 Une graine est tirée au moment de l'aperçu et renvoyée au navigateur dans
 l'en-tête `X-Graine`. La même configuration et la même graine redonnent
-exactement le même kit, énigme pour énigme : c'est ce qui permettra, au lot 2,
-de livrer le jeu que le parent a vu en aperçu.
+exactement le même kit, énigme pour énigme : c'est ce qui permettra, au lot 4,
+de livrer le jeu que le parent a vu en aperçu. `VERSION_KIT` marque la version
+du format d'un kit ; elle change dès que sa structure évolue.
 
 ### Les énigmes sont vérifiées, pas supposées
 
@@ -73,8 +75,19 @@ unicité est démontrée ; les mots mêlés sont relus case par case.
 
 `src/engine/validation.ts` vérifie ensuite le jeu entier : le parcours forme
 une chaîne sans impasse, chaque cachette ne sert qu'à une étape, le code final
-correspond bien aux réponses trouvées, et aucune équipe ne détient le code
-complet à elle seule.
+correspond bien aux réponses trouvées, et deux équipes ne reçoivent jamais la
+même énigme à une même étape. Dès qu'il y a plusieurs équipes, le code se
+répartit entre elles et aucune ne le détient en entier ; de 3 à 6 enfants, le
+jeu se joue à une seule équipe, qui rassemble alors tous les chiffres.
+
+### Les textes changent avec le nombre d'équipes
+
+De 3 à 6 enfants, la mission et l'escape game se jouent à une seule équipe. Les
+textes qui parlent d'équipes existent donc en deux versions — `uneEquipe` et
+`plusieursEquipes` — et `selonEquipes` choisit la bonne au moment de composer
+le kit. Un texte qui ne dépend pas du nombre d'équipes reste une simple chaîne.
+`tests/equipes.test.ts` relit le PDF produit et refuse, à une seule équipe, la
+moindre mention d'une autre équipe.
 
 ## Ajouter un thème
 
@@ -82,6 +95,8 @@ complet à elle seule.
    les textes : phrases d'ambiance, personnages et objets de la grille de
    logique, puis pour chacun des trois formats l'histoire, le briefing, les
    messages de réussite, le trésor, le diplôme et l'invitation.
+   Les champs `histoire`, `briefing` et `tresor` acceptent soit une chaîne,
+   soit un couple `{ uneEquipe, plusieursEquipes }`.
 2. Déclarer le thème dans `src/contenu/themes/index.ts`.
 3. Ajouter son identifiant à `THEMES` et à `schemaConfiguration` dans
    `src/engine/configuration.ts`.
