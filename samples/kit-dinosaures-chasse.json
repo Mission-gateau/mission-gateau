@@ -1,0 +1,671 @@
+{
+  "exemple": {
+    "theme": "dinosaures",
+    "format": "chasse",
+    "formatLibelle": "Chasse au trésor (4-6 ans)",
+    "graine": "exemple007"
+  },
+  "configuration": {
+    "theme": "dinosaures",
+    "age": 5,
+    "prenom": "Lilou",
+    "nombreEnfants": 4,
+    "duree": 60,
+    "cachettes": [
+      "canape",
+      "coussin",
+      "table",
+      "chaise",
+      "tapis",
+      "rideau",
+      "livre",
+      "jouets",
+      "lit",
+      "oreiller",
+      "panier",
+      "boite",
+      "crayons",
+      "cartable",
+      "frigo",
+      "torchon",
+      "marmite",
+      "fruits",
+      "porte",
+      "manteau"
+    ],
+    "fete": {
+      "date": "samedi 18 octobre",
+      "heure": "14 h 30",
+      "adresse": "12 rue des Lilas",
+      "contact": "06 00 00 00 00",
+      "invites": [
+        "Anaïs",
+        "Basile",
+        "Chloé"
+      ]
+    }
+  },
+  "codeFinal": null,
+  "deroule": [
+    {
+      "debut": 0,
+      "duree": 5,
+      "titre": "Accueil",
+      "detail": "Rassembler les enfants et distribuer le matériel."
+    },
+    {
+      "debut": 5,
+      "duree": 3,
+      "titre": "Lecture de l'histoire",
+      "detail": "Lire l'introduction à voix haute, puis le briefing et la devinette de départ."
+    },
+    {
+      "debut": 8,
+      "duree": 8,
+      "titre": "Étape 1",
+      "detail": "Derrière le rideau. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 16,
+      "duree": 8,
+      "titre": "Étape 2",
+      "detail": "Sous le tapis. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 24,
+      "duree": 8,
+      "titre": "Étape 3",
+      "detail": "Dans une boîte à chaussures. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 32,
+      "duree": 8,
+      "titre": "Étape 4",
+      "detail": "Dans la poche d'un manteau du porte-manteau. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 40,
+      "duree": 8,
+      "titre": "Étape 5",
+      "detail": "Sous l'oreiller. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 48,
+      "duree": 8,
+      "titre": "Étape 6",
+      "detail": "Dans le tiroir des torchons. Dernière carte : les enfants reviennent vous voir."
+    },
+    {
+      "debut": 56,
+      "duree": 5,
+      "titre": "Le trésor",
+      "detail": "Vous conduisez le groupe jusqu'au trésor et vous l'ouvrez tous ensemble."
+    },
+    {
+      "debut": 61,
+      "duree": 0,
+      "titre": "Et ensuite",
+      "detail": "Gâteau, cadeaux, et remise des diplômes."
+    }
+  ],
+  "parcours": [
+    {
+      "etape": 1,
+      "cachette": "Derrière le rideau",
+      "motCle": "RIDEAU",
+      "cachetteSuivante": "Sous le tapis",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est un grand tissu qui pend, tout près d'une fenêtre.",
+        "La réponse : Derrière le rideau."
+      ]
+    },
+    {
+      "etape": 2,
+      "cachette": "Sous le tapis",
+      "motCle": "TAPIS",
+      "cachetteSuivante": "Dans une boîte à chaussures",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est par terre, et il faut en soulever un coin.",
+        "La réponse : Sous le tapis."
+      ]
+    },
+    {
+      "etape": 3,
+      "cachette": "Dans une boîte à chaussures",
+      "motCle": "BOITE",
+      "cachetteSuivante": "Dans la poche d'un manteau du porte-manteau",
+      "indices": [
+        "Cherchez du côté de : Chambre.",
+        "C'est un contenant en carton, avec un couvercle.",
+        "La réponse : Dans une boîte à chaussures."
+      ]
+    },
+    {
+      "etape": 4,
+      "cachette": "Dans la poche d'un manteau du porte-manteau",
+      "motCle": "MANTEAU",
+      "cachetteSuivante": "Sous l'oreiller",
+      "indices": [
+        "Cherchez du côté de : Entrée.",
+        "Cherchez dans un vêtement qui attend au porte-manteau.",
+        "La réponse : Dans la poche d'un manteau du porte-manteau."
+      ]
+    },
+    {
+      "etape": 5,
+      "cachette": "Sous l'oreiller",
+      "motCle": "OREILLER",
+      "cachetteSuivante": "Dans le tiroir des torchons",
+      "indices": [
+        "Cherchez du côté de : Chambre.",
+        "C'est sur le lit, et on y pose la tête.",
+        "La réponse : Sous l'oreiller."
+      ]
+    },
+    {
+      "etape": 6,
+      "cachette": "Dans le tiroir des torchons",
+      "motCle": "TORCHON",
+      "cachetteSuivante": "le trésor",
+      "indices": [
+        "Cherchez du côté de : Cuisine.",
+        "Cherchez dans un tiroir de la cuisine, sous du tissu plié.",
+        "La réponse : Dans le tiroir des torchons."
+      ]
+    }
+  ],
+  "depart": {
+    "id": "depart",
+    "type": "devinette",
+    "titre": "Devinette",
+    "consigne": "Écoute bien la comptine. Elle dit où aller.",
+    "texte": "Je suis près de la fenêtre. Je bouge un peu avec l'air. Regarde derrière moi !",
+    "reponse": "RIDEAU",
+    "role": "navigation",
+    "surFiche": false,
+    "solution": "La réponse est RIDEAU : Derrière le rideau."
+  },
+  "equipes": [
+    {
+      "nom": "Étoile",
+      "symbole": "etoile",
+      "chiffresDuCode": [],
+      "fiches": [
+        {
+          "numero": 1,
+          "etape": 4,
+          "enigme": "Le labyrinthe"
+        }
+      ],
+      "cartes": [
+        {
+          "etape": 1,
+          "cachette": "rideau",
+          "ambiance": "Le carnet du paléontologue indique :",
+          "navigation": {
+            "id": "e1-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "Je suis tout plat, par terre. On marche sur moi. Soulève-moi !",
+            "reponse": "TAPIS",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est TAPIS : Sous le tapis."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e1-etoile-bonus",
+            "type": "intrus",
+            "titre": "Cherche l'intrus",
+            "consigne": "Il y a un dessin qui n'est pas comme les autres. Montre-le du doigt.",
+            "grille": [
+              [
+                "meteore",
+                "meteore",
+                "meteore",
+                "meteore"
+              ],
+              [
+                "meteore",
+                "meteore",
+                "meteore",
+                "meteore"
+              ],
+              [
+                "meteore",
+                "meteore",
+                "dinosaure",
+                "meteore"
+              ],
+              [
+                "meteore",
+                "meteore",
+                "meteore",
+                "meteore"
+              ]
+            ],
+            "icone": "meteore",
+            "iconeIntrus": "dinosaure",
+            "position": [
+              2,
+              2
+            ],
+            "reponse": "L3C3",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "L'intrus est en ligne 3, colonne 3 : c'est dinosaure au milieu des comète."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 2,
+          "cachette": "tapis",
+          "ambiance": "La carte de la vallée précise :",
+          "navigation": {
+            "id": "e2-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "Je suis une boîte en carton. Avant, j'avais des chaussures. Ouvre-moi !",
+            "reponse": "BOITE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est BOITE : Dans une boîte à chaussures."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e2-etoile-bonus",
+            "type": "suite",
+            "titre": "La suite logique",
+            "consigne": "Regarde bien l'ordre des dessins. Quel dessin manque à la fin ?",
+            "motif": [
+              "meteore",
+              "empreinte"
+            ],
+            "affichee": [
+              "meteore",
+              "empreinte",
+              "meteore",
+              "empreinte",
+              "meteore",
+              "empreinte",
+              null
+            ],
+            "choix": [
+              "palmier",
+              "meteore",
+              "tyrannosaure"
+            ],
+            "indexManquant": 6,
+            "reponse": "meteore",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "Le dessin manquant est comète."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 3,
+          "cachette": "boite",
+          "ambiance": "Le carnet du paléontologue indique :",
+          "navigation": {
+            "id": "e3-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "Je tiens chaud dehors. J'ai des poches. Fouille-les !",
+            "reponse": "MANTEAU",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est MANTEAU : Dans la poche d'un manteau du porte-manteau."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e3-etoile-bonus",
+            "type": "comptage",
+            "titre": "Compte bien",
+            "consigne": "Compte les palmier de la grille. Dis le nombre à voix haute.",
+            "grille": [
+              [
+                "feuille",
+                "palmier",
+                "tyrannosaure",
+                "empreinte",
+                "palmier"
+              ],
+              [
+                "empreinte",
+                "tyrannosaure",
+                "palmier",
+                "tyrannosaure",
+                "tyrannosaure"
+              ],
+              [
+                "palmier",
+                "tyrannosaure",
+                "empreinte",
+                "feuille",
+                "palmier"
+              ],
+              [
+                "feuille",
+                "tyrannosaure",
+                "palmier",
+                "feuille",
+                "palmier"
+              ]
+            ],
+            "iconeCible": "palmier",
+            "total": 7,
+            "reponse": "7",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "Il y a 7 palmier dans la grille."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 4,
+          "cachette": "manteau",
+          "ambiance": "Le petit dinosaure pousse un cri qui ressemble à ceci :",
+          "navigation": {
+            "id": "e4-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "On pose sa tête sur moi. Je suis tout doux. Soulève-moi !",
+            "reponse": "OREILLER",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est OREILLER : Sous l'oreiller."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e4-etoile-bonus",
+            "type": "labyrinthe",
+            "titre": "Le labyrinthe",
+            "consigne": "Suis le chemin avec ton doigt, de l'entrée jusqu'à la sortie.",
+            "labyrinthe": {
+              "largeur": 5,
+              "hauteur": 5,
+              "murs": [
+                [
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  }
+                ]
+              ],
+              "depart": [
+                0,
+                0
+              ],
+              "arrivee": [
+                4,
+                4
+              ],
+              "chemin": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  0
+                ],
+                [
+                  2,
+                  0
+                ],
+                [
+                  3,
+                  0
+                ],
+                [
+                  4,
+                  0
+                ],
+                [
+                  4,
+                  1
+                ],
+                [
+                  4,
+                  2
+                ],
+                [
+                  4,
+                  3
+                ],
+                [
+                  4,
+                  4
+                ]
+              ]
+            },
+            "reponse": "SORTIE",
+            "role": "bonus",
+            "surFiche": true,
+            "solution": "Le chemin compte 9 cases."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 5,
+          "cachette": "oreiller",
+          "ambiance": "Le guide de la vallée a noté :",
+          "navigation": {
+            "id": "e5-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "Je suis un tiroir. Dedans, il y a des torchons. Ouvre-moi !",
+            "reponse": "TORCHON",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est TORCHON : Dans le tiroir des torchons."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e5-etoile-bonus",
+            "type": "intrus",
+            "titre": "Cherche l'intrus",
+            "consigne": "Il y a un dessin qui n'est pas comme les autres. Montre-le du doigt.",
+            "grille": [
+              [
+                "empreinte",
+                "empreinte",
+                "empreinte",
+                "empreinte"
+              ],
+              [
+                "empreinte",
+                "empreinte",
+                "dinosaure",
+                "empreinte"
+              ],
+              [
+                "empreinte",
+                "empreinte",
+                "empreinte",
+                "empreinte"
+              ],
+              [
+                "empreinte",
+                "empreinte",
+                "empreinte",
+                "empreinte"
+              ]
+            ],
+            "icone": "empreinte",
+            "iconeIntrus": "dinosaure",
+            "position": [
+              2,
+              1
+            ],
+            "reponse": "L2C3",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "L'intrus est en ligne 2, colonne 3 : c'est dinosaure au milieu des empreintes."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 6,
+          "cachette": "torchon",
+          "ambiance": "Le guide de la vallée a noté :",
+          "navigation": null,
+          "code": null,
+          "bonus": {
+            "id": "e6-etoile-bonus",
+            "type": "suite",
+            "titre": "La suite logique",
+            "consigne": "Regarde bien l'ordre des dessins. Quel dessin manque à la fin ?",
+            "motif": [
+              "oeuf",
+              "empreinte",
+              "meteore"
+            ],
+            "affichee": [
+              "oeuf",
+              "empreinte",
+              "meteore",
+              "oeuf",
+              "empreinte",
+              "meteore",
+              null
+            ],
+            "choix": [
+              "oeuf",
+              "palmier",
+              "os"
+            ],
+            "indexManquant": 6,
+            "reponse": "oeuf",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "Le dessin manquant est œuf."
+          },
+          "versTresor": true,
+          "messageFinal": "Bravo ! Il n'y a plus de carte à trouver. Apporte celle-ci au maître du jeu : le trésor n'est plus très loin."
+        }
+      ]
+    }
+  ],
+  "pages": {
+    "kit": 14,
+    "apercu": 4
+  }
+}

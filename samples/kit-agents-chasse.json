@@ -1,0 +1,544 @@
+{
+  "exemple": {
+    "theme": "agents",
+    "format": "chasse",
+    "formatLibelle": "Chasse au trésor (4-6 ans)",
+    "graine": "exemple004"
+  },
+  "configuration": {
+    "theme": "agents",
+    "age": 5,
+    "prenom": "Noé",
+    "nombreEnfants": 8,
+    "duree": 30,
+    "cachettes": [
+      "canape",
+      "coussin",
+      "table",
+      "chaise",
+      "tapis",
+      "rideau",
+      "livre",
+      "jouets",
+      "lit",
+      "oreiller",
+      "panier",
+      "boite",
+      "crayons",
+      "cartable",
+      "frigo",
+      "torchon",
+      "marmite",
+      "fruits",
+      "porte",
+      "manteau"
+    ],
+    "fete": {
+      "date": "samedi 18 octobre",
+      "heure": "14 h 30",
+      "adresse": "12 rue des Lilas",
+      "contact": "06 00 00 00 00",
+      "invites": [
+        "Anaïs",
+        "Basile",
+        "Chloé",
+        "Diego"
+      ]
+    }
+  },
+  "codeFinal": null,
+  "deroule": [
+    {
+      "debut": 0,
+      "duree": 5,
+      "titre": "Accueil",
+      "detail": "Rassembler les enfants et distribuer le matériel."
+    },
+    {
+      "debut": 5,
+      "duree": 3,
+      "titre": "Lecture de l'histoire",
+      "detail": "Lire l'introduction à voix haute, puis le briefing et la devinette de départ."
+    },
+    {
+      "debut": 8,
+      "duree": 5,
+      "titre": "Étape 1",
+      "detail": "Dans la poche d'un manteau du porte-manteau. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 13,
+      "duree": 5,
+      "titre": "Étape 2",
+      "detail": "Sous le canapé. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 18,
+      "duree": 5,
+      "titre": "Étape 3",
+      "detail": "Sous un coussin du canapé. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 23,
+      "duree": 5,
+      "titre": "Étape 4",
+      "detail": "Sous la table. Dernière carte : les enfants reviennent vous voir."
+    },
+    {
+      "debut": 28,
+      "duree": 5,
+      "titre": "Le trésor",
+      "detail": "Vous conduisez le groupe jusqu'au trésor et vous l'ouvrez tous ensemble."
+    },
+    {
+      "debut": 33,
+      "duree": 0,
+      "titre": "Et ensuite",
+      "detail": "Gâteau, cadeaux, et remise des diplômes."
+    }
+  ],
+  "parcours": [
+    {
+      "etape": 1,
+      "cachette": "Dans la poche d'un manteau du porte-manteau",
+      "motCle": "MANTEAU",
+      "cachetteSuivante": "Sous le canapé",
+      "indices": [
+        "Cherchez du côté de : Entrée.",
+        "Cherchez dans un vêtement qui attend au porte-manteau.",
+        "La réponse : Dans la poche d'un manteau du porte-manteau."
+      ]
+    },
+    {
+      "etape": 2,
+      "cachette": "Sous le canapé",
+      "motCle": "CANAPE",
+      "cachetteSuivante": "Sous un coussin du canapé",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est un meuble sur lequel on s'assoit à plusieurs, et il faut se baisser.",
+        "La réponse : Sous le canapé."
+      ]
+    },
+    {
+      "etape": 3,
+      "cachette": "Sous un coussin du canapé",
+      "motCle": "COUSSIN",
+      "cachetteSuivante": "Sous la table",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est mou, c'est carré, et cela se soulève d'une main.",
+        "La réponse : Sous un coussin du canapé."
+      ]
+    },
+    {
+      "etape": 4,
+      "cachette": "Sous la table",
+      "motCle": "TABLE",
+      "cachetteSuivante": "le trésor",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "Regardez sous quelque chose qui a un grand plateau.",
+        "La réponse : Sous la table."
+      ]
+    }
+  ],
+  "depart": {
+    "id": "depart",
+    "type": "devinette",
+    "titre": "Devinette",
+    "consigne": "Écoute bien la comptine. Elle dit où aller.",
+    "texte": "Je tiens chaud dehors. J'ai des poches. Fouille-les !",
+    "reponse": "MANTEAU",
+    "role": "navigation",
+    "surFiche": false,
+    "solution": "La réponse est MANTEAU : Dans la poche d'un manteau du porte-manteau."
+  },
+  "equipes": [
+    {
+      "nom": "Étoile",
+      "symbole": "etoile",
+      "chiffresDuCode": [],
+      "fiches": [
+        {
+          "numero": 1,
+          "etape": 4,
+          "enigme": "Le labyrinthe"
+        }
+      ],
+      "cartes": [
+        {
+          "etape": 1,
+          "cachette": "manteau",
+          "ambiance": "La fiche de mission précise :",
+          "navigation": {
+            "id": "e1-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "On s'assoit sur moi. Je suis tout doux. Regarde bien dessous !",
+            "reponse": "CANAPE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est CANAPE : Sous le canapé."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e1-etoile-bonus",
+            "type": "intrus",
+            "titre": "Cherche l'intrus",
+            "consigne": "Il y a un dessin qui n'est pas comme les autres. Montre-le du doigt.",
+            "grille": [
+              [
+                "montre",
+                "montre",
+                "montre",
+                "montre"
+              ],
+              [
+                "montre",
+                "montre",
+                "montre",
+                "montre"
+              ],
+              [
+                "montre",
+                "montre",
+                "montre",
+                "montre"
+              ],
+              [
+                "montre",
+                "montre",
+                "montre",
+                "loupe"
+              ]
+            ],
+            "icone": "montre",
+            "iconeIntrus": "loupe",
+            "position": [
+              3,
+              3
+            ],
+            "reponse": "L4C4",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "L'intrus est en ligne 4, colonne 4 : c'est loupe au milieu des montre."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 2,
+          "cachette": "canape",
+          "ambiance": "Un billet plié en quatre indique :",
+          "navigation": {
+            "id": "e2-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "Je suis tout mou. Je vis sur le canapé. Soulève-moi !",
+            "reponse": "COUSSIN",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est COUSSIN : Sous un coussin du canapé."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e2-etoile-bonus",
+            "type": "suite",
+            "titre": "La suite logique",
+            "consigne": "Regarde bien l'ordre des dessins. Quel dessin manque à la fin ?",
+            "motif": [
+              "valise",
+              "cle"
+            ],
+            "affichee": [
+              "valise",
+              "cle",
+              "valise",
+              "cle",
+              "valise",
+              "cle",
+              null
+            ],
+            "choix": [
+              "valise",
+              "chapeau",
+              "cle"
+            ],
+            "indexManquant": 6,
+            "reponse": "valise",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "Le dessin manquant est valise."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 3,
+          "cachette": "coussin",
+          "ambiance": "Le dossier secret s'ouvre sur cette ligne :",
+          "navigation": {
+            "id": "e3-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "On mange sur moi. J'ai quatre pieds. Regarde en dessous !",
+            "reponse": "TABLE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est TABLE : Sous la table."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e3-etoile-bonus",
+            "type": "comptage",
+            "titre": "Compte bien",
+            "consigne": "Compte les clé de la grille. Dis le nombre à voix haute.",
+            "grille": [
+              [
+                "cle",
+                "radio",
+                "lampe",
+                "cle",
+                "satellite"
+              ],
+              [
+                "lampe",
+                "cle",
+                "satellite",
+                "satellite",
+                "cle"
+              ],
+              [
+                "satellite",
+                "cle",
+                "satellite",
+                "lampe",
+                "lampe"
+              ],
+              [
+                "radio",
+                "cle",
+                "cle",
+                "cle",
+                "radio"
+              ]
+            ],
+            "iconeCible": "cle",
+            "total": 8,
+            "reponse": "8",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "Il y a 8 clé dans la grille."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 4,
+          "cachette": "table",
+          "ambiance": "Un billet plié en quatre indique :",
+          "navigation": null,
+          "code": null,
+          "bonus": {
+            "id": "e4-etoile-bonus",
+            "type": "labyrinthe",
+            "titre": "Le labyrinthe",
+            "consigne": "Suis le chemin avec ton doigt, de l'entrée jusqu'à la sortie.",
+            "labyrinthe": {
+              "largeur": 5,
+              "hauteur": 5,
+              "murs": [
+                [
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  }
+                ]
+              ],
+              "depart": [
+                0,
+                0
+              ],
+              "arrivee": [
+                4,
+                4
+              ],
+              "chemin": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1
+                ],
+                [
+                  1,
+                  1
+                ],
+                [
+                  2,
+                  1
+                ],
+                [
+                  2,
+                  0
+                ],
+                [
+                  3,
+                  0
+                ],
+                [
+                  3,
+                  1
+                ],
+                [
+                  4,
+                  1
+                ],
+                [
+                  4,
+                  2
+                ],
+                [
+                  3,
+                  2
+                ],
+                [
+                  3,
+                  3
+                ],
+                [
+                  3,
+                  4
+                ],
+                [
+                  4,
+                  4
+                ]
+              ]
+            },
+            "reponse": "SORTIE",
+            "role": "bonus",
+            "surFiche": true,
+            "solution": "Le chemin compte 13 cases."
+          },
+          "versTresor": true,
+          "messageFinal": "Bravo ! Il n'y a plus de carte à trouver. Apporte celle-ci au maître du jeu : le trésor n'est plus très loin."
+        }
+      ]
+    }
+  ],
+  "pages": {
+    "kit": 15,
+    "apercu": 4
+  }
+}

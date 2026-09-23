@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* Polices embarquées dans le dépôt, servies par le site : aucune requête
+   vers un autre domaine à l'exécution. Licence OFL, voir /credits. */
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Fredoka";
+  src: url("/fonts/Fredoka-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-creme: #fdf8f0;
+  --color-creme-fonce: #f4ebdd;
+  --color-encre: #1f2933;
+  --color-encre-douce: #4a5661;
+  --color-accent: #0f4c5c;
+  --color-accent-clair: #16697a;
+  --color-brique: #a8401c;
+  --color-soleil: #f6b352;
+  --color-bordure: #e0d4c2;
+
+  --font-titre: "Fredoka", ui-rounded, system-ui, sans-serif;
+  --font-texte: "Nunito", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-creme);
+  color: var(--color-encre);
+  font-family: var(--font-texte);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Anneau de focus visible partout, au clavier comme à la souris. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -1,0 +1,4 @@
+Icônes : Noto Emoji (googlefonts/noto-emoji), dossier 2D/png/128.
+Les images du dépôt sont publiées sous Apache License 2.0.
+Texte complet : https://www.apache.org/licenses/LICENSE-2.0
+Source : https://github.com/googlefonts/noto-emoji
