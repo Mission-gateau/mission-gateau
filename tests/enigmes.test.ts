@@ -18,7 +18,7 @@ import {
   type ContexteEnigme,
 } from "@/engine/enigmes";
 import { verifierEnigme } from "@/engine/verif";
-import { occurrences } from "@/engine/verif/motsmeles";
+import { occurrences, occurrencesDiagonales } from "@/engine/verif/motsmeles";
 import { ICONES_THEME } from "@/engine/icones";
 import { THEMES_CONTENU } from "@/contenu/themes";
 import type { CleIcone } from "@/engine/icones";
@@ -200,6 +200,36 @@ describe("mots mêlés : aucun mot ne se lit deux fois", () => {
       expect(problemes).toEqual([]);
     });
   }
+
+  for (const taille of [8, 10] as const) {
+    it(`${NOMBRE_GRAINES} grilles ${taille}x${taille} n'ont aucun mot en diagonale`, () => {
+      /**
+       * La consigne annonce l'horizontale et la verticale. Un mot formé par
+       * hasard en diagonale serait entouré par erreur, et l'enfant rayerait
+       * des lettres du mot-réponse. L'audit en avait relevé 884 sur 314 785.
+       */
+      const problemes: string[] = [];
+      GRAINES.forEach((graine, index) => {
+        const e = enigmeMotsMeles(contexte(graine, taille === 10 ? "escape" : "mission"), cible(index), taille);
+        if (e.type !== "motsmeles") throw new Error("type inattendu");
+        for (const mot of e.mots) {
+          const combien = occurrencesDiagonales(e.grille, mot);
+          if (combien > 0) problemes.push(`${graine} : « ${mot} » ${combien} fois en diagonale`);
+        }
+      });
+      expect(problemes).toEqual([]);
+    });
+  }
+
+  it("le contrôle indépendant refuse une grille où un mot se lit en diagonale", () => {
+    const e = enigmeMotsMeles(contexte("diag"), cachette("boite"), 8);
+    if (e.type !== "motsmeles") throw new Error("type inattendu");
+    const mot = e.mots.find((m) => m.length <= 8)!;
+    const grille = e.grille.map((ligne) => [...ligne]);
+    for (let i = 0; i < mot.length; i += 1) grille[i]![i] = mot[i]!;
+    const problemes = verifierEnigme({ ...e, grille });
+    expect(problemes.some((p) => p.includes("diagonale"))).toBe(true);
+  });
 
   it("le contrôle indépendant refuse une grille où un mot apparaît deux fois", () => {
     const e = enigmeMotsMeles(contexte("abc"), cachette("boite"), 8);

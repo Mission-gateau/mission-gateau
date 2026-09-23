@@ -61,8 +61,12 @@ export const MESSAGES_FINAUX = typographier({
     "Bravo ! Il n'y a plus de carte à trouver. Apporte celle-ci au maître du jeu : le trésor n'est plus très loin.",
   mission:
     "C'était la dernière carte. Rassemblez tous les chiffres du code et apportez-les au maître du jeu : le trésor est à ce prix.",
-  escape:
-    "Fin de la piste. Réunissez vos chiffres avec ceux des autres équipes, reconstituez le code complet, et présentez-le au maître du jeu.",
+  escape: {
+    uneEquipe:
+      "Fin de la piste. Rassemblez les chiffres que vous avez trouvés, reconstituez le code complet, et présentez-le au maître du jeu.",
+    plusieursEquipes:
+      "Fin de la piste. Réunissez vos chiffres avec ceux des autres équipes, reconstituez le code complet, et présentez-le au maître du jeu.",
+  },
 } as const);
 
 /** Titres imprimés en haut de chaque énigme. */
@@ -85,7 +89,7 @@ export const TITRES = typographier({
 /** Phrases de solution, pour la page réservée à l'adulte. */
 export const SOLUTIONS = typographier({
   cachette: "La réponse est {reponse} : {cachette}.",
-  cesar: "Décalage de {decalage} rangs. La réponse est {reponse} : {cachette}.",
+  cesar: "Décalage de {decalage} {rangs}. La réponse est {reponse} : {cachette}.",
   chiffre: "Le résultat est {reponse}. C'est le chiffre n° {position} du code.",
   bonus: "Réponse : {reponse}.",
   intrus: "L'intrus est en ligne {ligne}, colonne {colonne} : c'est {intrus} au milieu des {commun}.",

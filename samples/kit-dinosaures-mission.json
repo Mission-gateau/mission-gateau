@@ -60,42 +60,42 @@
     },
     {
       "debut": 8,
-      "duree": 4,
+      "duree": 3,
       "titre": "Étape 1",
       "detail": "Sous le canapé. La carte mène à la cachette suivante."
     },
     {
-      "debut": 12,
-      "duree": 4,
+      "debut": 11,
+      "duree": 3,
       "titre": "Étape 2",
       "detail": "Sous le lit. La carte mène à la cachette suivante."
     },
     {
-      "debut": 16,
-      "duree": 4,
+      "debut": 14,
+      "duree": 3,
       "titre": "Étape 3",
       "detail": "Dans le panier à linge propre. La carte mène à la cachette suivante."
     },
     {
-      "debut": 20,
-      "duree": 4,
+      "debut": 17,
+      "duree": 3,
       "titre": "Étape 4",
       "detail": "Dans le pot à crayons. La carte mène à la cachette suivante."
     },
     {
-      "debut": 24,
-      "duree": 4,
+      "debut": 20,
+      "duree": 3,
       "titre": "Étape 5",
       "detail": "Sous la table. Dernière carte : les enfants reviennent vous voir."
     },
     {
-      "debut": 28,
-      "duree": 5,
+      "debut": 23,
+      "duree": 7,
       "titre": "Le code et le trésor",
       "detail": "Les équipes mettent leurs chiffres en commun, annoncent le code, et vous remettez le trésor."
     },
     {
-      "debut": 33,
+      "debut": 30,
       "duree": 0,
       "titre": "Et ensuite",
       "detail": "Gâteau, cadeaux, et remise des diplômes."
@@ -263,41 +263,51 @@
             "taille": 8,
             "grille": [
               [
+                "T",
+                "R",
+                "E",
                 "M",
-                "O",
-                "N",
-                "T",
-                "A",
-                "G",
-                "N",
-                "E"
+                "P",
+                "L",
+                "I",
+                "N"
               ],
               [
-                "A",
-                "V",
+                "S",
+                "R",
                 "E",
-                "N",
-                "T",
+                "I",
+                "L",
+                "L",
+                "O",
+                "C"
+              ],
+              [
+                "E",
+                "S",
+                "R",
+                "E",
+                "V",
+                "A",
+                "R",
+                "T"
+              ],
+              [
+                "C",
+                "O",
+                "Q",
                 "U",
-                "R",
+                "I",
+                "L",
+                "L",
                 "E"
               ],
               [
-                "V",
-                "O",
-                "I",
-                "L",
-                "I",
-                "E",
                 "R",
-                "S"
-              ],
-              [
                 "E",
+                "I",
                 "L",
-                "O",
-                "S",
-                "S",
+                "C",
                 "U",
                 "O",
                 "B"
@@ -313,29 +323,19 @@
                 "S"
               ],
               [
-                "B",
-                "O",
-                "U",
-                "C",
+                "T",
+                "E",
                 "L",
+                "F",
+                "F",
                 "I",
-                "E",
-                "R"
-              ],
-              [
-                "V",
-                "O",
-                "Y",
-                "A",
-                "G",
-                "E",
                 "S",
                 "P"
               ],
               [
-                "L",
-                "A",
                 "C",
+                "A",
+                "P",
                 "A",
                 "N",
                 "I",
@@ -344,18 +344,18 @@
               ]
             ],
             "mots": [
-              "AVENTURE",
               "BOUCLIER",
-              "BOUSSOLE",
+              "CAP",
               "CASCADES",
-              "LAC",
-              "MONTAGNE",
-              "VOILIERS",
-              "VOYAGES"
+              "COLLIERS",
+              "COQUILLE",
+              "SIFFLET",
+              "TRAVERSE",
+              "TREMPLIN"
             ],
             "placements": [
               {
-                "mot": "MONTAGNE",
+                "mot": "TREMPLIN",
                 "cases": [
                   [
                     0,
@@ -392,7 +392,7 @@
                 ]
               },
               {
-                "mot": "AVENTURE",
+                "mot": "COLLIERS",
                 "cases": [
                   [
                     0,
@@ -429,7 +429,7 @@
                 ]
               },
               {
-                "mot": "VOILIERS",
+                "mot": "TRAVERSE",
                 "cases": [
                   [
                     0,
@@ -466,7 +466,7 @@
                 ]
               },
               {
-                "mot": "BOUSSOLE",
+                "mot": "COQUILLE",
                 "cases": [
                   [
                     0,
@@ -499,43 +499,6 @@
                   [
                     7,
                     3
-                  ]
-                ]
-              },
-              {
-                "mot": "CASCADES",
-                "cases": [
-                  [
-                    0,
-                    4
-                  ],
-                  [
-                    1,
-                    4
-                  ],
-                  [
-                    2,
-                    4
-                  ],
-                  [
-                    3,
-                    4
-                  ],
-                  [
-                    4,
-                    4
-                  ],
-                  [
-                    5,
-                    4
-                  ],
-                  [
-                    6,
-                    4
-                  ],
-                  [
-                    7,
-                    4
                   ]
                 ]
               },
@@ -544,6 +507,43 @@
                 "cases": [
                   [
                     0,
+                    4
+                  ],
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    2,
+                    4
+                  ],
+                  [
+                    3,
+                    4
+                  ],
+                  [
+                    4,
+                    4
+                  ],
+                  [
+                    5,
+                    4
+                  ],
+                  [
+                    6,
+                    4
+                  ],
+                  [
+                    7,
+                    4
+                  ]
+                ]
+              },
+              {
+                "mot": "CASCADES",
+                "cases": [
+                  [
+                    0,
                     5
                   ],
                   [
@@ -577,7 +577,7 @@
                 ]
               },
               {
-                "mot": "VOYAGES",
+                "mot": "SIFFLET",
                 "cases": [
                   [
                     0,
@@ -610,7 +610,7 @@
                 ]
               },
               {
-                "mot": "LAC",
+                "mot": "CAP",
                 "cases": [
                   [
                     0,

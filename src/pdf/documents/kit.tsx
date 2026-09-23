@@ -4,7 +4,7 @@ import { fichesEquipe } from "../../engine/kit";
 import { remplir } from "../../engine/texte";
 import type { Kit } from "../../engine/types";
 import { GUIDE } from "../../contenu/guide";
-import { theme } from "../../contenu/themes";
+import { selonEquipes, theme } from "../../contenu/themes";
 import { Icone, LettresDetachees, PiedDePage, Puce, TraitDeDecoupe } from "../composants/base";
 import { VueEnigme } from "../composants/enigmes";
 import {
@@ -137,11 +137,11 @@ export function documentKit(kit: Kit) {
         <PiedDePage note="Guide" />
         <Text style={styles.titre1}>{GUIDE.titreLecture}</Text>
         <View style={styles.encadre}>
-          <Text style={{ fontSize: 12, lineHeight: 1.6 }}>{remplir(textes.histoire, valeursTextes(kit))}</Text>
+          <Text style={{ fontSize: 12, lineHeight: 1.6 }}>{remplir(selonEquipes(textes.histoire, kit.equipes.length), valeursTextes(kit))}</Text>
         </View>
         <Text style={styles.titre2}>{GUIDE.titreBriefing}</Text>
         <View style={styles.encadre}>
-          <Text style={{ fontSize: 11.5, lineHeight: 1.6 }}>{remplir(textes.briefing, valeursTextes(kit))}</Text>
+          <Text style={{ fontSize: 11.5, lineHeight: 1.6 }}>{remplir(selonEquipes(textes.briefing, kit.equipes.length), valeursTextes(kit))}</Text>
         </View>
         <Text style={styles.titre2}>{GUIDE.titreDepart}</Text>
         <View style={styles.encadre}>
@@ -265,7 +265,7 @@ export function documentKit(kit: Kit) {
           </View>
           <Text style={[styles.titre1, { textAlign: "center" }]}>{GUIDE.titreTresor}</Text>
           <Text style={{ fontSize: 13, lineHeight: 1.7, textAlign: "center", paddingHorizontal: 30 }}>
-            {remplir(textes.tresor, valeursTextes(kit))}
+            {remplir(selonEquipes(textes.tresor, kit.equipes.length), valeursTextes(kit))}
           </Text>
           {kit.codeFinal ? (
             <View style={{ marginTop: 20, borderWidth: 1.4, borderColor: COULEURS.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}>

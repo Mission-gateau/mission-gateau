@@ -73,6 +73,29 @@ export const NOMS_EQUIPES: Record<SymboleEquipe, string> = {
   soleil: "Soleil",
 };
 
+/**
+ * Minutes que le déroulé consacre à autre chose qu'aux étapes.
+ *
+ * Le déroulé doit se terminer exactement à la durée annoncée au parent : les
+ * étapes se partagent ce qui reste, et le reste de la division s'ajoute à la
+ * séquence du code et du trésor, qui s'étire volontiers.
+ */
+export const MINUTES_ACCUEIL = 5;
+export const MINUTES_LECTURE = 3;
+export const MINUTES_TRESOR = 5;
+const MINUTES_HORS_ETAPES = MINUTES_ACCUEIL + MINUTES_LECTURE + MINUTES_TRESOR;
+
+/** Durée conseillée d'une étape, en minutes. */
+export function minutesParEtape(format: IdFormat, duree: Duree): number {
+  return Math.max(3, Math.floor((duree - MINUTES_HORS_ETAPES) / nombreEtapes(format, duree)));
+}
+
+/** Durée de la séquence finale : le trésor, plus le reste de la division. */
+export function minutesCodeEtTresor(format: IdFormat, duree: Duree): number {
+  const etapes = nombreEtapes(format, duree);
+  return duree - MINUTES_ACCUEIL - MINUTES_LECTURE - etapes * minutesParEtape(format, duree);
+}
+
 /** Cachettes minimum à cocher : au moins une par étape. */
 export function cachettesMinimum(format: IdFormat, duree: Duree): number {
   return nombreEtapes(format, duree);
@@ -170,6 +193,7 @@ export interface ReglesPartie {
   equipes: number;
   longueurCode: number;
   minutesParEtape: number;
+  minutesCodeEtTresor: number;
 }
 
 export function reglesPartie(configuration: Configuration): ReglesPartie {
@@ -180,6 +204,7 @@ export function reglesPartie(configuration: Configuration): ReglesPartie {
     etapes,
     equipes: nombreEquipes(format, configuration.nombreEnfants),
     longueurCode: longueurCode(format),
-    minutesParEtape: Math.max(3, Math.round((configuration.duree - 10) / etapes)),
+    minutesParEtape: minutesParEtape(format, configuration.duree),
+    minutesCodeEtTresor: minutesCodeEtTresor(format, configuration.duree),
   };
 }

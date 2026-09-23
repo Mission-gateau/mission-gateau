@@ -74,7 +74,7 @@ export const SITE = typographier({
 
   titreSecurite: "Des cachettes sûres, choisies par vous",
   securiteTexte:
-    "La liste des cachettes est fermée et pensée pour la maison : aucune n'est un appareil, une prise, une fenêtre, un balcon ou un escalier, aucune n'oblige à grimper, aucune n'est dans la salle de bains ni à l'extérieur. Vous cochez celles que vous avez, et le guide vous rappelle d'écarter celles qui seraient trop près du four ou des plaques.",
+    "La liste des cachettes est fermée et pensée pour la maison : aucune n'est un appareil, une prise, une fenêtre, un balcon ou un escalier, aucune n'oblige à grimper, aucune n'est dans la salle de bains ni à l'extérieur. Vous cochez celles que vous avez, et le formulaire vous rappelle, au moment de choisir, d'écarter celles qui seraient trop près du four ou des plaques.",
 
   titreDonnees: "Vos réponses restent chez vous",
   donneesTexte:

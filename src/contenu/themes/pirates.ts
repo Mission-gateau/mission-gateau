@@ -46,8 +46,12 @@ export const PIRATES: Theme = {
       titreKit: "Le trésor du capitaine",
       histoire:
         "Il y a très longtemps, un capitaine sans peur a fait le tour du monde. Il rapportait des coffres de partout : des pièces, des perles, des cartes. Un jour, la tempête l'a poussé jusqu'ici. Son bateau était trop abîmé pour repartir chargé. Alors il a caché son dernier coffre dans cette maison, et il a découpé sa carte en morceaux pour que personne ne la lise en entier. Ces morceaux, les voici. Chacun mène au suivant. Le dernier mène au coffre. Personne ne l'a ouvert depuis. Aujourd'hui, c'est à vous de jouer : le trésor revient à {prenom}, qui a {age} ans.",
-      briefing:
-        "Vous êtes l'équipage. Chaque carte trouvée vous indique la cachette suivante : lisez-la bien, la réponse est le nom d'un endroit de la maison. Certaines cartes cachent aussi un chiffre : notez-le, il fait partie du code du coffre. Apportez-moi chaque carte résolue. Bonne chance.",
+      briefing: {
+        uneEquipe:
+          "Vous êtes l'équipage. Chaque carte trouvée vous indique la cachette suivante : lisez-la bien, la réponse est le nom d'un endroit de la maison. Certaines cartes cachent aussi un chiffre : notez-le, il fait partie du code du coffre. Apportez-moi chaque carte résolue. Bonne chance.",
+        plusieursEquipes:
+          "Vous formez plusieurs équipes, et chacune a ses propres cartes : dans une cachette, ne prenez que celles qui portent votre symbole. Chaque carte vous indique la cachette suivante : la réponse est le nom d'un endroit de la maison. Certaines cartes cachent un chiffre du code : notez-le avec son rang. Apportez-moi chaque carte résolue. Bonne chance.",
+      },
       reussites: [
         "Bien vu ! La piste tient bon.",
         "Le capitaine n'aurait pas fait mieux.",
@@ -66,16 +70,24 @@ export const PIRATES: Theme = {
       titreKit: "Le coffre scellé",
       histoire:
         "Le capitaine Rovan ne faisait confiance à personne, pas même à son équipage. Quand il a compris qu'il ne repartirait plus, il a scellé son coffre avec une serrure à quatre chiffres et il a dispersé ces chiffres dans une série d'énigmes. Chaque énigme mène à une cachette, chaque cachette contient la suivante, et quatre d'entre elles livrent un chiffre du code. Il a laissé ce mot : celui qui aura la patience de tout résoudre méritera ce qu'il y a dedans. Trois équipages ont essayé. Aucun n'est allé au bout. Le coffre est toujours là, dans cette maison, et le temps vous est compté.",
-      briefing:
-        "Vous jouez ensemble, mais chaque équipe a ses propres énigmes. Une énigme résolue donne le nom d'une cachette : allez-y, la carte suivante vous y attend, marquée de votre symbole. Quatre énigmes donnent chacune un chiffre du code, avec son rang. Aucune équipe ne possède le code entier : il faudra tout rassembler à la fin. Apportez-moi vos réponses, je valide. Le chronomètre part maintenant.",
+      briefing: {
+        uneEquipe:
+          "La piste est à vous seuls. Une énigme résolue donne le nom d'une cachette : allez-y, la carte suivante vous y attend. Quatre énigmes donnent chacune un chiffre du code, avec son rang : gardez-les tous, il en faut quatre pour ouvrir le coffre. Apportez-moi vos réponses, je valide. Le chronomètre part maintenant.",
+        plusieursEquipes:
+          "Vous jouez ensemble, mais chaque équipe a ses propres énigmes : dans une cachette, ne prenez que les cartes marquées de votre symbole. Une énigme résolue donne le nom d'une cachette, et la carte suivante vous y attend. Quatre énigmes donnent chacune un chiffre du code, avec son rang. Aucune équipe ne possède le code entier : il faudra tout rassembler à la fin. Apportez-moi vos réponses, je valide. Le chronomètre part maintenant.",
+      },
       reussites: [
         "Exact. Vous gagnez du temps.",
         "La serrure recule d'un cran.",
         "Bien joué : Rovan n'avait pas prévu ça.",
         "Encore une énigme de moins.",
       ],
-      tresor:
-        "Le code {code} entre dans la serrure et le coffre du capitaine Rovan cède enfin. Ce qu'il gardait depuis tout ce temps revient à {prenom}, qui a {age} ans aujourd'hui. Vous l'avez ouvert ensemble : aucune équipe n'y serait arrivée seule.",
+      tresor: {
+        uneEquipe:
+          "Le code {code} entre dans la serrure et le coffre du capitaine Rovan cède enfin. Ce qu'il gardait depuis tout ce temps revient à {prenom}, qui a {age} ans aujourd'hui. Vous avez rassemblé les quatre chiffres jusqu'au dernier.",
+        plusieursEquipes:
+          "Le code {code} entre dans la serrure et le coffre du capitaine Rovan cède enfin. Ce qu'il gardait depuis tout ce temps revient à {prenom}, qui a {age} ans aujourd'hui. Vous l'avez ouvert ensemble : aucune équipe n'y serait arrivée seule.",
+      },
       diplomeTitre: "Diplôme du code brisé",
       diplomeTexte:
         "Ce diplôme est décerné à {nom}, pour avoir percé les énigmes du capitaine Rovan et reconstitué le code du coffre, chez {prenom}.",

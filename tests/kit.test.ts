@@ -8,6 +8,7 @@ import {
   schemaConfiguration,
 } from "@/engine/configuration";
 import { construireKit, toutesLesEnigmes } from "@/engine/kit";
+import { deroule, dureeTotale } from "@/pdf/deroule";
 import { verifierKit } from "@/engine/validation";
 import type { IdFormat, TypeEnigme } from "@/engine/types";
 import { AGES, DUREES, THEMES, TOUTES_CACHETTES, configuration, graines } from "./aide";
@@ -254,6 +255,44 @@ describe("types d'énigmes attendus par format", () => {
             if (carte.code) chiffreTrouve = true;
           }
         }
+      }
+    }
+  });
+});
+
+describe("durée annoncée", () => {
+  /**
+   * Le parent choisit 30, 45 ou 60 minutes : le déroulé minute par minute doit
+   * se terminer exactement là. Au lot 2 il dépassait de 2 à 3 minutes dans les
+   * neuf combinaisons, l'accueil, la lecture et le trésor prenant 13 minutes
+   * quand la formule n'en retirait que 10.
+   */
+  it("le déroulé se termine exactement à la durée choisie, dans les 9 combinaisons", () => {
+    const ecarts: string[] = [];
+    for (const age of AGES) {
+      for (const duree of DUREES) {
+        const kit = construireKit(configuration({ age, duree }), "duree0001");
+        const total = dureeTotale(kit);
+        if (total !== duree) ecarts.push(`${kit.format}/${duree} min → ${total} min`);
+      }
+    }
+    expect(ecarts).toEqual([]);
+  });
+
+  it("chaque étape dure au moins trois minutes, et le déroulé ne saute rien", () => {
+    for (const age of AGES) {
+      for (const duree of DUREES) {
+        const kit = construireKit(configuration({ age, duree }), "duree0002");
+        expect(kit.minutesParEtape).toBeGreaterThanOrEqual(3);
+        const moments = deroule(kit);
+        // Accueil, lecture, une ligne par étape, le trésor, puis « et ensuite ».
+        expect(moments).toHaveLength(kit.etapes.length + 4);
+        moments.slice(0, -1).forEach((moment, index) => {
+          if (index > 0) {
+            expect(moment.debut).toBe(moments[index - 1]!.debut + moments[index - 1]!.duree);
+          }
+          expect(moment.duree).toBeGreaterThan(0);
+        });
       }
     }
   });

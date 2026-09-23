@@ -53,14 +53,24 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Fredoka",
   },
-  tableau: { borderWidth: 0.8, borderColor: COULEURS.trait, alignSelf: "flex-start" },
-  cellule: {
-    borderWidth: 0.4,
+  // Le tableau ne porte que ses bords haut et gauche, chaque cellule ne porte
+  // que ses bords droit et bas : deux cellules voisines ne tracent donc jamais
+  // deux traits l'un contre l'autre. Toutes les cellules d'une ligne ont la
+  // même hauteur, sans quoi la ligne laissait des jours.
+  tableau: {
+    alignSelf: "flex-start",
+    borderTopWidth: 0.8,
+    borderLeftWidth: 0.8,
     borderColor: COULEURS.trait,
-    padding: 3,
-    fontSize: 8.5,
+  },
+  cellule: {
+    borderRightWidth: 0.8,
+    borderBottomWidth: 0.8,
+    borderColor: COULEURS.trait,
+    paddingHorizontal: 4,
     justifyContent: "center",
   },
+  celluleTexte: { fontSize: 8.5 },
   morse: { fontFamily: "Fredoka", fontSize: 14, lineHeight: 1.5 },
   alphabet: { fontSize: 8, lineHeight: 1.7, color: COULEURS.encreClaire },
 });
@@ -127,17 +137,21 @@ function VueLabyrinthe({ laby, cote }: { laby: Labyrinthe; cote: number }) {
  *
  * Dessiné en SVG, et non écrit : le caractère « ● » n'existe ni dans Fredoka
  * ni dans Nunito, et @react-pdf/renderer se rabattait alors sur Helvetica,
- * qui n'est pas incorporée au fichier — la case imprimait « Ï ». Le rond
- * s'accompagne d'un trait épais autour de la case, de façon que le repère
- * reste visible même imprimé en noir et blanc.
+ * qui n'est pas incorporée au fichier — la case imprimait « Ï ».
+ *
+ * Le rond se tient dans le coin supérieur gauche et ne dépasse pas le
+ * cinquième de la case : le centre reste libre pour que l'enfant y écrive son
+ * chiffre. Le trait épais autour de la case garde le repère visible à
+ * l'impression en noir et blanc.
  */
 function RondRepere({ taille }: { taille: number }) {
-  const rayon = Math.max(2.4, taille * 0.16);
-  const cote = rayon * 2 + 2;
+  const diametre = Math.min(taille / 5, Math.max(3, taille * 0.18));
   return (
-    <Svg width={cote} height={cote} viewBox={`0 0 ${cote} ${cote}`}>
-      <Circle cx={cote / 2} cy={cote / 2} r={rayon} fill={COULEURS.encre} />
-    </Svg>
+    <View style={{ position: "absolute", top: 1.5, left: 1.5 }}>
+      <Svg width={diametre} height={diametre} viewBox={`0 0 ${diametre} ${diametre}`}>
+        <Circle cx={diametre / 2} cy={diametre / 2} r={diametre / 2} fill={COULEURS.encre} />
+      </Svg>
+    </View>
   );
 }
 
@@ -174,8 +188,8 @@ function VueSudoku({
                   cle ? { borderWidth: 2.2, borderColor: COULEURS.encre } : {},
                 ]}
               >
+                {cle ? <RondRepere taille={cote} /> : null}
                 {valeur !== null ? <Text>{valeur}</Text> : null}
-                {valeur === null && cle ? <RondRepere taille={cote} /> : null}
               </View>
             );
           })}
@@ -353,25 +367,28 @@ export function VueEnigme({ enigme, compact = false }: { enigme: Enigme; compact
     case "logique": {
       const largeurNom = 110;
       const largeurCol = 90;
+      const hauteurLigne = 22;
       return (
         <View style={s.bloc}>
           <EnTete enigme={enigme} />
           <View style={s.tableau}>
             <View style={{ flexDirection: "row" }}>
-              <Text style={[s.cellule, { width: largeurNom, fontWeight: 700 }]}>Qui</Text>
+              <View style={[s.cellule, { width: largeurNom, height: hauteurLigne }]}>
+                <Text style={[s.celluleTexte, { fontWeight: 700 }]}>Qui</Text>
+              </View>
               {enigme.colonnes.map((colonne) => (
-                <Text key={colonne.titre} style={[s.cellule, { width: largeurCol, fontWeight: 700 }]}>
-                  {colonne.titre}
-                </Text>
+                <View key={colonne.titre} style={[s.cellule, { width: largeurCol, height: hauteurLigne }]}>
+                  <Text style={[s.celluleTexte, { fontWeight: 700 }]}>{colonne.titre}</Text>
+                </View>
               ))}
             </View>
             {enigme.lignes.map((nom) => (
               <View key={nom} style={{ flexDirection: "row" }}>
-                <Text style={[s.cellule, { width: largeurNom }]}>{nom}</Text>
+                <View style={[s.cellule, { width: largeurNom, height: hauteurLigne }]}>
+                  <Text style={s.celluleTexte}>{nom}</Text>
+                </View>
                 {enigme.colonnes.map((colonne) => (
-                  <Text key={colonne.titre} style={[s.cellule, { width: largeurCol, height: 20 }]}>
-                    {" "}
-                  </Text>
+                  <View key={colonne.titre} style={[s.cellule, { width: largeurCol, height: hauteurLigne }]} />
                 ))}
               </View>
             ))}

@@ -18,7 +18,7 @@ export const FORMULAIRE = typographier({
     { cle: "prenom", titre: "Le prénom de l'enfant", aide: "Il apparaît dans l'histoire, sur le trésor et sur les diplômes." },
     { cle: "enfants", titre: "Combien d'enfants en tout ?", aide: "Enfant fêté compris. Les équipes se forment toutes seules." },
     { cle: "duree", titre: "Combien de temps de jeu ?", aide: "Le nombre d'étapes s'ajuste à la durée." },
-    { cle: "cachettes", titre: "Quelles cachettes avez-vous ?", aide: "Décochez ce que vous n'avez pas. Toutes sont à hauteur d'enfant, et aucune n'est un appareil, une prise ou une fenêtre." },
+    { cle: "cachettes", titre: "Quelles cachettes avez-vous ?", aide: "Décochez ce que vous n'avez pas. Toutes sont à hauteur d'enfant, et aucune n'est un appareil, une prise ou une fenêtre. Décochez aussi celles qui, chez vous, se trouveraient près du four ou des plaques : le jeu s'adapte au nombre de cachettes cochées." },
     { cle: "fete", titre: "Quelques détails, si vous voulez", aide: "Tout est facultatif : ce que vous laissez vide devient une ligne à compléter à la main." },
   ],
 

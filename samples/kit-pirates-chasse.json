@@ -60,42 +60,42 @@
     },
     {
       "debut": 8,
-      "duree": 7,
+      "duree": 6,
       "titre": "Étape 1",
       "detail": "Derrière un livre, sur une étagère basse. La carte mène à la cachette suivante."
     },
     {
-      "debut": 15,
-      "duree": 7,
+      "debut": 14,
+      "duree": 6,
       "titre": "Étape 2",
       "detail": "Sous l'oreiller. La carte mène à la cachette suivante."
     },
     {
-      "debut": 22,
-      "duree": 7,
+      "debut": 20,
+      "duree": 6,
       "titre": "Étape 3",
       "detail": "Sous le canapé. La carte mène à la cachette suivante."
     },
     {
-      "debut": 29,
-      "duree": 7,
+      "debut": 26,
+      "duree": 6,
       "titre": "Étape 4",
       "detail": "Dans la corbeille à fruits. La carte mène à la cachette suivante."
     },
     {
-      "debut": 36,
-      "duree": 7,
+      "debut": 32,
+      "duree": 6,
       "titre": "Étape 5",
       "detail": "Sous un coussin du canapé. Dernière carte : les enfants reviennent vous voir."
     },
     {
-      "debut": 43,
-      "duree": 5,
+      "debut": 38,
+      "duree": 7,
       "titre": "Le trésor",
       "detail": "Vous conduisez le groupe jusqu'au trésor et vous l'ouvrez tous ensemble."
     },
     {
-      "debut": 48,
+      "debut": 45,
       "duree": 0,
       "titre": "Et ensuite",
       "detail": "Gâteau, cadeaux, et remise des diplômes."

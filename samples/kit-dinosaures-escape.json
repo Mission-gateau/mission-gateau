@@ -58,60 +58,60 @@
     },
     {
       "debut": 8,
-      "duree": 6,
+      "duree": 5,
       "titre": "Étape 1",
       "detail": "Sous le tapis. La carte mène à la cachette suivante."
     },
     {
-      "debut": 14,
-      "duree": 6,
+      "debut": 13,
+      "duree": 5,
       "titre": "Étape 2",
       "detail": "Sous une chaise. La carte mène à la cachette suivante."
     },
     {
-      "debut": 20,
-      "duree": 6,
+      "debut": 18,
+      "duree": 5,
       "titre": "Étape 3",
       "detail": "Dans une boîte à chaussures. La carte mène à la cachette suivante."
     },
     {
-      "debut": 26,
-      "duree": 6,
+      "debut": 23,
+      "duree": 5,
       "titre": "Étape 4",
       "detail": "Dans le tiroir des torchons. La carte mène à la cachette suivante."
     },
     {
-      "debut": 32,
-      "duree": 6,
+      "debut": 28,
+      "duree": 5,
       "titre": "Étape 5",
       "detail": "Dans la caisse à jouets. La carte mène à la cachette suivante."
     },
     {
-      "debut": 38,
-      "duree": 6,
+      "debut": 33,
+      "duree": 5,
       "titre": "Étape 6",
       "detail": "Sous l'oreiller. La carte mène à la cachette suivante."
     },
     {
-      "debut": 44,
-      "duree": 6,
+      "debut": 38,
+      "duree": 5,
       "titre": "Étape 7",
       "detail": "Dans le pot à crayons. La carte mène à la cachette suivante."
     },
     {
-      "debut": 50,
-      "duree": 6,
+      "debut": 43,
+      "duree": 5,
       "titre": "Étape 8",
       "detail": "Derrière un livre, sur une étagère basse. Dernière carte : les enfants reviennent vous voir."
     },
     {
-      "debut": 56,
-      "duree": 5,
+      "debut": 48,
+      "duree": 12,
       "titre": "Le code et le trésor",
-      "detail": "Les équipes mettent leurs chiffres en commun, annoncent le code, et vous remettez le trésor."
+      "detail": "L'équipe rassemble ses chiffres, annonce le code au complet, et vous remettez le trésor."
     },
     {
-      "debut": 61,
+      "debut": 60,
       "duree": 0,
       "titre": "Et ensuite",
       "detail": "Gâteau, cadeaux, et remise des diplômes."
@@ -3029,7 +3029,7 @@
             "solution": "Le chemin compte 95 cases."
           },
           "versTresor": true,
-          "messageFinal": "Fin de la piste. Réunissez vos chiffres avec ceux des autres équipes, reconstituez le code complet, et présentez-le au maître du jeu."
+          "messageFinal": "Fin de la piste. Rassemblez les chiffres que vous avez trouvés, reconstituez le code complet, et présentez-le au maître du jeu."
         }
       ]
     }

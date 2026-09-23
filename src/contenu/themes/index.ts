@@ -5,7 +5,8 @@ import { DINOSAURES } from "./dinosaures";
 import { PIRATES } from "./pirates";
 import type { Theme } from "./types";
 
-export type { Theme, TextesFormat } from "./types";
+export type { TexteSelonEquipes, Theme, TextesFormat } from "./types";
+export { selonEquipes } from "./types";
 
 /**
  * Un thème = un fichier. En ajouter un ne touche à aucun code d'énigme :

@@ -106,6 +106,7 @@ export function enigmeCesar(ctx: ContexteEnigme, cible: Cachette, cesar: Context
     // Seule la page réservée à l'adulte donne le décalage.
     solution: remplir(SOLUTIONS.cesar, {
       decalage: cesar.decalage,
+      rangs: cesar.decalage > 1 ? "rangs" : "rang",
       reponse: cible.motCle,
       cachette: cible.libelle,
     }),
