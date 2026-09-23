@@ -1,0 +1,638 @@
+{
+  "exemple": {
+    "theme": "pirates",
+    "format": "chasse",
+    "formatLibelle": "Chasse au trésor (4-6 ans)",
+    "graine": "exemple001"
+  },
+  "configuration": {
+    "theme": "pirates",
+    "age": 5,
+    "prenom": "Maya",
+    "nombreEnfants": 6,
+    "duree": 45,
+    "cachettes": [
+      "canape",
+      "coussin",
+      "table",
+      "chaise",
+      "tapis",
+      "rideau",
+      "livre",
+      "jouets",
+      "lit",
+      "oreiller",
+      "panier",
+      "boite",
+      "crayons",
+      "cartable",
+      "frigo",
+      "torchon",
+      "marmite",
+      "fruits",
+      "porte",
+      "manteau"
+    ],
+    "fete": {
+      "date": "samedi 18 octobre",
+      "heure": "14 h 30",
+      "adresse": "12 rue des Lilas",
+      "contact": "06 00 00 00 00",
+      "invites": [
+        "Anaïs",
+        "Basile",
+        "Chloé",
+        "Diego"
+      ]
+    }
+  },
+  "codeFinal": null,
+  "deroule": [
+    {
+      "debut": 0,
+      "duree": 5,
+      "titre": "Accueil",
+      "detail": "Rassembler les enfants et distribuer le matériel."
+    },
+    {
+      "debut": 5,
+      "duree": 3,
+      "titre": "Lecture de l'histoire",
+      "detail": "Lire l'introduction à voix haute, puis le briefing et la devinette de départ."
+    },
+    {
+      "debut": 8,
+      "duree": 7,
+      "titre": "Étape 1",
+      "detail": "Derrière la porte d'entrée. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 15,
+      "duree": 7,
+      "titre": "Étape 2",
+      "detail": "Dans la caisse à jouets. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 22,
+      "duree": 7,
+      "titre": "Étape 3",
+      "detail": "Derrière un livre, sur une étagère basse. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 29,
+      "duree": 7,
+      "titre": "Étape 4",
+      "detail": "Sous le tapis. La carte mène à la cachette suivante."
+    },
+    {
+      "debut": 36,
+      "duree": 7,
+      "titre": "Étape 5",
+      "detail": "Sous le canapé. Dernière carte : les enfants reviennent vous voir."
+    },
+    {
+      "debut": 43,
+      "duree": 5,
+      "titre": "Le trésor",
+      "detail": "Vous conduisez le groupe jusqu'au trésor et vous l'ouvrez tous ensemble."
+    },
+    {
+      "debut": 48,
+      "duree": 0,
+      "titre": "Et ensuite",
+      "detail": "Gâteau, cadeaux, et remise des diplômes."
+    }
+  ],
+  "parcours": [
+    {
+      "etape": 1,
+      "cachette": "Derrière la porte d'entrée",
+      "motCle": "PORTE",
+      "cachetteSuivante": "Dans la caisse à jouets",
+      "indices": [
+        "Cherchez du côté de : Entrée.",
+        "C'est ce qu'on pousse pour entrer dans la maison.",
+        "La réponse : Derrière la porte d'entrée."
+      ]
+    },
+    {
+      "etape": 2,
+      "cachette": "Dans la caisse à jouets",
+      "motCle": "JOUETS",
+      "cachetteSuivante": "Derrière un livre, sur une étagère basse",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est un contenant, et il est déjà plein de choses amusantes.",
+        "La réponse : Dans la caisse à jouets."
+      ]
+    },
+    {
+      "etape": 3,
+      "cachette": "Derrière un livre, sur une étagère basse",
+      "motCle": "LIVRE",
+      "cachetteSuivante": "Sous le tapis",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "Cherchez sur une étagère basse, derrière quelque chose qui se lit.",
+        "La réponse : Derrière un livre, sur une étagère basse."
+      ]
+    },
+    {
+      "etape": 4,
+      "cachette": "Sous le tapis",
+      "motCle": "TAPIS",
+      "cachetteSuivante": "Sous le canapé",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est par terre, et il faut en soulever un coin.",
+        "La réponse : Sous le tapis."
+      ]
+    },
+    {
+      "etape": 5,
+      "cachette": "Sous le canapé",
+      "motCle": "CANAPE",
+      "cachetteSuivante": "le trésor",
+      "indices": [
+        "Cherchez du côté de : Salon et salle à manger.",
+        "C'est un meuble sur lequel on s'assoit à plusieurs, et il faut se baisser.",
+        "La réponse : Sous le canapé."
+      ]
+    }
+  ],
+  "depart": {
+    "id": "depart",
+    "type": "devinette",
+    "titre": "Devinette",
+    "consigne": "Écoute bien la comptine. Elle dit où aller.",
+    "texte": "On me pousse pour entrer. Je fais parfois du bruit. Regarde derrière moi !",
+    "reponse": "PORTE",
+    "role": "navigation",
+    "surFiche": false,
+    "solution": "La réponse est PORTE : Derrière la porte d'entrée."
+  },
+  "equipes": [
+    {
+      "nom": "Étoile",
+      "symbole": "etoile",
+      "chiffresDuCode": [],
+      "fiches": [
+        {
+          "numero": 1,
+          "etape": 4,
+          "enigme": "Le labyrinthe"
+        }
+      ],
+      "cartes": [
+        {
+          "etape": 1,
+          "cachette": "porte",
+          "ambiance": "Le vieux marin grommelle son indice :",
+          "navigation": {
+            "id": "e1-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "Je suis une grande boîte. Dedans, il y a des jeux. Fouille-moi !",
+            "reponse": "JOUETS",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est JOUETS : Dans la caisse à jouets."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e1-etoile-bonus",
+            "type": "intrus",
+            "titre": "Cherche l'intrus",
+            "consigne": "Il y a un dessin qui n'est pas comme les autres. Montre-le du doigt.",
+            "grille": [
+              [
+                "ancre",
+                "ancre",
+                "ancre",
+                "ancre"
+              ],
+              [
+                "coquillage",
+                "ancre",
+                "ancre",
+                "ancre"
+              ],
+              [
+                "ancre",
+                "ancre",
+                "ancre",
+                "ancre"
+              ],
+              [
+                "ancre",
+                "ancre",
+                "ancre",
+                "ancre"
+              ]
+            ],
+            "icone": "ancre",
+            "iconeIntrus": "coquillage",
+            "position": [
+              0,
+              1
+            ],
+            "reponse": "L2C1",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "L'intrus est en ligne 2, colonne 1 : c'est coquillage au milieu des ancre."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 2,
+          "cachette": "jouets",
+          "ambiance": "Le vieux marin grommelle son indice :",
+          "navigation": {
+            "id": "e2-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "J'ai plein de pages et des images. On me lit le soir. Cherche derrière moi !",
+            "reponse": "LIVRE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est LIVRE : Derrière un livre, sur une étagère basse."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e2-etoile-bonus",
+            "type": "suite",
+            "titre": "La suite logique",
+            "consigne": "Regarde bien l'ordre des dessins. Quel dessin manque à la fin ?",
+            "motif": [
+              "carte_tresor",
+              "crabe"
+            ],
+            "affichee": [
+              "carte_tresor",
+              "crabe",
+              "carte_tresor",
+              "crabe",
+              "carte_tresor",
+              "crabe",
+              null
+            ],
+            "choix": [
+              "voilier",
+              "carte_tresor",
+              "ancre"
+            ],
+            "indexManquant": 6,
+            "reponse": "carte_tresor",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "Le dessin manquant est carte."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 3,
+          "cachette": "livre",
+          "ambiance": "Le vieux marin grommelle son indice :",
+          "navigation": {
+            "id": "e3-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "Je suis tout plat, par terre. On marche sur moi. Soulève-moi !",
+            "reponse": "TAPIS",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est TAPIS : Sous le tapis."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e3-etoile-bonus",
+            "type": "comptage",
+            "titre": "Compte bien",
+            "consigne": "Compte les crabe de la grille. Dis le nombre à voix haute.",
+            "grille": [
+              [
+                "coquillage",
+                "boussole",
+                "boussole",
+                "carte_tresor",
+                "carte_tresor"
+              ],
+              [
+                "coquillage",
+                "carte_tresor",
+                "crabe",
+                "boussole",
+                "crabe"
+              ],
+              [
+                "boussole",
+                "carte_tresor",
+                "carte_tresor",
+                "carte_tresor",
+                "coquillage"
+              ],
+              [
+                "boussole",
+                "crabe",
+                "boussole",
+                "boussole",
+                "carte_tresor"
+              ]
+            ],
+            "iconeCible": "crabe",
+            "total": 3,
+            "reponse": "3",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "Il y a 3 crabe dans la grille."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 4,
+          "cachette": "tapis",
+          "ambiance": "Un coin de la carte au trésor porte ces mots :",
+          "navigation": {
+            "id": "e4-etoile-nav",
+            "type": "devinette",
+            "titre": "Devinette",
+            "consigne": "Écoute bien la comptine. Elle dit où aller.",
+            "texte": "On s'assoit sur moi. Je suis tout doux. Regarde bien dessous !",
+            "reponse": "CANAPE",
+            "role": "navigation",
+            "surFiche": false,
+            "solution": "La réponse est CANAPE : Sous le canapé."
+          },
+          "code": null,
+          "bonus": {
+            "id": "e4-etoile-bonus",
+            "type": "labyrinthe",
+            "titre": "Le labyrinthe",
+            "consigne": "Suis le chemin avec ton doigt, de l'entrée jusqu'à la sortie.",
+            "labyrinthe": {
+              "largeur": 5,
+              "hauteur": 5,
+              "murs": [
+                [
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  },
+                  {
+                    "droite": false,
+                    "bas": false
+                  },
+                  {
+                    "droite": true,
+                    "bas": false
+                  }
+                ],
+                [
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": false,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  },
+                  {
+                    "droite": true,
+                    "bas": true
+                  }
+                ]
+              ],
+              "depart": [
+                0,
+                0
+              ],
+              "arrivee": [
+                4,
+                4
+              ],
+              "chemin": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1
+                ],
+                [
+                  1,
+                  1
+                ],
+                [
+                  1,
+                  0
+                ],
+                [
+                  2,
+                  0
+                ],
+                [
+                  3,
+                  0
+                ],
+                [
+                  3,
+                  1
+                ],
+                [
+                  2,
+                  1
+                ],
+                [
+                  2,
+                  2
+                ],
+                [
+                  1,
+                  2
+                ],
+                [
+                  1,
+                  3
+                ],
+                [
+                  2,
+                  3
+                ],
+                [
+                  2,
+                  4
+                ],
+                [
+                  3,
+                  4
+                ],
+                [
+                  3,
+                  3
+                ],
+                [
+                  4,
+                  3
+                ],
+                [
+                  4,
+                  4
+                ]
+              ]
+            },
+            "reponse": "SORTIE",
+            "role": "bonus",
+            "surFiche": true,
+            "solution": "Le chemin compte 17 cases."
+          },
+          "versTresor": false,
+          "messageFinal": null
+        },
+        {
+          "etape": 5,
+          "cachette": "canape",
+          "ambiance": "Le perroquet répète sans arrêt la même phrase :",
+          "navigation": null,
+          "code": null,
+          "bonus": {
+            "id": "e5-etoile-bonus",
+            "type": "intrus",
+            "titre": "Cherche l'intrus",
+            "consigne": "Il y a un dessin qui n'est pas comme les autres. Montre-le du doigt.",
+            "grille": [
+              [
+                "voilier",
+                "voilier",
+                "voilier",
+                "voilier"
+              ],
+              [
+                "voilier",
+                "coquillage",
+                "voilier",
+                "voilier"
+              ],
+              [
+                "voilier",
+                "voilier",
+                "voilier",
+                "voilier"
+              ],
+              [
+                "voilier",
+                "voilier",
+                "voilier",
+                "voilier"
+              ]
+            ],
+            "icone": "voilier",
+            "iconeIntrus": "coquillage",
+            "position": [
+              1,
+              1
+            ],
+            "reponse": "L2C2",
+            "role": "bonus",
+            "surFiche": false,
+            "solution": "L'intrus est en ligne 2, colonne 2 : c'est coquillage au milieu des voilier."
+          },
+          "versTresor": true,
+          "messageFinal": "Bravo ! Il n'y a plus de carte à trouver. Apporte celle-ci au maître du jeu : le trésor n'est plus très loin."
+        }
+      ]
+    }
+  ],
+  "pages": {
+    "kit": 15,
+    "apercu": 4
+  }
+}
