@@ -197,6 +197,20 @@ describe("de l'aperçu au paiement", () => {
     expect(bouton("Commander et payer").disabled).toBe(false);
   });
 
+  it("revenu de Stripe par « retour », le bouton de paiement se réactive", async () => {
+    await rendre(<Formulaire vente={OFFRE} />);
+    await composerUnApercu();
+    for (const caseACocher of casesAcocher()) await cliquer(caseACocher);
+    await cliquer(bouton("Commander et payer"));
+    expect(navigation.adresses).toHaveLength(1);
+    expect(bouton("Préparation du paiement").disabled).toBe(true);
+    // Le navigateur restitue la page depuis son cache d'historique.
+    await act(async () => {
+      window.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: true }));
+    });
+    expect(bouton("Commander et payer").disabled).toBe(false);
+  });
+
   it("affiche le refus du serveur sans quitter la page", async () => {
     reseau({
       "/api/commande": () => Response.json({ erreur: "La vente du jeu complet n'est pas encore ouverte." }, { status: 503 }),

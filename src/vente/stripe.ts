@@ -17,11 +17,28 @@ export interface PaiementLu {
   id: string;
   /** État du PaymentIntent : « succeeded » quand le paiement est abouti. */
   statut: string;
-  /** Création du paiement, en secondes Unix. */
+  /** Création du PaymentIntent, en secondes Unix : la première tentative. */
   cree: number;
+  /**
+   * Heure du paiement, en secondes Unix : celle du dernier débit, qui est le
+   * débit réussi d'un paiement abouti. Les 30 jours courent à partir d'elle.
+   */
+  payeLe: number;
   metadonnees: Record<string, string>;
   /** Vrai seulement si le paiement a été remboursé en totalité. */
   rembourseEnTotalite: boolean;
+}
+
+/**
+ * Un débit (Charge). Stripe y recopie les métadonnées du paiement au moment
+ * où il le crée, configuration chiffrée comprise, et ne le met plus à jour
+ * ensuite : la tâche d'effacement doit donc aussi passer par les débits.
+ */
+export interface DebitLu {
+  id: string;
+  /** Création du débit, en secondes Unix. */
+  cree: number;
+  metadonnees: Record<string, string>;
 }
 
 export interface SessionLue {
@@ -43,7 +60,13 @@ export interface ClientStripe {
     avant: number,
     page: string | null,
   ): Promise<{ paiements: PaiementLu[]; pageSuivante: string | null }>;
+  /** Débits créés avant `avant` (secondes Unix) qui gardent une copie de la configuration chiffrée. */
+  debitsAvecConfiguration(
+    avant: number,
+    page: string | null,
+  ): Promise<{ debits: DebitLu[]; pageSuivante: string | null }>;
   modifierMetadonnees(idPaiement: string, metadonnees: Record<string, string>): Promise<void>;
+  modifierMetadonneesDuDebit(idDebit: string, metadonnees: Record<string, string>): Promise<void>;
 }
 
 /**
@@ -66,9 +89,14 @@ function lirePaiement(paiement: Stripe.PaymentIntent): PaiementLu {
     id: paiement.id,
     statut: paiement.status,
     cree: paiement.created,
+    payeLe: charge?.created ?? paiement.created,
     metadonnees: { ...(paiement.metadata ?? {}) },
     rembourseEnTotalite: charge?.refunded === true,
   };
+}
+
+function lireDebit(debit: Stripe.Charge): DebitLu {
+  return { id: debit.id, cree: debit.created, metadonnees: { ...(debit.metadata ?? {}) } };
 }
 
 function ressourceAbsente(erreur: unknown): boolean {
@@ -76,8 +104,8 @@ function ressourceAbsente(erreur: unknown): boolean {
 }
 
 /**
- * Le client réel. Null sans clé : la page de commande dit alors que la
- * vérification est momentanément impossible, et rien n'est livré.
+ * Le client réel. Null sans clé : aucune commande ne peut alors être
+ * vérifiée, et rien n'est livré.
  * `options.httpClient` ne sert qu'aux tests, pour lire les requêtes telles
  * qu'elles partiraient sur le réseau.
  */
@@ -134,6 +162,7 @@ export function creerClientStripe(
       const resultat = await stripe.paymentIntents.search({
         query: requeteConfigurationsAvant(avant),
         limit: 100,
+        expand: ["data.latest_charge"],
         ...(page ? { page } : {}),
       });
       return {
@@ -142,8 +171,24 @@ export function creerClientStripe(
       };
     },
 
+    async debitsAvecConfiguration(avant, page) {
+      const resultat = await stripe.charges.search({
+        query: requeteConfigurationsAvant(avant),
+        limit: 100,
+        ...(page ? { page } : {}),
+      });
+      return {
+        debits: resultat.data.map(lireDebit),
+        pageSuivante: resultat.has_more && resultat.next_page ? resultat.next_page : null,
+      };
+    },
+
     async modifierMetadonnees(idPaiement, metadonnees) {
       await stripe.paymentIntents.update(idPaiement, { metadata: metadonnees });
+    },
+
+    async modifierMetadonneesDuDebit(idDebit, metadonnees) {
+      await stripe.charges.update(idDebit, { metadata: metadonnees });
     },
   };
 }

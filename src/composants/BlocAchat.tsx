@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { remplir } from "@/engine/texte";
 import type { Configuration } from "@/engine/types";
 import { SITE } from "@/contenu/site";
@@ -52,6 +52,16 @@ export function BlocAchat({
   const [erreurs, setErreurs] = useState<string[]>([]);
   const accepte = paysAccepte(pays);
   const bouton = remplir(ACHAT.bouton, { prix: offre.prix });
+
+  // Revenu de Stripe par le bouton « retour » du navigateur, la page peut être
+  // restituée telle qu'on l'a quittée, bouton compris : on le réactive.
+  useEffect(() => {
+    const reprendre = (evenement: PageTransitionEvent) => {
+      if (evenement.persisted) setEnvoi(false);
+    };
+    window.addEventListener("pageshow", reprendre);
+    return () => window.removeEventListener("pageshow", reprendre);
+  }, []);
 
   const commander = async () => {
     const soucis: string[] = [];

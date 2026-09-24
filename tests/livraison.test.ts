@@ -148,6 +148,17 @@ describe("état d'une commande, vérifié chez Stripe", () => {
     expect((await etat(limite.reference, null, new Date(MAINTENANT.getTime() + 1000))).etat).toBe("expiree");
   });
 
+  it("les 30 jours courent à partir du débit réussi, pas d'une tentative refusée", async () => {
+    // Carte refusée il y a 31 jours, puis paiement réussi il y a 29 jours : le lien vaut encore.
+    const reessaye = await commandeReglee({ payeLe: new Date(MAINTENANT.getTime() - 29 * JOUR) });
+    stripe.paiements.get(reessaye.paiement.id)!.cree = Math.floor((MAINTENANT.getTime() - 31 * JOUR) / 1000);
+    const etatReessaye = await etat(reessaye.reference);
+    expect(etatReessaye.etat).toBe("payee");
+    expect(etatReessaye.etat === "payee" && etatReessaye.expireLe.getTime()).toBe(
+      MAINTENANT.getTime() - 29 * JOUR + 30 * JOUR,
+    );
+  });
+
   it("remboursée en totalité : plus rien n'est livré", async () => {
     const { reference, sessionId, paiement } = await commandeReglee();
     stripe.rembourser(paiement.id);
@@ -306,6 +317,30 @@ describe("route du kit", () => {
     const tout = journaux.join("\n");
     expect(marquesDans(tout)).toEqual([]);
     expect(tout).not.toContain(paiement.metadonnees.config_1!.slice(0, 30));
+  });
+
+  it("livre un kit dont les invités ont des prénoms inhabituels mais permis", async () => {
+    const invites = ["Léa B.", "O'Neil", "Jean-Luc 2", "Anaïs & Zoé", "M'Baye", "Ève (cousine)"];
+    const { reference } = await commandeReglee({
+      corps: corpsDeCommande({ configuration: configuration({ age: 8, nombreEnfants: 8, fete: { invites } }) }),
+    });
+    const reponse = await telecharger(reference);
+    expect(reponse.status).toBe(200);
+    expect(textesDesPages(Buffer.from(await reponse.arrayBuffer())).join(" ")).toContain("Ève (cousine)");
+  });
+
+  it("refuse dès la commande une accolade, qui rendrait le kit impossible à produire", async () => {
+    for (const fete of [{ invites: ["{Tom}"] }, { date: "le {samedi}" }, { adresse: "3 rue {x}" }, { contact: "}" }]) {
+      const reponse = await commanderRoute(
+        requeteJson("http://localhost/api/commande", corpsDeCommande({ configuration: configuration({ fete }) })),
+      );
+      expect(reponse.status, JSON.stringify(fete)).toBe(422);
+      const corps = (await reponse.json()) as { details: { message: string }[] };
+      expect(corps.details.map((d) => d.message)).toContain(
+        "Les accolades { } ne sont pas acceptées dans les détails de la fête.",
+      );
+    }
+    expect(stripe.sessionsCreees).toHaveLength(0);
   });
 
   it("produit le kit le plus lourd en moins de 5 secondes", async () => {

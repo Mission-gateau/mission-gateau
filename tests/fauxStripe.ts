@@ -2,7 +2,7 @@ import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import type { Configuration } from "@/engine/types";
 import type { Dependances } from "@/vente/dependances";
 import type { Environnement } from "@/vente/environnement";
-import type { ClientStripe, PaiementLu, ParametresSession, SessionLue } from "@/vente/stripe";
+import type { ClientStripe, DebitLu, PaiementLu, ParametresSession, SessionLue } from "@/vente/stripe";
 import { configuration } from "./aide";
 
 /**
@@ -20,8 +20,12 @@ export class FauxStripe implements ClientStripe {
   readonly recherchesParReference: string[] = [];
   readonly recherchesAEffacer: { avant: number; page: string | null }[] = [];
   readonly modifications: { id: string; metadonnees: Record<string, string> }[] = [];
+  readonly modificationsDeDebits: { id: string; metadonnees: Record<string, string> }[] = [];
+  readonly recherchesDeDebits: { avant: number; page: string | null }[] = [];
   readonly sessions = new Map<string, SessionLue>();
   readonly paiements = new Map<string, PaiementLu>();
+  /** Débits : comme chez Stripe, chacun garde une copie des métadonnées du paiement prise à sa création. */
+  readonly debits = new Map<string, DebitLu>();
   /** Paiements que la recherche ne voit pas encore (Stripe met jusqu'à une minute à les indexer). */
   readonly nonIndexes = new Set<string>();
   /** Taille des pages de la recherche, pour éprouver la pagination. */
@@ -85,15 +89,40 @@ export class FauxStripe implements ClientStripe {
     };
   }
 
+  async debitsAvecConfiguration(
+    avant: number,
+    page: string | null,
+  ): Promise<{ debits: DebitLu[]; pageSuivante: string | null }> {
+    this.panne();
+    this.recherchesDeDebits.push({ avant, page });
+    const trouves = [...this.debits.values()].filter(
+      (debit) =>
+        (this.rechercheIgnoreLEtat || debit.metadonnees.config === "chiffree") &&
+        (this.rechercheIgnoreLaDate || debit.cree < avant),
+    );
+    const debut = page ? Number(page) : 0;
+    const suite = debut + this.taillePage;
+    return {
+      debits: trouves.slice(debut, suite).map((debit) => structuredClone(debit)),
+      pageSuivante: suite < trouves.length ? String(suite) : null,
+    };
+  }
+
   async modifierMetadonnees(id: string, metadonnees: Record<string, string>): Promise<void> {
     this.panne();
     this.modifications.push({ id, metadonnees: { ...metadonnees } });
     const paiement = this.paiements.get(id);
     if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing" });
-    for (const [cle, valeur] of Object.entries(metadonnees)) {
-      if (valeur === "") delete paiement.metadonnees[cle];
-      else paiement.metadonnees[cle] = valeur;
-    }
+    appliquer(paiement.metadonnees, metadonnees);
+    // Comme chez Stripe : la mise à jour du paiement ne touche pas ses débits.
+  }
+
+  async modifierMetadonneesDuDebit(id: string, metadonnees: Record<string, string>): Promise<void> {
+    this.panne();
+    this.modificationsDeDebits.push({ id, metadonnees: { ...metadonnees } });
+    const debit = this.debits.get(id);
+    if (!debit) throw Object.assign(new Error("absent"), { code: "resource_missing" });
+    appliquer(debit.metadonnees, metadonnees);
   }
 
   /** La dernière session créée par le site, et sa référence. */
@@ -108,22 +137,35 @@ export class FauxStripe implements ClientStripe {
     };
   }
 
-  /** Simule le paiement de la dernière session créée. */
-  payer(options: { payeLe?: Date; statut?: string; indexe?: boolean } = {}): {
+  /**
+   * Simule le paiement de la dernière session créée. `premiereTentative`
+   * simule une carte refusée avant le débit réussi : le paiement est alors
+   * créé à la première tentative, et chaque tentative laisse un débit.
+   */
+  payer(options: { payeLe?: Date; premiereTentative?: Date; statut?: string; indexe?: boolean } = {}): {
     sessionId: string;
     reference: string;
     paiement: PaiementLu;
   } {
     const { id, reference, parametres } = this.derniereSession();
     const statut = options.statut ?? "succeeded";
+    const metadonnees = parametres.payment_intent_data!.metadata as Record<string, string>;
+    const payeLe = Math.floor((options.payeLe ?? new Date()).getTime() / 1000);
+    const cree = options.premiereTentative ? Math.floor(options.premiereTentative.getTime() / 1000) : payeLe;
+    const numero = this.paiements.size + 1;
     const paiement: PaiementLu = {
-      id: `pi_faux${this.paiements.size + 1}`,
+      id: `pi_faux${numero}`,
       statut,
-      cree: Math.floor((options.payeLe ?? new Date()).getTime() / 1000),
-      metadonnees: { ...(parametres.payment_intent_data!.metadata as Record<string, string>) },
+      cree,
+      payeLe,
+      metadonnees: { ...metadonnees },
       rembourseEnTotalite: false,
     };
     this.paiements.set(paiement.id, paiement);
+    if (options.premiereTentative) {
+      this.debits.set(`ch_faux${numero}_refuse`, { id: `ch_faux${numero}_refuse`, cree, metadonnees: { ...metadonnees } });
+    }
+    this.debits.set(`ch_faux${numero}`, { id: `ch_faux${numero}`, cree: payeLe, metadonnees: { ...metadonnees } });
     if (options.indexe === false) this.nonIndexes.add(paiement.id);
     this.sessions.set(id, { id, payee: statut === "succeeded", metadonnees: { ref: reference }, paiement });
     return { sessionId: id, reference, paiement };
@@ -135,6 +177,14 @@ export class FauxStripe implements ClientStripe {
     for (const session of this.sessions.values()) {
       if (session.paiement?.id === idPaiement) session.paiement.rembourseEnTotalite = true;
     }
+  }
+}
+
+/** Une mise à jour de métadonnées à la manière de Stripe : une valeur vide supprime la clé. */
+function appliquer(cible: Record<string, string>, modifications: Record<string, string>): void {
+  for (const [cle, valeur] of Object.entries(modifications)) {
+    if (valeur === "") delete cible[cle];
+    else cible[cle] = valeur;
   }
 }
 

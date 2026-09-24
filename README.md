@@ -174,13 +174,16 @@ découpée en morceaux de 500 caractères. Aucune donnée saisie par le parent �
 prénoms, date, heure, adresse, contact — ne part en clair : le produit est
 décrit par son thème et sa tranche d'âge.
 
-Chaque nuit, la tâche `GET /api/effacement` (cron Vercel déclaré dans
-`vercel.json`, une fois par jour, compatible avec l'offre Hobby) efface la
-configuration chiffrée des paiements de plus de 30 jours. Le reste de la
-commande — montant, date, e-mail, facture, référence, accords — reste chez
-Stripe. La tâche ne touche rien de plus récent, peut tourner plusieurs fois
-sans dégât, ne journalise que des compteurs, et n'importe qui peut l'appeler :
-elle ne fait rien d'autre.
+Stripe recopie ces métadonnées, une fois pour toutes, sur chaque débit
+(Charge) créé par le paiement, tentatives refusées comprises : la configuration
+chiffrée existe donc en plusieurs exemplaires. Chaque nuit, la tâche
+`GET /api/effacement` (cron Vercel déclaré dans `vercel.json`, une fois par
+jour, compatible avec l'offre Hobby) efface la configuration chiffrée des
+paiements **et** des débits de plus de 30 jours (comptés à partir du débit
+réussi pour un paiement). Le reste de la commande — montant, date, e-mail,
+facture, référence, accords — reste chez Stripe. La tâche ne touche rien de
+plus récent, peut tourner plusieurs fois sans dégât, ne journalise que des
+compteurs, et n'importe qui peut l'appeler : elle ne fait rien d'autre.
 
 ### Quand la vente est-elle ouverte ?
 
@@ -246,6 +249,24 @@ quand aucune commande récente n'attend sa livraison.
   (la livraison, elle, s'arrête à 30 jours pile).
 - Pas de webhook : le site ne sait d'une commande que ce qu'il demande à Stripe
   au moment où la page ou le bouton sont appelés.
+- Sans clé, une référence est « introuvable » : un déploiement sans clé n'a
+  jamais pu vendre. Retirer la clé de la production après l'ouverture ferait
+  donc lire « commande introuvable » à des clients qui ont payé (le service
+  client reste indiqué) ; une panne de Stripe, elle, affiche « vérification
+  momentanément impossible ».
+- Le retour de Stripe se fait sur l'adresse du déploiement (production :
+  `VERCEL_PROJECT_PRODUCTION_URL` ; préversion : `VERCEL_URL`). Un parent parti
+  d'une autre adresse (alias de branche d'une préversion, autre alias
+  `*.vercel.app`) ne retrouve pas son formulaire en cas d'annulation, et
+  l'onglet d'origine garde sa sauvegarde jusqu'à sa fermeture.
+- Aucune limite de débit : chaque visite de `/commande/<ref>`, chaque
+  commande et chaque appel de `/api/effacement` interrogent Stripe, dont la
+  recherche est limitée à 20 lectures par seconde. Une limite se règle, au
+  besoin, dans le pare-feu de Vercel.
+- Les champs libres (invités, date, heure, adresse, contact) refusent les
+  accolades, qui casseraient les gabarits du kit. Un caractère absent des
+  polices Nunito et Fredoka (émoji, écriture non latine) serait dessiné avec
+  une police de secours dans le PDF.
 
 ## Données personnelles
 

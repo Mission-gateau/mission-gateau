@@ -121,14 +121,27 @@ const prenomSchema = z
     error: "Le prénom n'accepte que des lettres, des espaces, des tirets et des apostrophes.",
   });
 
-const texteCourt = z.string().trim().max(120).optional();
+/**
+ * Les champs libres sont imprimés à travers des gabarits {cle} : une accolade
+ * saisie par le parent y serait prise pour un gabarit non résolu, et le kit
+ * ne pourrait plus être produit. Elles sont donc refusées dès la saisie.
+ */
+const SANS_ACCOLADES = {
+  error: "Les accolades { } ne sont pas acceptées dans les détails de la fête.",
+};
+const sansAccolades = (valeur: string) => !/[{}]/.test(valeur);
+
+const texteCourt = z.string().trim().max(120).refine(sansAccolades, SANS_ACCOLADES).optional();
 
 export const schemaInfosFete = z.object({
   date: texteCourt,
   heure: texteCourt,
-  adresse: z.string().trim().max(200).optional(),
+  adresse: z.string().trim().max(200).refine(sansAccolades, SANS_ACCOLADES).optional(),
   contact: texteCourt,
-  invites: z.array(z.string().trim().max(PRENOM_MAX)).max(ENFANTS_MAX).optional(),
+  invites: z
+    .array(z.string().trim().max(PRENOM_MAX).refine(sansAccolades, SANS_ACCOLADES))
+    .max(ENFANTS_MAX)
+    .optional(),
 });
 
 export const schemaConfiguration = z

@@ -26,7 +26,10 @@ export function remplir(gabarit: string, valeurs: Record<string, string | number
     if (valeur === undefined) throw new Error(`Gabarit non résolu : {${cle}}`);
     return String(valeur);
   });
-  if (/\{\w+\}/.test(resultat)) throw new Error(`Gabarit non résolu dans : ${resultat}`);
+  // Le message ne cite que les gabarits restants, jamais le texte : il peut
+  // contenir un prénom, et une erreur finit dans les journaux du serveur.
+  const restes = resultat.match(/\{\w+\}/g);
+  if (restes) throw new Error(`Gabarit non résolu : ${restes.join(", ")}`);
   return resultat;
 }
 

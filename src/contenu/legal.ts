@@ -65,7 +65,7 @@ function lienSite(adresse: string): Morceau {
 // Garantie légale de conformité : l'encadré de l'annexe à l'article D211-3 du
 // Code de la consommation (décret n° 2022-946 du 29 juin 2022), pour un
 // contenu numérique. Il est reproduit mot pour mot, un paragraphe par ligne ;
-// tests/legal.test.ts le compare au texte officiel.
+// tests/legal.test.tsx le compare au texte officiel.
 // ---------------------------------------------------------------------------
 
 export const ENCADRE_GARANTIE = [
@@ -401,7 +401,7 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
       blocs: [
         liste(
           [
-            "Vos réponses. Pour que le jeu puisse vous être livré, elles sont confiées à Stripe, notre prestataire de paiement, chiffrées : aucune n'y figure en clair. Elles y restent 30 jours, la durée de validité du lien de téléchargement, puis sont effacées automatiquement.",
+            "Vos réponses. Pour que le jeu puisse vous être livré, elles sont confiées à Stripe, notre prestataire de paiement, chiffrées : aucune n'y figure en clair. Elles y restent 30 jours après le paiement, la durée de validité du lien de téléchargement, puis sont effacées automatiquement. Si vous quittez la page de paiement sans payer, elles peuvent rester attachées, chiffrées, à la session de paiement abandonnée : Stripe ne donne aucun moyen de les en effacer, et elles restent illisibles sans la clé secrète du site.",
           ],
           [
             "La trace de votre commande. La référence de la commande, la référence du jeu, le pays de résidence déclaré, la version des conditions de vente acceptée et l'heure de vos deux accords restent avec la commande : ils prouvent ce qui a été vendu et ce que vous avez accepté.",

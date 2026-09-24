@@ -79,7 +79,8 @@ export function etatDuPaiement(
   if (paiement.statut !== "succeeded") return { etat: "non_aboutie" };
   if (paiement.rembourseEnTotalite) return { etat: "remboursee" };
 
-  const payeeLe = new Date(paiement.cree * 1000);
+  // Les 30 jours courent à partir du débit réussi, pas de la première tentative.
+  const payeeLe = new Date(paiement.payeLe * 1000);
   const expireLe = new Date(payeeLe.getTime() + DUREE_DE_VALIDITE_MS);
   if (maintenant.getTime() > expireLe.getTime()) return { etat: "expiree" };
 

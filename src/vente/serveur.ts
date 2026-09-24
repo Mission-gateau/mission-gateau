@@ -7,7 +7,7 @@ import { VERSION_CGV } from "../contenu/legal";
 import { ACHAT, REPONSES_COMMANDE } from "../contenu/vente";
 import { etatDeLaCommande } from "./commande";
 import type { Dependances } from "./dependances";
-import { effacerLesConfigurationsAnciennes, type BilanEffacement } from "./effacement";
+import { bilanVide, effacerLesConfigurationsAnciennes } from "./effacement";
 import { adresseDuSite } from "./environnement";
 import { texteDeLEtat, type EtatSansLivraison } from "./etats";
 import { KitRefuse, produireKitLivre } from "./livraison";
@@ -232,9 +232,8 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
  * renvoie que des compteurs.
  */
 export async function lancerEffacement(deps: Dependances): Promise<Response> {
-  const vide: BilanEffacement = { examines: 0, effaces: 0, recents: 0, dejaEffaces: 0, erreurs: 0 };
   if (!deps.client) {
-    const bilan = { tache: "effacement", ...vide, sansCle: 1 };
+    const bilan = { tache: "effacement", ...bilanVide(), sansCle: 1 };
     journal(bilan);
     return json(bilan, 200);
   }
@@ -243,7 +242,7 @@ export async function lancerEffacement(deps: Dependances): Promise<Response> {
     journal(bilan);
     return json(bilan, bilan.erreurs > 0 ? 500 : 200);
   } catch {
-    const bilan = { tache: "effacement", ...vide, erreurs: 1 };
+    const bilan = { tache: "effacement", ...bilanVide(), erreurs: 1 };
     journal(bilan);
     return json(bilan, 500);
   }

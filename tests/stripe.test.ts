@@ -70,7 +70,13 @@ function paiement(statut: string, ref: string, rembourse = false) {
     status: statut,
     created: 1790000000,
     metadata: { ref },
-    latest_charge: { id: "ch_1", object: "charge", refunded: rembourse, amount_refunded: rembourse ? 1290 : 0 },
+    latest_charge: {
+      id: "ch_1",
+      object: "charge",
+      created: 1790003600,
+      refunded: rembourse,
+      amount_refunded: rembourse ? 1290 : 0,
+    },
   };
 }
 
@@ -139,6 +145,8 @@ describe("client Stripe réel", () => {
         id: "pi_AbCdEf",
         statut: "succeeded",
         cree: 1790000000,
+        // L'heure du paiement est celle du débit, pas celle de la première tentative.
+        payeLe: 1790003600,
         metadonnees: { ref: REFERENCE },
         rembourseEnTotalite: false,
       },
@@ -189,9 +197,39 @@ describe("client Stripe réel", () => {
     expect(premiere.pageSuivante).toBe("page_2");
     const seconde = await client.paiementsAvecConfiguration(1787400000, "page_2");
     expect(seconde.pageSuivante).toBeNull();
+    expect(vues[0]!.url.pathname).toBe("/v1/payment_intents/search");
     expect(vues[0]!.url.searchParams.get("query")).toBe('metadata["config"]:"chiffree" AND created<1787400000');
     expect(vues[0]!.url.searchParams.get("limit")).toBe("100");
+    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge"]);
     expect(vues[1]!.url.searchParams.get("page")).toBe("page_2");
+    expect(premiere.paiements[0]!.payeLe).toBe(1790003600);
+  });
+
+  it("cherche aussi les débits qui gardent une copie de la configuration", async () => {
+    const { client, vues } = reseau(() => ({
+      json: {
+        object: "search_result",
+        data: [{ id: "ch_1", object: "charge", created: 1787000000, metadata: { ref: REFERENCE, config: "chiffree" } }],
+        has_more: false,
+        next_page: null,
+      },
+    }));
+    expect(await client.debitsAvecConfiguration(1787400000, null)).toEqual({
+      debits: [{ id: "ch_1", cree: 1787000000, metadonnees: { ref: REFERENCE, config: "chiffree" } }],
+      pageSuivante: null,
+    });
+    expect(vues[0]!.url.pathname).toBe("/v1/charges/search");
+    expect(vues[0]!.url.searchParams.get("query")).toBe('metadata["config"]:"chiffree" AND created<1787400000');
+  });
+
+  it("efface la copie d'un débit en lui envoyant des valeurs vides", async () => {
+    const { client, vues } = reseau(() => ({ json: { id: "ch_1", object: "charge", metadata: {} } }));
+    await client.modifierMetadonneesDuDebit("ch_1", { config: "effacee", config_0: "" });
+    expect(vues[0]!.methode).toBe("POST");
+    expect(vues[0]!.url.pathname).toBe("/v1/charges/ch_1");
+    const champs = new URLSearchParams(vues[0]!.corps);
+    expect(champs.get("metadata[config]")).toBe("effacee");
+    expect(champs.get("metadata[config_0]")).toBe("");
   });
 
   it("efface des clés de métadonnées en leur envoyant une valeur vide", async () => {
