@@ -2,8 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { ApercusDuKit } from "@/composants/Apercus";
 import { EnTeteSite, PiedDeSite } from "@/composants/Chrome";
+import { remplir } from "@/engine/texte";
 import { SITE } from "@/contenu/site";
 import { LISTE_THEMES } from "@/contenu/themes";
+import { VENDEUR } from "@/contenu/vendeur";
+import { venteOuverteMaintenant } from "@/vente/ouverture";
+import { PRIX_AFFICHE } from "@/vente/prix";
 
 function Section({
   titre,
@@ -23,6 +27,7 @@ function Section({
 }
 
 export default function Accueil() {
+  const ouverte = venteOuverteMaintenant();
   return (
     <>
       <EnTeteSite />
@@ -48,6 +53,13 @@ export default function Accueil() {
                   {SITE.boutonSecondaire}
                 </a>
               </div>
+              {ouverte ? (
+                <p className="mt-5 text-sm text-encre-douce">
+                  {remplir(SITE.prixAccueil, { prix: PRIX_AFFICHE })}
+                  <br />
+                  {VENDEUR.tva}
+                </p>
+              ) : null}
             </div>
             <div className="flex justify-center gap-4 sm:gap-7" aria-hidden>
               {["carte_tresor", "loupe", "dinosaure"].map((cle, i) => (
@@ -153,7 +165,7 @@ export default function Accueil() {
           </Link>
         </div>
       </main>
-      <PiedDeSite />
+      <PiedDeSite venteOuverte={ouverte} />
     </>
   );
 }

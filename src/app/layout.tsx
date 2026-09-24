@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
+/**
+ * Toutes les pages sont rendues à chaque requête : le pied de page, l'accueil
+ * et /creer dépendent de l'ouverture de la vente, donc de STRIPE_SECRET_KEY,
+ * qui n'est lue qu'à l'exécution, jamais au build.
+ */
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = {
   themeColor: "#fdf8f0",
   width: "device-width",

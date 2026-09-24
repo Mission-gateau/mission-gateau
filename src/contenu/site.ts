@@ -1,6 +1,9 @@
 import { typographier } from "../engine/texte";
 
-/** Textes du site. Aucun prix, aucun avis, aucun chiffre invérifiable. */
+/**
+ * Textes du site. Aucun avis, aucun chiffre invérifiable ; le prix n'apparaît
+ * que lorsque la vente est ouverte (voir src/vente/ouverture.ts).
+ */
 
 export const SITE = typographier({
   nom: "Mission Gâteau",
@@ -76,12 +79,20 @@ export const SITE = typographier({
   securiteTexte:
     "La liste des cachettes est fermée et pensée pour la maison : aucune n'est un appareil, une prise, une fenêtre, un balcon ou un escalier, aucune n'oblige à grimper, aucune n'est dans la salle de bains ni à l'extérieur. Vous cochez celles que vous avez, et le formulaire vous rappelle, au moment de choisir, d'écarter celles qui seraient trop près du four ou des plaques.",
 
-  titreDonnees: "Vos réponses restent chez vous",
+  titreDonnees: "Vos réponses ne servent qu'à votre jeu",
   donneesTexte:
-    "Rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers. Le prénom de l'enfant sert à composer le kit, puis disparaît avec la requête. Aucun cookie, aucun traceur, aucune ressource chargée depuis un autre domaine.",
+    "L'aperçu ne conserve rien : rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers, et le prénom de l'enfant disparaît avec la requête. Si vous achetez le jeu complet, vos réponses sont gardées chiffrées chez notre prestataire de paiement pendant 30 jours, le temps de vous livrer, puis effacées : la politique de confidentialité détaille ce qui est conservé. Aucun cookie, aucun traceur, aucune ressource chargée depuis un autre domaine.",
+
+  /** Affichés seulement quand la vente est ouverte. */
+  prixAccueil: "L'aperçu est gratuit ; le jeu complet coûte {prix}.",
 
   piedDePage: "Mission Gâteau — site en préparation",
+  piedDePageOuvert: "{nomCommercial} — édité par {vendeur}",
+  lienMentions: "Mentions légales",
+  lienCgv: "Conditions générales de vente",
+  lienConfidentialite: "Confidentialité",
   lienCredits: "Crédits et licences",
+  navigationLegale: "Informations légales",
 } as const);
 
 export const CREDITS = typographier({

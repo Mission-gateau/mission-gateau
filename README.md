@@ -8,12 +8,13 @@ d'enfants, la durée et les cachettes dont il dispose chez lui. Le site compose
 aussitôt un kit complet : guide de l'organisateur, invitations, cartes-indices
 à cacher, fiches d'énigmes, page du trésor, diplômes et page de solutions.
 
-Le dépôt en est au **lot 3**. Les lots 1 et 2 ont livré le moteur de jeu, le
-kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs d'un
-premier audit. Le paiement, la livraison du kit acheté, les mentions légales et
-les pages de contenu viennent au lot 4. Le site reste volontairement invisible
-des moteurs de recherche : `robots.txt` interdit tout, et chaque page porte une
-balise `noindex, nofollow`.
+Le dépôt en est au **lot 4**. Les lots 1 à 3 ont livré le moteur de jeu, le
+kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs de
+deux audits. Le lot 4 ajoute la vente du jeu complet à 12,90 € par Stripe, sa
+livraison et les pages légales ; la vente reste fermée tant qu'il lui manque
+quelque chose (voir « La vente »). Les pages de contenu viendront plus tard. Le
+site reste volontairement invisible des moteurs de recherche : `robots.txt`
+interdit tout, et chaque page porte une balise `noindex, nofollow`.
 
 ## Démarrer
 
@@ -23,7 +24,9 @@ npm run assets   # une seule fois : télécharge les polices et les icônes
 npm run dev
 ```
 
-Le site tourne alors sur <http://localhost:3000>.
+Le site tourne alors sur <http://localhost:3000>. Sans `STRIPE_SECRET_KEY`,
+tout marche sauf la vente et la livraison ; pour les essayer en local, mettre
+une clé **de test** dans `.env.local` (jamais suivi par git).
 
 | Commande            | Effet                                                        |
 | ------------------- | ------------------------------------------------------------ |
@@ -34,9 +37,12 @@ Le site tourne alors sur <http://localhost:3000>.
 | `npm run lint`      | ESLint                                                        |
 | `npm run assets`    | Télécharge polices et icônes dans `public/` (idempotent)      |
 | `npm run samples`   | Régénère les exemples de `samples/`                           |
+| `npm run verifier:tracage` | Après un build : vérifie que les fonctions PDF embarquent polices et icônes |
 
 `npm run assets` n'écrit que ce qui manque ; `npm run assets -- --force`
-retélécharge tout.
+retélécharge tout. `npm run samples` redonne à l'identique les fichiers JSON et
+le texte de chaque page ; les PDF, eux, changent d'octets à chaque passage, car
+@react-pdf/renderer y inscrit la date de création et un identifiant de fichier.
 
 ## Comment c'est fait
 
@@ -50,10 +56,15 @@ src/engine/     le moteur : TypeScript pur, sans Next.js ni React
   kit.ts          assemble le parcours, les équipes et le code final
   validation.ts   contrôle complet d'un kit avant impression
 src/contenu/    tous les textes, séparés du code
+  vendeur.ts      la fiche du vendeur : le seul fichier à changer avec le vendeur
+  legal.ts        mentions légales, CGV et politique de confidentialité
+  vente.ts        bloc d'achat, page de commande, textes envoyés à Stripe
+src/vente/      la vente : ouverture, Stripe, chiffrement, livraison, effacement
 src/pdf/        les documents imprimés (@react-pdf/renderer)
-src/app/        les pages du site et la route de l'aperçu
-tests/          vitest
+src/app/        les pages du site et ses routes
+tests/          vitest (dont un faux Stripe : tests/fauxStripe.ts)
 samples/        neuf kits, neuf aperçus et leur structure en JSON
+vercel.json     la tâche quotidienne d'effacement
 ```
 
 ### Le moteur est déterministe
@@ -121,14 +132,141 @@ parent — four, plaque, machine, prise, appareil électrique, fenêtre, balcon,
 escalier, porte d'entrée, extérieur, salle de bains, médicament, produit
 ménager. Aucune cachette n'oblige à grimper.
 
+## La vente
+
+### Le parcours d'achat
+
+1. Le parent compose son aperçu gratuit sur `/creer`. Une fois l'aperçu
+   produit — et seulement alors —, le bloc d'achat apparaît dessous : contenu
+   du kit, format, prix, livraison, pays de résidence, puis deux cases
+   distinctes, non cochées, toutes deux obligatoires (acceptation des CGV ;
+   accès immédiat et renonciation au droit de rétractation, article L221-28,
+   13° du Code de la consommation), et le bouton « Commander et payer 12,90 € ».
+   Le bloc achète exactement la configuration et la graine de cet aperçu ;
+   changer une réponse oblige à refaire un aperçu.
+2. `POST /api/commande` revérifie tout (configuration, graine, pays, accords),
+   compose le kit et le contrôle, puis crée une session Stripe Checkout et
+   renvoie son adresse. Le navigateur part sur la page de paiement hébergée par
+   Stripe, en français, par carte (Apple Pay et Google Pay compris).
+3. Juste avant de partir, l'onglet garde le formulaire et l'aperçu dans son
+   `sessionStorage`, et nulle part ailleurs : si le parent annule, il retrouve
+   son jeu sur `/creer` et peut acheter sans rien ressaisir (les deux cases
+   repartent décochées : les accords se donnent à chaque commande).
+4. Après le paiement, Stripe renvoie sur `/commande/<ref>?session_id=…`. La page
+   vérifie la commande chez Stripe, côté serveur, et ne génère rien ; le bouton
+   « Télécharger mon jeu (PDF) » appelle `POST /api/commande/<ref>/kit`, qui
+   refait la vérification, déchiffre la configuration, construit le kit avec
+   la graine, le passe par `verifierKit` et renvoie le PDF. Stripe envoie de son
+   côté la facture et le reçu par e-mail, avec le même lien, valable 30 jours.
+
+`<ref>` est une référence de 128 bits tirée au hasard. Hors d'une commande
+payée, aucune route ne sert le kit complet ; une commande impayée, introuvable,
+expirée, remboursée en totalité, d'une autre version du kit ou illisible reçoit
+un message clair, et rien d'autre.
+
+### Ce que Stripe garde
+
+Dans les métadonnées du paiement : la référence, `VERSION_KIT`, la graine, le
+pays déclaré, la version des CGV acceptée, l'heure des deux accords (heure du
+serveur), et la configuration complète **chiffrée** (AES-256-GCM, clé dérivée
+de `STRIPE_SECRET_KEY` par HKDF-SHA256 avec une étiquette propre à cet usage),
+découpée en morceaux de 500 caractères. Aucune donnée saisie par le parent —
+prénoms, date, heure, adresse, contact — ne part en clair : le produit est
+décrit par son thème et sa tranche d'âge.
+
+Chaque nuit, la tâche `GET /api/effacement` (cron Vercel déclaré dans
+`vercel.json`, une fois par jour, compatible avec l'offre Hobby) efface la
+configuration chiffrée des paiements de plus de 30 jours. Le reste de la
+commande — montant, date, e-mail, facture, référence, accords — reste chez
+Stripe. La tâche ne touche rien de plus récent, peut tourner plusieurs fois
+sans dégât, ne journalise que des compteurs, et n'importe qui peut l'appeler :
+elle ne fait rien d'autre.
+
+### Quand la vente est-elle ouverte ?
+
+Seulement si deux conditions sont réunies (`src/vente/ouverture.ts`) :
+
+- `STRIPE_SECRET_KEY` est présente et de la bonne nature : une clé **réelle**
+  (`sk_live_…` ou `rk_live_…`) en production (`VERCEL_ENV=production`), une clé
+  **de test** (`sk_test_…` ou `rk_test_…`) partout ailleurs — préversions et
+  local. Une clé de test en production, ou une clé réelle hors production,
+  ferme la vente ;
+- la fiche du vendeur est complète, convention avec le médiateur comprise.
+
+Vente fermée : aucun prix affiché, aucun bouton d'achat, `POST /api/commande`
+répond 503, et `/creer` annonce après l'aperçu que la vente ouvre bientôt. La
+livraison des commandes déjà payées, elle, n'a besoin que d'une clé. Toutes les
+pages sont rendues à la demande : la clé n'est lue qu'à l'exécution, jamais au
+build, et le build, les tests et la CI passent sans elle.
+
+`STRIPE_SECRET_KEY` est la seule variable d'environnement du site ; elle se
+pose dans Vercel (Production : clé réelle ; Preview : clé de test), jamais dans
+un fichier suivi par git. Les adresses de retour de Stripe et le lien de
+téléchargement visent le déploiement qui crée la commande : en production,
+`VERCEL_PROJECT_PRODUCTION_URL` (qui suivra le domaine quand il sera branché),
+en préversion `VERCEL_URL`, en local `localhost`.
+
+### La fiche du vendeur, et comment changer de vendeur
+
+Tout ce qui concerne le vendeur vit dans `src/contenu/vendeur.ts` : identité,
+SIRET, RCS et capital (facultatifs), adresse, téléphone, e-mail du service
+client, mention de TVA, médiateur, hébergeur, prestataire de paiement. Les
+pages légales, le pied de page, la facture Stripe et la condition d'ouverture
+lisent ce seul fichier ; un champ vide n'est jamais affiché, et tant que
+`conventionSignee` est faux, le médiateur n'est nommé nulle part.
+
+Pour changer de vendeur (une société remplaçant la micro-entreprise) :
+modifier ce fichier (dénomination, forme, capital, RCS, TVA…), relire les CGV
+et la politique de confidentialité, changer `VERSION_CGV` dans
+`src/contenu/legal.ts` si les CGV changent, puis remplacer `STRIPE_SECRET_KEY`
+par la clé du nouveau compte Stripe. Attention : la configuration chiffrée
+d'une commande ne se relit qu'avec la clé qui l'a chiffrée ; changer de clé
+rend illisibles les commandes de moins de 30 jours. Mieux vaut changer de clé
+quand aucune commande récente n'attend sa livraison.
+
+### Réglages à faire à la main dans Stripe avant d'ouvrir
+
+- Paramètres > E-mails aux clients : activer « Paiements réussis » (sans quoi
+  la facture et le reçu ne partent pas), langue par défaut : français.
+- Informations publiques : dénomination, adresse et e-mail du service client,
+  et l'adresse de la politique de confidentialité (`/confidentialite`).
+- Moyens de paiement : Apple Pay et Google Pay activés pour les cartes.
+
+### Limites connues
+
+- La recherche de Stripe met jusqu'à une minute à voir un paiement neuf : au
+  retour immédiat du paiement, la page s'appuie sur la session ; depuis le lien
+  de l'e-mail, sur la recherche. La recherche ignore la casse : la référence
+  est donc revérifiée à l'identique.
+- Une session abandonnée garde chez Stripe la configuration chiffrée qu'on lui
+  a confiée ; l'API ne permet ni de la relire ni de l'effacer. Elle reste
+  illisible sans la clé du site.
+- La tâche d'effacement tourne une fois par jour, à une heure près (offre
+  Hobby) : une configuration peut survivre jusqu'à un jour de plus que 30 jours
+  (la livraison, elle, s'arrête à 30 jours pile).
+- Pas de webhook : le site ne sait d'une commande que ce qu'il demande à Stripe
+  au moment où la page ou le bouton sont appelés.
+
 ## Données personnelles
 
-Rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers.
-La route de l'aperçu reçoit les données en POST — jamais dans l'adresse, pour
-que le prénom de l'enfant n'apparaisse dans aucun journal de serveur —, valide
-ses entrées avec `zod` et borne la taille de la requête à 8 ko. Le site ne pose
-aucun cookie, n'emploie aucun traceur, et ne charge aucune ressource depuis un
-autre domaine : polices et images sont servies par le site lui-même.
+L'aperçu ne conserve rien : rien n'est enregistré, rien n'est journalisé, rien
+n'est transmis à un tiers. La route de l'aperçu reçoit les données en POST —
+jamais dans l'adresse, pour que le prénom de l'enfant n'apparaisse dans aucun
+journal de serveur —, valide ses entrées avec `zod` et borne la taille de la
+requête à 8 ko.
+
+L'achat conserve ce que dit la page `/confidentialite` : la configuration,
+chiffrée, 30 jours chez Stripe, puis effacée ; l'e-mail, le nom, l'adresse de
+facturation et la facture, chez Stripe, au titre des obligations comptables
+(10 ans). Aucun journal, de Vercel ou du code, ne contient de prénom, de donnée
+de la fête, d'e-mail ni de contenu chiffré : les routes de la vente ne
+journalisent que des noms d'événements et des compteurs, et les tests le
+vérifient.
+
+Le site ne pose aucun cookie, n'emploie aucun traceur, et ne charge aucune
+ressource depuis un autre domaine : polices et images sont servies par le site
+lui-même, et le paiement se fait sur la page hébergée par Stripe. Seul le
+`sessionStorage` de l'onglet sert, le temps du paiement.
 
 ## Licences
 

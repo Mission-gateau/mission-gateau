@@ -146,6 +146,10 @@ describe("gabarits", () => {
       "cible", "total", "ligne", "colonne", "intrus", "commun", "cases", "max", "decalage",
       "valeur", "valeurA", "valeurB", "nomA", "nomB", "courante", "total", "etapes", "minutes",
       "cochees", "minimum", "nombre", "format", "tranche",
+      // Vente, commande et pages légales.
+      "prix", "nomCommercial", "vendeur", "email", "date", "theme", "ref", "versionCgv", "lien", "adresse",
+      "site", "mention", "statut", "capital", "directeur", "siret", "rcs", "rue", "codePostal", "ville",
+      "pays", "telephone", "tva",
     ]);
     const inconnues = new Set<string>();
     for (const { texte } of textesDeProse()) {
