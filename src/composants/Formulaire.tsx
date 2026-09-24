@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CACHETTES, CACHETTES_PRESELECTIONNEES, LIBELLES_PIECES } from "@/engine/cachettes";
 import {
   AGE_MAX,
@@ -22,7 +22,16 @@ import type { Cachette, Configuration, Duree, IdTheme } from "@/engine/types";
 import { remplir } from "@/engine/texte";
 import { FORMULAIRE } from "@/contenu/formulaire";
 import { LISTE_THEMES } from "@/contenu/themes";
+import { ACHAT } from "@/contenu/vente";
+import { BlocAchat, type OffreEnVente } from "./BlocAchat";
 import { CarteChoix, ChampTexte, GroupeChamps, Resume } from "./champs";
+import {
+  abonnerSauvegarde,
+  analyserSauvegarde,
+  lireSauvegardeBrute,
+  lireSauvegardeCoteServeur,
+  oublierSauvegarde,
+} from "./sauvegarde";
 
 interface Brouillon {
   theme: IdTheme | null;
@@ -53,6 +62,29 @@ const BROUILLON_VIDE: Brouillon = {
 };
 
 const PIECES = ["salon", "chambre", "cuisine", "entree"] as const;
+
+/** Une sauvegarde relue du sessionStorage n'est reprise que si elle a exactement cette forme. */
+function brouillonValide(valeur: unknown): valeur is Brouillon {
+  if (!valeur || typeof valeur !== "object") return false;
+  const b = valeur as Record<string, unknown>;
+  const textes = ["prenom", "date", "heure", "adresse", "contact", "invites"] as const;
+  return (
+    textes.every((cle) => typeof b[cle] === "string") &&
+    Array.isArray(b.cachettes) &&
+    b.cachettes.every((id) => typeof id === "string") &&
+    (b.theme === null || LISTE_THEMES.some((theme) => theme.id === b.theme)) &&
+    (b.age === null || typeof b.age === "number") &&
+    (b.nombreEnfants === null || typeof b.nombreEnfants === "number") &&
+    (b.duree === null || (DUREES as readonly unknown[]).includes(b.duree))
+  );
+}
+
+/** L'aperçu affiché : `url` est nulle quand il a été retrouvé après un aller-retour chez Stripe. */
+interface Resultat {
+  url: string | null;
+  graine: string;
+  configuration: Configuration;
+}
 
 function parPiece(piece: Cachette["piece"]) {
   return CACHETTES.filter((c) => c.piece === piece);
@@ -114,19 +146,38 @@ function construireConfiguration(brouillon: Brouillon): unknown {
   };
 }
 
-export function Formulaire() {
-  const [brouillon, setBrouillon] = useState<Brouillon>(BROUILLON_VIDE);
+/**
+ * `vente` n'est fourni que lorsque la vente est ouverte : le bloc d'achat
+ * apparaît alors sous l'aperçu. Sinon, l'aperçu annonce que la vente ouvre
+ * bientôt, sans prix ni bouton.
+ */
+export function Formulaire({ vente = null }: { vente?: OffreEnVente | null }) {
+  // Au retour d'un paiement annulé, l'onglet retrouve ce qu'il avait gardé
+  // (voir ./sauvegarde). Le rendu serveur et l'hydratation n'en voient rien.
+  const sauvegardeBrute = useSyncExternalStore(abonnerSauvegarde, lireSauvegardeBrute, lireSauvegardeCoteServeur);
+  const sauvegarde = useMemo(() => analyserSauvegarde(sauvegardeBrute), [sauvegardeBrute]);
+
+  const [brouillonLocal, setBrouillonLocal] = useState<Brouillon | null>(null);
   const [etape, setEtape] = useState(0);
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [envoi, setEnvoi] = useState(false);
-  const [resultat, setResultat] = useState<{ url: string; graine: string } | null>(null);
+  // `undefined` : rien de décidé ici, on reprend l'aperçu gardé s'il y en a un.
+  const [resultatLocal, setResultatLocal] = useState<Resultat | null | undefined>(undefined);
   const titreRef = useRef<HTMLHeadingElement>(null);
   const premierRendu = useRef(true);
+
+  const brouillonGarde = sauvegarde && brouillonValide(sauvegarde.brouillon) ? sauvegarde.brouillon : null;
+  const brouillon = brouillonLocal ?? brouillonGarde ?? BROUILLON_VIDE;
+  const resultat = useMemo<Resultat | null>(() => {
+    if (resultatLocal !== undefined) return resultatLocal;
+    return sauvegarde ? { url: null, graine: sauvegarde.graine, configuration: sauvegarde.configuration } : null;
+  }, [resultatLocal, sauvegarde]);
 
   const total = FORMULAIRE.etapes.length;
   const infos = FORMULAIRE.etapes[etape]!;
 
-  const modifier = (champs: Partial<Brouillon>) => setBrouillon((actuel) => ({ ...actuel, ...champs }));
+  const modifier = (champs: Partial<Brouillon>) =>
+    setBrouillonLocal((actuel) => ({ ...(actuel ?? brouillon), ...champs }));
 
   useEffect(() => {
     if (premierRendu.current) {
@@ -139,7 +190,7 @@ export function Formulaire() {
   // L'URL d'objet est libérée quand on en crée une autre ou qu'on quitte.
   useEffect(() => {
     return () => {
-      if (resultat) URL.revokeObjectURL(resultat.url);
+      if (resultat?.url) URL.revokeObjectURL(resultat.url);
     };
   }, [resultat]);
 
@@ -165,6 +216,33 @@ export function Formulaire() {
     setEtape((n) => Math.max(n - 1, 0));
   };
 
+  /**
+   * Demande l'aperçu. Sans graine, le serveur en tire une nouvelle ; avec la
+   * graine d'un aperçu déjà vu, il redonne exactement le même.
+   */
+  const demanderApercu = async (
+    configuration: Configuration,
+    graine?: string,
+  ): Promise<{ erreurs: string[] } | { url: string; graine: string }> => {
+    const reponse = await fetch("/api/apercu", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(graine ? { configuration, graine } : { configuration }),
+    });
+    if (!reponse.ok) {
+      const corps = (await reponse.json().catch(() => null)) as
+        | { erreur?: string; details?: { message?: string }[] }
+        | null;
+      return {
+        erreurs: corps?.details?.map((d) => d.message ?? "").filter(Boolean) ?? [
+          corps?.erreur ?? FORMULAIRE.erreurReseau,
+        ],
+      };
+    }
+    const graineRecue = reponse.headers.get("X-Graine") ?? "";
+    return { url: URL.createObjectURL(await reponse.blob()), graine: graineRecue };
+  };
+
   const envoyer = async () => {
     const configuration = construireConfiguration(brouillon);
     const analyse = schemaConfiguration.safeParse(configuration);
@@ -175,25 +253,29 @@ export function Formulaire() {
     setErreurs([]);
     setEnvoi(true);
     try {
-      const reponse = await fetch("/api/apercu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ configuration: analyse.data as Configuration }),
-      });
-      if (!reponse.ok) {
-        const corps = (await reponse.json().catch(() => null)) as
-          | { erreur?: string; details?: { message?: string }[] }
-          | null;
-        setErreurs(
-          corps?.details?.map((d) => d.message ?? "").filter(Boolean) ??
-            [corps?.erreur ?? FORMULAIRE.erreurReseau],
-        );
+      const obtenu = await demanderApercu(analyse.data as Configuration);
+      if ("erreurs" in obtenu) {
+        setErreurs(obtenu.erreurs);
         return;
       }
-      const graine = reponse.headers.get("X-Graine") ?? "";
-      const blob = await reponse.blob();
-      if (resultat) URL.revokeObjectURL(resultat.url);
-      setResultat({ url: URL.createObjectURL(blob), graine });
+      if (resultat?.url) URL.revokeObjectURL(resultat.url);
+      // Le bloc d'achat achètera exactement cette configuration et cette graine.
+      setResultatLocal({ url: obtenu.url, graine: obtenu.graine, configuration: analyse.data as Configuration });
+    } catch {
+      setErreurs([FORMULAIRE.erreurReseau]);
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  /** Après un aller-retour chez Stripe, l'aperçu gardé se recompose à l'identique, avec sa graine. */
+  const revoirApercu = async (actuel: Resultat) => {
+    setErreurs([]);
+    setEnvoi(true);
+    try {
+      const obtenu = await demanderApercu(actuel.configuration, actuel.graine);
+      if ("erreurs" in obtenu) setErreurs(obtenu.erreurs);
+      else setResultatLocal({ ...actuel, url: obtenu.url });
     } catch {
       setErreurs([FORMULAIRE.erreurReseau]);
     } finally {
@@ -203,45 +285,81 @@ export function Formulaire() {
 
   if (resultat) {
     return (
-      <section className="rounded-2xl border-2 border-accent bg-white p-6">
-        <h2 ref={titreRef} tabIndex={-1} className="font-titre text-2xl text-accent">
-          {FORMULAIRE.titreResultat}
-        </h2>
-        <p className="mt-3 leading-relaxed">{FORMULAIRE.texteResultat}</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <a
-            href={resultat.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="rounded-full bg-accent px-6 py-3 font-bold text-white hover:bg-accent-clair"
+      <>
+        <section className="rounded-2xl border-2 border-accent bg-white p-6">
+          <h2 ref={titreRef} tabIndex={-1} className="font-titre text-2xl text-accent">
+            {FORMULAIRE.titreResultat}
+          </h2>
+          <p className="mt-3 leading-relaxed">{FORMULAIRE.texteResultat}</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {resultat.url ? (
+              <>
+                <a
+                  href={resultat.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="rounded-full bg-accent px-6 py-3 font-bold text-white hover:bg-accent-clair"
+                >
+                  {FORMULAIRE.ouvrir}
+                </a>
+                <a
+                  href={resultat.url}
+                  download="apercu-mission-gateau.pdf"
+                  className="rounded-full border-2 border-accent px-6 py-3 font-bold text-accent hover:bg-creme-fonce"
+                >
+                  {FORMULAIRE.telecharger}
+                </a>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={envoi}
+                onClick={() => void revoirApercu(resultat)}
+                className="rounded-full bg-accent px-6 py-3 font-bold text-white hover:bg-accent-clair disabled:opacity-60"
+              >
+                {envoi ? ACHAT.apercuEnCours : ACHAT.revoirApercu}
+              </button>
+            )}
+          </div>
+          {erreurs.length > 0 ? (
+            <p role="alert" className="mt-4 font-bold text-brique">
+              {erreurs.join(" ")}
+            </p>
+          ) : null}
+          <dl className="mt-6 rounded-xl bg-creme-fonce px-4 py-3 text-sm">
+            <dt className="font-bold">{FORMULAIRE.graineLibelle}</dt>
+            <dd className="mt-1 font-mono text-base tracking-widest">{resultat.graine}</dd>
+            <dd className="mt-1 text-encre-douce">{FORMULAIRE.graineAide}</dd>
+          </dl>
+          <button
+            type="button"
+            onClick={() => {
+              if (resultat.url) URL.revokeObjectURL(resultat.url);
+              // Composer un autre jeu abandonne l'aperçu, et avec lui la sauvegarde.
+              oublierSauvegarde();
+              setBrouillonLocal(brouillon);
+              setResultatLocal(null);
+              setErreurs([]);
+              setEtape(0);
+            }}
+            className="mt-6 underline underline-offset-4 hover:text-accent"
           >
-            {FORMULAIRE.ouvrir}
-          </a>
-          <a
-            href={resultat.url}
-            download="apercu-mission-gateau.pdf"
-            className="rounded-full border-2 border-accent px-6 py-3 font-bold text-accent hover:bg-creme-fonce"
-          >
-            {FORMULAIRE.telecharger}
-          </a>
-        </div>
-        <dl className="mt-6 rounded-xl bg-creme-fonce px-4 py-3 text-sm">
-          <dt className="font-bold">{FORMULAIRE.graineLibelle}</dt>
-          <dd className="mt-1 font-mono text-base tracking-widest">{resultat.graine}</dd>
-          <dd className="mt-1 text-encre-douce">{FORMULAIRE.graineAide}</dd>
-        </dl>
-        <button
-          type="button"
-          onClick={() => {
-            URL.revokeObjectURL(resultat.url);
-            setResultat(null);
-            setEtape(0);
-          }}
-          className="mt-6 underline underline-offset-4 hover:text-accent"
-        >
-          {FORMULAIRE.refaire}
-        </button>
-      </section>
+            {FORMULAIRE.refaire}
+          </button>
+        </section>
+        {vente ? (
+          <BlocAchat
+            key={`${resultat.graine}`}
+            configuration={resultat.configuration}
+            graine={resultat.graine}
+            brouillon={brouillon}
+            paysInitial={sauvegarde?.graine === resultat.graine ? sauvegarde.pays : null}
+            offre={vente}
+          />
+        ) : (
+          <p className="mt-6 rounded-2xl border border-bordure bg-creme-fonce p-5 font-bold">{ACHAT.bientot}</p>
+        )}
+      </>
     );
   }
 

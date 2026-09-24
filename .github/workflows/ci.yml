@@ -31,3 +31,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Polices et icônes embarquées dans les fonctions PDF
+        run: npm run verifier:tracage

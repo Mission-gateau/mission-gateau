@@ -5,7 +5,7 @@ import { typographier } from "../engine/texte";
 export const FORMULAIRE = typographier({
   titre: "Créer mon jeu",
   intro:
-    "Six questions, une septième étape facultative, et votre aperçu est prêt. Rien de ce que vous saisissez n'est enregistré : vos réponses servent à composer le jeu, puis disparaissent.",
+    "Six questions, une septième étape facultative, et votre aperçu est prêt. L'aperçu n'enregistre rien de ce que vous saisissez : vos réponses servent à composer le jeu, puis disparaissent. Si vous achetez le jeu complet, la politique de confidentialité dit ce qui est gardé, et combien de temps.",
   etapeSur: "Étape {courante} sur {total}",
   precedent: "Retour",
   suivant: "Continuer",

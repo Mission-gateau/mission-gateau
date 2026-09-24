@@ -60,6 +60,16 @@ describe("route de l'aperçu", () => {
     expect(corps.details.every((d) => d.message.length > 0)).toBe(true);
   });
 
+  it("refuse une accolade dans les détails de la fête : elle casserait les gabarits du kit", async () => {
+    const reponse = await poster({ configuration: configuration({ fete: { invites: ["Léa", "{Tom}"] } }) });
+    expect(reponse.status).toBe(422);
+    const corps = (await reponse.json()) as { details: { champ: string; message: string }[] };
+    expect(corps.details[0]).toEqual({
+      champ: "fete.invites.1",
+      message: "Les accolades { } ne sont pas acceptées dans les détails de la fête.",
+    });
+  });
+
   it("refuse une requête illisible", async () => {
     expect((await poster("{ ceci n'est pas du JSON")).status).toBe(400);
     expect((await poster('"une chaîne"')).status).toBe(400);

@@ -10,10 +10,13 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@react-pdf/renderer"],
 
   // Les polices et les icônes sont lues sur le disque au moment de produire un
-  // PDF. Sans cette ligne, le traceur de fichiers ne les verrait pas et la
-  // fonction déployée partirait sans elles.
+  // PDF. Sans ces lignes, le traceur de fichiers ne les verrait pas et les
+  // fonctions déployées partiraient sans elles. Les crochets d'une route
+  // dynamique s'échappent : la clé est un motif picomatch.
+  // `npm run verifier:tracage` le vérifie sur le build.
   outputFileTracingIncludes: {
     "/api/apercu": ["./public/fonts/**/*", "./public/icones/**/*"],
+    "/api/commande/\\[ref\\]/kit": ["./public/fonts/**/*", "./public/icones/**/*"],
   },
 
   async headers() {

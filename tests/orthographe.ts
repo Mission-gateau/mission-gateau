@@ -33,6 +33,17 @@ export const LISTE_BLANCHE = new Set(
     "game",
     // Forme que le dictionnaire ne reconnaît qu'entière.
     "aujourd'hui",
+    // Entreprises nommées dans les pages légales : le prestataire de paiement
+    // (Stripe Payments Europe, Limited ; Stripe, Inc.), l'hébergeur (Vercel
+    // Inc.), et les portefeuilles Apple Pay et Google Pay.
+    "Stripe", "Payments", "Limited", "Vercel", "Inc", "Pay",
+    // Sigles juridiques : entrepreneur individuel, Code général des impôts,
+    // registre du commerce, règlement général sur la protection des données.
+    "EI", "CGI", "RCS", "RGPD",
+    // Nom technique du stockage de l'onglet, cité dans la politique de confidentialité.
+    "sessionStorage",
+    // Suffixe ordinal de « 1er ».
+    "er",
   ].map((mot) => mot.toLowerCase()),
 );
 
@@ -63,7 +74,8 @@ export function motsDe(texte: string): string[] {
   return texte
     // Les gabarits {prenom} sont remplacés au moment de la génération.
     .replace(/\{\w+\}/g, " ")
-    // Adresses et noms de domaine.
+    // Adresses électroniques, adresses et noms de domaine.
+    .replace(/\S+@\S+/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/\b[\w-]+\.(com|fr|org|net)\b/g, " ")
     .split(/[^\p{L}'’-]+/u)
