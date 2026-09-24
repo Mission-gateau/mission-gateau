@@ -176,10 +176,10 @@ describe("état d'une commande, vérifié chez Stripe", () => {
     expect((await etat(reference)).etat).toBe("illisible");
   });
 
-  it("indisponible : sans clé, ou quand Stripe ne répond pas", async () => {
+  it("sans clé, aucune commande ne peut être trouvée ; quand Stripe ne répond pas, la vérification est indisponible", async () => {
     const { reference } = await commandeReglee();
     injection.deps = dependances(null, { env: environnement({ cleStripe: undefined }) });
-    expect((await etat(reference)).etat).toBe("indisponible");
+    expect((await etat(reference)).etat).toBe("introuvable");
     injection.deps = dependances(stripe, { maintenant: () => MAINTENANT });
     stripe.enPanne = true;
     expect((await etat(reference)).etat).toBe("indisponible");
@@ -273,7 +273,7 @@ describe("route du kit", () => {
     const { reference } = await commandeReglee();
     injection.deps = dependances(null, { env: environnement({ cleStripe: undefined }) });
     const sansCle = await telecharger(reference);
-    expect(sansCle.status).toBe(503);
+    expect(sansCle.status).toBe(404);
     expect(await estUnPdf(sansCle)).toBe(false);
     injection.deps = dependances(stripe, { maintenant: () => MAINTENANT });
     stripe.enPanne = true;

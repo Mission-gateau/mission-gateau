@@ -49,7 +49,9 @@ export async function etatDeLaCommande(entree: {
 }): Promise<EtatCommande> {
   const { reference, sessionId, client, cleStripe, maintenant } = entree;
   if (!referenceValide(reference)) return { etat: "introuvable" };
-  if (!client || !cleStripe) return { etat: "indisponible" };
+  // Sans clé, ce déploiement n'a jamais pu vendre : aucune commande ne peut y
+  // être trouvée. « Indisponible » reste réservé aux pannes de Stripe.
+  if (!client || !cleStripe) return { etat: "introuvable" };
 
   try {
     let paiement: PaiementLu | null = null;

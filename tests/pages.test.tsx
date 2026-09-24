@@ -217,10 +217,13 @@ describe("page d'une commande", () => {
     }
   });
 
-  it("dit que la vérification est impossible quand il n'y a pas de clé", async () => {
+  it("dit « commande introuvable » sans clé, et « momentanément impossible » quand Stripe ne répond pas", async () => {
     etat.deps = dependances(null);
-    const html = await pageDeCommande("AAAAAAAAAAAAAAAAAAAAAA");
-    expect(html).toContain("Vérification momentanément impossible");
+    expect(await pageDeCommande("AAAAAAAAAAAAAAAAAAAAAA")).toContain("Commande introuvable");
+    const stripe = new FauxStripe();
+    stripe.enPanne = true;
+    etat.deps = dependances(stripe);
+    expect(await pageDeCommande("AAAAAAAAAAAAAAAAAAAAAA")).toContain("Vérification momentanément impossible");
   });
 
   it("ne recopie pas une référence mal formée", async () => {

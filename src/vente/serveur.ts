@@ -195,7 +195,7 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
   if ("reponse" in corps) return corps.reponse;
   const sessionId = typeof corps.valeur.session_id === "string" ? corps.valeur.session_id : null;
 
-  if (!livraisonPossible(deps.env) || !deps.client) return refus("indisponible");
+  if (!livraisonPossible(deps.env) || !deps.client) return refus("introuvable");
   const etat = await etatDeLaCommande({
     reference,
     sessionId,
