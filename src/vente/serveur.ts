@@ -3,30 +3,38 @@ import { schemaConfiguration } from "../engine/configuration";
 import { VERSION_KIT, construireKit } from "../engine/kit";
 import type { Configuration } from "../engine/types";
 import { verifierKit } from "../engine/validation";
-import { VERSION_CGV } from "../contenu/legal";
+import { VERSION_CGV } from "../contenu/cgv";
+import { REPONSES_RETRACTATION } from "../contenu/retractation";
 import { ACHAT, REPONSES_COMMANDE } from "../contenu/vente";
-import { etatDeLaCommande } from "./commande";
+import { etatDeLaCommande, etatDuPaiement, type EtatCommande } from "./commande";
+import { envoyerLaConfirmation, type IssueConfirmation } from "./confirmation";
 import type { Dependances } from "./dependances";
-import { bilanVide, effacerLesConfigurationsAnciennes } from "./effacement";
 import { adresseDuSite } from "./environnement";
-import { texteDeLEtat, type EtatSansLivraison } from "./etats";
+import { texteDeLEtat, type Refus } from "./etats";
+import { codesErreur, journal } from "./journal";
 import { KitRefuse, produireKitLivre } from "./livraison";
-import { depassementsDeMetadonnees, metadonneesDuPaiement } from "./metadonnees";
-import { livraisonPossible, venteOuverte } from "./ouverture";
+import { CLES, depassementsDeMetadonnees, metadonneesDuPaiement } from "./metadonnees";
+import { exemplaireDEssai, livraisonPossible, venteOuverte } from "./ouverture";
 import { paysAccepte } from "./pays";
 import { creerReference } from "./reference";
+import { schemaDeclaration, traiterDeclaration } from "./retractation";
 import { LONGUEUR_CHAMP_FACTURE, lienDeCommande, parametresDeSession } from "./session";
+import { bilanTacheVide, tacheAutorisee, tacheQuotidienne, type BilanTache } from "./tache";
+
+export { journal } from "./journal";
 
 /**
  * Les routes de la vente, écrites une fois pour toutes ici et appelées par
  * les fichiers de src/app avec les vraies dépendances. Aucune ne journalise
- * de prénom, de donnée de la fête, d'e-mail ni de contenu chiffré : les seuls
- * journaux sont des noms d'événements et des compteurs.
+ * de prénom, de donnée de la fête, d'adresse e-mail ni de contenu chiffré :
+ * les seuls journaux sont des noms d'événements et des compteurs.
  */
 
 /** Même borne que la route de l'aperçu : une commande tient largement dans 8 ko. */
 export const TAILLE_MAX_COMMANDE = 8 * 1024;
 const TAILLE_MAX_KIT = 1024;
+/** Une déclaration de rétractation : quatre champs courts. */
+export const TAILLE_MAX_RETRACTATION = 4 * 1024;
 
 function json(corps: Record<string, unknown>, statut: number): Response {
   return Response.json(corps, { status: statut, headers: { "Cache-Control": "no-store" } });
@@ -34,23 +42,6 @@ function json(corps: Record<string, unknown>, statut: number): Response {
 
 function erreur(message: string, statut: number, details?: unknown): Response {
   return json({ erreur: message, ...(details ? { details } : {}) }, statut);
-}
-
-/** Un journal d'une ligne, fait de noms d'événements et de compteurs. */
-export function journal(entree: Record<string, string | number>): void {
-  console.info(JSON.stringify(entree));
-}
-
-/** Le type et le code d'une erreur Stripe, jamais son message, qui pourrait citer une valeur envoyée. */
-function codesErreur(erreur: unknown): Record<string, string> {
-  const codes: Record<string, string> = {};
-  if (erreur && typeof erreur === "object") {
-    for (const champ of ["type", "code"] as const) {
-      const valeur = (erreur as Record<string, unknown>)[champ];
-      if (typeof valeur === "string" && /^[A-Za-z_]{1,60}$/.test(valeur)) codes[champ] = valeur;
-    }
-  }
-  return codes;
 }
 
 type Corps = { valeur: Record<string, unknown> } | { reponse: Response };
@@ -81,6 +72,10 @@ async function lireCorps(requete: Request, tailleMax: number, videAccepte = fals
     return { reponse: erreur(REPONSES_COMMANDE.illisible, 400) };
   }
   return { valeur: valeur as Record<string, unknown> };
+}
+
+function sessionDuCorps(valeur: Record<string, unknown>): string | null {
+  return typeof valeur.session_id === "string" ? valeur.session_id : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,9 +112,18 @@ export async function creerCommande(requete: Request, deps: Dependances): Promis
   if (accordAccesImmediat !== true) return erreur(ACHAT.erreurAccordAcces, 422);
 
   // Le jeu vendu doit pouvoir être livré : on le compose et on le contrôle
-  // avant d'encaisser quoi que ce soit.
+  // avant d'encaisser quoi que ce soit. Une erreur du moteur donne une
+  // réponse propre, jamais une page d'erreur, et un journal sans donnée.
   const config = analyse.data as Configuration;
-  if (verifierKit(construireKit(config, graine)).length > 0) {
+  let problemes: number;
+  try {
+    problemes = verifierKit(construireKit(config, graine)).length;
+  } catch {
+    journal({ route: "commande", evenement: "kit_impossible" });
+    return erreur(REPONSES_COMMANDE.kitImpossible, 500);
+  }
+  if (problemes > 0) {
+    journal({ route: "commande", evenement: "kit_refuse", problemes });
     return erreur(REPONSES_COMMANDE.kitRefuse, 422);
   }
 
@@ -170,32 +174,101 @@ export async function creerCommande(requete: Request, deps: Dependances): Promis
 // POST /api/commande/<ref>/kit
 // ---------------------------------------------------------------------------
 
-const STATUTS: Record<EtatSansLivraison, number> = {
+const STATUTS: Record<Refus, number> = {
   non_aboutie: 402,
   introuvable: 404,
   expiree: 410,
   remboursee: 410,
+  retractee: 410,
+  litige: 409,
+  non_confirmee: 409,
   autre_version: 409,
   illisible: 409,
   indisponible: 503,
 };
 
-function refus(etat: EtatSansLivraison, statut = STATUTS[etat]): Response {
+function refus(etat: Refus, statut = STATUTS[etat]): Response {
   const { titre, texte } = texteDeLEtat(etat);
   return json({ etat, erreur: `${titre}. ${texte}` }, statut);
 }
 
 /**
- * Livre le kit complet. Refait la vérification de la page de commande,
- * déchiffre la configuration, construit le kit avec la graine, le fait
- * passer par verifierKit et renvoie le PDF. Hors d'une commande payée, rien.
+ * Livre le kit complet. Refait la vérification de la page de commande et
+ * refuse tant que la confirmation n'est pas partie, après une rétractation
+ * et pendant un litige. Déchiffre ensuite la configuration, construit le kit
+ * avec la graine, le fait passer par verifierKit et le rend ; juste avant de
+ * renvoyer le PDF pour la première fois, relit le paiement et enregistre le
+ * premier téléchargement, qui commence l'exécution du contrat. Si cet
+ * enregistrement échoue, aucun PDF ne part.
  */
 export async function livrerKit(requete: Request, reference: string, deps: Dependances): Promise<Response> {
   const corps = await lireCorps(requete, TAILLE_MAX_KIT, true);
   if ("reponse" in corps) return corps.reponse;
-  const sessionId = typeof corps.valeur.session_id === "string" ? corps.valeur.session_id : null;
+  const sessionId = sessionDuCorps(corps.valeur);
 
-  if (!livraisonPossible(deps.env) || !deps.client) return refus("introuvable");
+  const { client } = deps;
+  const cleStripe = deps.env.cleStripe;
+  if (!livraisonPossible(deps.env) || !client || !cleStripe) return refus("introuvable");
+  const etat = await etatDeLaCommande({ reference, sessionId, client, cleStripe, maintenant: deps.maintenant() });
+  if (etat.etat !== "payee") return refus(etat.etat);
+  if (!etat.suivi.confirmation) return refus("non_confirmee");
+
+  let rendu: { pdf: Buffer; nomFichier: string };
+  try {
+    rendu = await produireKitLivre(etat.configuration, etat.graine, { essai: exemplaireDEssai(deps.env) });
+  } catch (probleme) {
+    journal({ route: "kit", evenement: probleme instanceof KitRefuse ? "kit_refuse" : "rendu_impossible" });
+    return refus("illisible", 500);
+  }
+
+  try {
+    const frais = await client.lirePaiement(etat.paiement.id);
+    const encore: EtatCommande = frais
+      ? etatDuPaiement(frais, reference, cleStripe, deps.maintenant())
+      : { etat: "introuvable" };
+    if (encore.etat !== "payee") return refus(encore.etat);
+    if (!encore.suivi.telechargement) {
+      await client.modifierMetadonnees(encore.paiement.id, { [CLES.telechargement]: deps.maintenant().toISOString() });
+      journal({ route: "kit", evenement: "premier_telechargement" });
+    }
+  } catch {
+    journal({ route: "kit", evenement: "enregistrement_impossible" });
+    return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
+  }
+
+  return new Response(new Uint8Array(rendu.pdf), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${rendu.nomFichier}"`,
+      "Content-Length": String(rendu.pdf.length),
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/commande/<ref>/confirmation
+// ---------------------------------------------------------------------------
+
+const STATUTS_CONFIRMATION: Record<IssueConfirmation, number> = {
+  confirmee: 200,
+  en_cours: 202,
+  echec: 503,
+  impossible: 500,
+};
+
+/**
+ * Envoie la confirmation d'une commande payée qui n'en a pas encore : la page
+ * de la commande l'appelle à son chargement. Ne renvoie qu'un état, jamais le
+ * contenu de la commande.
+ */
+export async function confirmerCommande(requete: Request, reference: string, deps: Dependances): Promise<Response> {
+  const corps = await lireCorps(requete, TAILLE_MAX_KIT, true);
+  if ("reponse" in corps) return corps.reponse;
+  const sessionId = sessionDuCorps(corps.valeur);
+
+  if (!livraisonPossible(deps.env) || !deps.client) return json({ etat: "introuvable" }, 404);
   const etat = await etatDeLaCommande({
     reference,
     sessionId,
@@ -203,23 +276,37 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
     cleStripe: deps.env.cleStripe,
     maintenant: deps.maintenant(),
   });
-  if (etat.etat !== "payee") return refus(etat.etat);
+  if (etat.etat !== "payee") return json({ etat: etat.etat }, 409);
+  const issue = await envoyerLaConfirmation(etat, deps, "page");
+  return json({ etat: issue }, STATUTS_CONFIRMATION[issue]);
+}
 
-  try {
-    const { pdf, nomFichier } = await produireKitLivre(etat.configuration, etat.graine);
-    return new Response(new Uint8Array(pdf), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${nomFichier}"`,
-        "Content-Length": String(pdf.length),
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (probleme) {
-    journal({ route: "kit", evenement: probleme instanceof KitRefuse ? "kit_refuse" : "rendu_impossible" });
-    return refus("illisible", 500);
+// ---------------------------------------------------------------------------
+// POST /api/renoncer
+// ---------------------------------------------------------------------------
+
+/**
+ * Reçoit une déclaration de rétractation (voir src/vente/retractation.ts).
+ * Taille bornée, entrées validées par zod, et un champ piège qu'un humain ne
+ * voit pas : rempli, la déclaration est refusée sans rien faire.
+ */
+export async function renoncer(requete: Request, deps: Dependances): Promise<Response> {
+  const corps = await lireCorps(requete, TAILLE_MAX_RETRACTATION);
+  if ("reponse" in corps) return corps.reponse;
+  const analyse = schemaDeclaration.safeParse(corps.valeur);
+  if (!analyse.success) {
+    return erreur(
+      REPONSES_RETRACTATION.invalide,
+      422,
+      analyse.error.issues.map((souci) => ({ champ: souci.path.join(".") })),
+    );
   }
+  if (analyse.data.champ_libre) {
+    journal({ route: "retractation", evenement: "piege" });
+    return erreur(REPONSES_RETRACTATION.refusee, 400);
+  }
+  const { nom, prenom, reference, email } = analyse.data;
+  return json(await traiterDeclaration({ nom, prenom, reference, email }, deps), 200);
 }
 
 // ---------------------------------------------------------------------------
@@ -227,25 +314,22 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
 // ---------------------------------------------------------------------------
 
 /**
- * Efface la configuration chiffrée des paiements de plus de 30 jours.
- * N'importe qui peut appeler cette route : elle ne fait rien d'autre, et ne
- * renvoie que des compteurs.
+ * La tâche quotidienne (voir src/vente/tache.ts). Sans le secret de
+ * CRON_SECRET dans l'en-tête Authorization, ou sans la variable : 401, et
+ * rien d'autre. Ses compteurs ne partent que dans les journaux.
  */
-export async function lancerEffacement(deps: Dependances): Promise<Response> {
-  if (!deps.client) {
-    const bilan = { tache: "effacement", ...bilanVide(), sansCle: 1 };
-    journal(bilan);
-    return json(bilan, 200);
+export async function lancerTacheQuotidienne(requete: Request, deps: Dependances): Promise<Response> {
+  if (!tacheAutorisee(requete, deps.env)) {
+    return new Response(null, { status: 401, headers: { "Cache-Control": "no-store", "WWW-Authenticate": "Bearer" } });
   }
+  let bilan: BilanTache;
   try {
-    const bilan = { tache: "effacement", ...(await effacerLesConfigurationsAnciennes(deps.client, deps.maintenant())) };
-    journal(bilan);
-    return json(bilan, bilan.erreurs > 0 ? 500 : 200);
+    bilan = await tacheQuotidienne(deps);
   } catch {
-    const bilan = { tache: "effacement", ...bilanVide(), erreurs: 1 };
-    journal(bilan);
-    return json(bilan, 500);
+    bilan = { ...bilanTacheVide(), erreurs: 1 };
   }
+  journal({ tache: "quotidienne", ...bilan, ...(deps.client ? {} : { sansCle: 1 }) });
+  return json({ ok: bilan.erreurs === 0 }, bilan.erreurs > 0 ? 500 : 200);
 }
 
 export function methodeRefusee(): Response {

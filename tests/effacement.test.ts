@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Dependances } from "@/vente/dependances";
 
 /**
- * La tâche quotidienne qui efface la configuration chiffrée des paiements de
- * plus de 30 jours, appelée par sa vraie route.
+ * La tâche quotidienne, pour sa part d'effacement : elle efface la
+ * configuration chiffrée des paiements de plus de 30 jours. Appelée par sa
+ * vraie route, avec le secret que Vercel envoie. Les confirmations et les
+ * remboursements de la même tâche sont éprouvés dans tests/tache.test.ts.
  */
 const injection = vi.hoisted(() => ({ deps: null as unknown }));
 vi.mock("@/vente/dependances", async (importOriginal) => {
@@ -17,7 +19,15 @@ import { POST as commanderRoute } from "@/app/api/commande/route";
 import { GET as effacer } from "@/app/api/effacement/route";
 import { CLES, configurationPresente, lireCommande } from "@/vente/metadonnees";
 import type { PaiementLu } from "@/vente/stripe";
-import { FauxStripe, corpsDeCommande, dependances, environnement, marquesDans, requeteJson } from "./fauxStripe";
+import {
+  FauxStripe,
+  SECRET_TACHE,
+  corpsDeCommande,
+  dependances,
+  environnement,
+  marquesDans,
+  requeteJson,
+} from "./fauxStripe";
 
 const MAINTENANT = new Date("2026-09-24T03:00:00.000Z");
 const JOUR = 24 * 60 * 60 * 1000;
@@ -27,7 +37,7 @@ let journaux: string[];
 
 beforeEach(() => {
   stripe = new FauxStripe();
-  injection.deps = dependances(stripe, { maintenant: () => MAINTENANT });
+  injection.deps = dependances(stripe, { env: environnement({ secretTache: SECRET_TACHE }), maintenant: () => MAINTENANT });
   journaux = [];
   for (const niveau of ["log", "info", "warn", "error", "debug"] as const) {
     vi.spyOn(console, niveau).mockImplementation((...args: unknown[]) => {
@@ -52,9 +62,18 @@ async function payeeIlYa(jours: number, secondes = 0, premiereTentative?: Date):
   return stripe.payer({ payeLe: ilYa(jours, secondes), premiereTentative }).paiement;
 }
 
-async function lancer(): Promise<{ statut: number; bilan: Record<string, number | string> }> {
-  const reponse = await effacer();
-  return { statut: reponse.status, bilan: (await reponse.json()) as Record<string, number | string> };
+/**
+ * Lance la tâche comme Vercel : GET avec le secret. Ses compteurs ne sont
+ * plus dans la réponse, seulement dans le journal : on les y relit.
+ */
+async function lancer(): Promise<{ statut: number; corps: unknown; bilan: Record<string, number | string> }> {
+  const avant = journaux.length;
+  const reponse = await effacer(
+    new Request("http://localhost/api/effacement", { headers: { Authorization: `Bearer ${SECRET_TACHE}` } }),
+  );
+  const entrees = journaux.slice(avant).map((ligne) => JSON.parse(ligne) as Record<string, number | string>);
+  const bilan = entrees.find((entree) => entree.tache === "quotidienne") ?? {};
+  return { statut: reponse.status, corps: await reponse.json(), bilan };
 }
 
 function debitsDe(paiement: PaiementLu) {
@@ -67,9 +86,10 @@ describe("effacement à 30 jours", () => {
     const avant = structuredClone(stripe.paiements.get(vieux.id)!.metadonnees);
     expect(debitsDe(vieux).every((debit) => configurationPresente(debit.metadonnees))).toBe(true);
 
-    const { statut, bilan } = await lancer();
+    const { statut, corps, bilan } = await lancer();
     expect(statut).toBe(200);
-    expect(bilan).toMatchObject({ tache: "effacement", paiementsEffaces: 1, debitsEffaces: 1, erreurs: 0 });
+    expect(corps).toEqual({ ok: true });
+    expect(bilan).toMatchObject({ tache: "quotidienne", paiementsEffaces: 1, debitsEffaces: 1, erreurs: 0 });
 
     const apres = stripe.paiements.get(vieux.id)!.metadonnees;
     expect(configurationPresente(apres)).toBe(false);
@@ -165,27 +185,53 @@ describe("effacement à 30 jours", () => {
     expect(stripe.recherchesDeDebits[0]!.avant).toBe(limite);
   });
 
-  it("n'écrit dans les journaux que des compteurs", async () => {
+  it("n'écrit dans les journaux que des compteurs, et ne les rend plus publics", async () => {
     await payeeIlYa(40);
     await payeeIlYa(3);
-    await lancer();
-    expect(journaux).toHaveLength(1);
-    const entree = JSON.parse(journaux[0]!) as Record<string, unknown>;
-    expect(entree.tache).toBe("effacement");
+    journaux.length = 0;
+    const { corps } = await lancer();
+    expect(corps).toEqual({ ok: true });
+    const lignes = journaux.map((ligne) => JSON.parse(ligne) as Record<string, unknown>);
+    const entree = lignes.find((ligne) => ligne.tache === "quotidienne")!;
+    expect(entree.tache).toBe("quotidienne");
     const autres = Object.entries(entree).filter(([cle]) => cle !== "tache");
     expect(autres.length).toBeGreaterThan(0);
     expect(autres.every(([, valeur]) => typeof valeur === "number")).toBe(true);
     expect(marquesDans(journaux.join("\n"))).toEqual([]);
   });
 
-  it("peut être appelée par n'importe qui : sans clé, elle ne fait rien", async () => {
-    injection.deps = dependances(null, { env: environnement({ cleStripe: undefined }) });
+  it("sans le secret, ou sans CRON_SECRET, répond 401 et ne fait rien d'autre", async () => {
+    await payeeIlYa(40);
+    const modifications = stripe.modifications.length;
+    journaux.length = 0;
+    const essais: [Request, string | undefined][] = [
+      [new Request("http://localhost/api/effacement"), SECRET_TACHE],
+      [new Request("http://localhost/api/effacement", { headers: { Authorization: "Bearer mauvais" } }), SECRET_TACHE],
+      [new Request("http://localhost/api/effacement", { headers: { Authorization: SECRET_TACHE } }), SECRET_TACHE],
+      [new Request("http://localhost/api/effacement", { headers: { Authorization: `Bearer ${SECRET_TACHE}x` } }), SECRET_TACHE],
+      [new Request("http://localhost/api/effacement", { headers: { Authorization: "Bearer " } }), undefined],
+      [new Request("http://localhost/api/effacement", { headers: { Authorization: `Bearer ${SECRET_TACHE}` } }), undefined],
+    ];
+    for (const [requete, secret] of essais) {
+      injection.deps = dependances(stripe, { env: environnement({ secretTache: secret }), maintenant: () => MAINTENANT });
+      const reponse = await effacer(requete);
+      expect(reponse.status).toBe(401);
+      expect(await reponse.text()).toBe("");
+    }
+    expect(stripe.recherchesAEffacer).toHaveLength(0);
+    expect(stripe.recherchesAbouties).toHaveLength(0);
+    expect(stripe.modifications).toHaveLength(modifications);
+    expect(journaux).toHaveLength(0);
+  });
+
+  it("autorisée mais sans clé Stripe, elle ne fait rien", async () => {
+    injection.deps = dependances(null, { env: environnement({ cleStripe: undefined, secretTache: SECRET_TACHE }) });
     const { statut, bilan } = await lancer();
     expect(statut).toBe(200);
     expect(bilan).toMatchObject({ paiementsEffaces: 0, debitsEffaces: 0, sansCle: 1 });
   });
 
-  it("ne fait rien d'autre qu'effacer : aucune session, aucune lecture de commande", async () => {
+  it("n'efface que la configuration : aucune session créée, aucune commande cherchée par sa référence", async () => {
     await payeeIlYa(40);
     const sessions = stripe.sessionsCreees.length;
     await lancer();
@@ -197,15 +243,34 @@ describe("effacement à 30 jours", () => {
   it("signale une panne de Stripe par une erreur, sans rien casser", async () => {
     await payeeIlYa(40);
     stripe.enPanne = true;
-    const { statut, bilan } = await lancer();
+    const { statut, corps, bilan } = await lancer();
     expect(statut).toBe(500);
-    expect(bilan).toMatchObject({ paiementsEffaces: 0, erreurs: 1 });
+    expect(corps).toEqual({ ok: false });
+    expect(bilan).toMatchObject({ paiementsEffaces: 0 });
+    expect(Number(bilan.erreurs)).toBeGreaterThan(0);
   });
 
-  it("est déclarée comme tâche quotidienne dans vercel.json, compatible avec l'offre Hobby", () => {
+  it("une panne en cours de route ne fait pas perdre les compteurs déjà faits", async () => {
+    await payeeIlYa(40);
+    await payeeIlYa(41);
+    // Les paiements s'effacent ; la recherche des débits tombe en panne ensuite.
+    stripe.debitsAvecConfiguration = async () => {
+      throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
+    };
+    const { statut, bilan } = await lancer();
+    expect(statut).toBe(500);
+    expect(bilan).toMatchObject({ paiementsExamines: 2, paiementsEffaces: 2, debitsEffaces: 0, erreurs: 1 });
+  });
+
+  it("passe deux fois par jour, vers 3 h et 15 h UTC, chaque tâche une fois par jour comme l'exige l'offre Hobby", () => {
     const config = JSON.parse(readFileSync(path.join(process.cwd(), "vercel.json"), "utf8")) as {
       crons: { path: string; schedule: string }[];
     };
-    expect(config.crons).toEqual([{ path: "/api/effacement", schedule: expect.stringMatching(/^\d{1,2} \d{1,2} \* \* \*$/) }]);
+    expect(config.crons).toEqual([
+      { path: "/api/effacement", schedule: "0 3 * * *" },
+      { path: "/api/effacement", schedule: "0 15 * * *" },
+    ]);
+    // Chaque expression ne se déclenche qu'une fois par jour : minute et heure fixes.
+    for (const { schedule } of config.crons) expect(schedule).toMatch(/^\d{1,2} \d{1,2} \* \* \*$/);
   });
 });

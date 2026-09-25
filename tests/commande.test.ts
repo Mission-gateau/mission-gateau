@@ -5,15 +5,32 @@ import type { Dependances } from "@/vente/dependances";
  * La route de création de commande, appelée telle que Next l'appelle, avec
  * un faux Stripe à la place du vrai.
  */
-const injection = vi.hoisted(() => ({ deps: null as unknown }));
+const injection = vi.hoisted(() => ({ deps: null as unknown, panneDuMoteur: false }));
 vi.mock("@/vente/dependances", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/vente/dependances")>();
   return { ...original, dependancesReelles: () => (injection.deps as Dependances | null) ?? original.dependancesReelles() };
 });
+// Une panne du moteur au moment de contrôler le kit : son message cite un prénom, comme pourrait le faire une vraie erreur.
+vi.mock("@/engine/validation", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/engine/validation")>();
+  return {
+    ...original,
+    verifierKit: (...args: Parameters<typeof original.verifierKit>) => {
+      if (injection.panneDuMoteur) throw new Error("Zéphyrine : panne simulée du contrôle");
+      return original.verifierKit(...args);
+    },
+  };
+});
 
 import { GET, POST } from "@/app/api/commande/route";
 import { VENDEUR } from "@/contenu/vendeur";
-import { CLES, LIMITES_METADONNEES, depassementsDeMetadonnees, lireConfiguration } from "@/vente/metadonnees";
+import {
+  CLES,
+  CLES_APRES_PAIEMENT,
+  LIMITES_METADONNEES,
+  depassementsDeMetadonnees,
+  lireConfiguration,
+} from "@/vente/metadonnees";
 import { referenceValide } from "@/vente/reference";
 import {
   CLE_REELLE,
@@ -49,6 +66,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   injection.deps = null;
+  injection.panneDuMoteur = false;
 });
 
 function commander(corps: unknown = corpsDeCommande(), entetes: Record<string, string> = {}): Promise<Response> {
@@ -71,11 +89,13 @@ describe("vente fermée", () => {
     expect(stripe.sessionsCreees).toHaveLength(0);
   });
 
-  it("répond 503 sans clé, ou avec une clé de la mauvaise nature", async () => {
+  it("répond 503 sans clé, avec une clé de la mauvaise nature, ou sans la clé de Resend", async () => {
     for (const env of [
       environnement({ cleStripe: undefined }),
       environnement({ vercelEnv: "production", cleStripe: CLE_TEST }),
       environnement({ vercelEnv: "preview", cleStripe: CLE_REELLE }),
+      environnement({ cleResend: undefined }),
+      environnement({ vercelEnv: "production", cleStripe: CLE_REELLE, cleResend: undefined }),
     ]) {
       injection.deps = dependances(stripe, { env });
       expect((await commander()).status).toBe(503);
@@ -129,7 +149,7 @@ describe("contrôles de la commande", () => {
       expect(await erreurDe(sansCgv)).toMatch(/conditions générales de vente/);
       const sansAcces = await commander(corpsDeCommande({ accordAccesImmediat: accord }));
       expect(sansAcces.status).toBe(422);
-      expect(await erreurDe(sansAcces)).toMatch(/accès immédiat/);
+      expect(await erreurDe(sansAcces)).toMatch(/recevoir votre jeu dès le paiement/);
     }
     expect(stripe.sessionsCreees).toHaveLength(0);
   });
@@ -168,19 +188,23 @@ describe("session Stripe Checkout", () => {
     expect(ligne.price_data?.product_data?.description).toBe("Thème Pirates, 10-12 ans");
   });
 
-  it("crée une facture qui porte le lien, l'accès immédiat, la renonciation, les CGV et le vendeur", async () => {
+  it("crée une facture qui porte le lien, la demande de recevoir le jeu dès le paiement, les CGV et le vendeur", async () => {
     await commander();
     const { parametres, reference } = stripe.derniereSession();
     const lien = `https://${DOMAINE_PREVERSION}/commande/${reference}`;
     const facture = parametres.invoice_creation!;
     expect(facture.enabled).toBe(true);
     expect(facture.invoice_data?.custom_fields).toEqual([{ name: "Votre jeu", value: lien }]);
-    const description = facture.invoice_data!.description!;
-    expect(description).toContain("accès immédiat");
-    expect(description).toContain("renoncé ainsi à votre droit de rétractation");
-    expect(description).toContain("article L221-28, 13° du Code de la consommation");
+    const description = facture.invoice_data!.description!.replace(/\u00a0/g, " ");
+    expect(description).toContain(`Commande ${reference}.`);
+    expect(description).toContain("Vous avez demandé à recevoir votre jeu dès le paiement");
+    expect(description).toContain(
+      "votre droit de rétractation de 14 jours prend fin au début de son premier téléchargement (article L221-28, 13° du Code de la consommation)",
+    );
+    // Plus aucun « renoncé » au moment du paiement : le droit ne prend fin qu'au premier téléchargement.
+    expect(description).not.toMatch(/renonc/i);
     expect(description).toContain("valable 30 jours");
-    expect(description).toContain("version du 24 septembre 2026");
+    expect(description).toContain("version du 25 septembre 2026");
     const pied = facture.invoice_data!.footer!;
     for (const attendu of [
       "Quentin Courtois EI",
@@ -208,11 +232,11 @@ describe("session Stripe Checkout", () => {
     );
   });
 
-  it("rappelle l'accès immédiat et la renonciation près du bouton de paiement", async () => {
+  it("rappelle, mot pour mot, près du bouton de paiement, quand le droit de rétractation prend fin", async () => {
     await commander();
     const message = stripe.derniereSession().parametres.custom_text?.submit;
-    expect(message && "message" in message ? message.message : "").toMatch(
-      /accès immédiat[\s\S]*renon[\s\S]*rétractation[\s\S]*L221-28, 13°/,
+    expect((message && "message" in message ? message.message : "").replace(/\u00a0/g, " ")).toBe(
+      "En payant, vous demandez à recevoir votre jeu dès le paiement ; votre droit de rétractation de 14 jours prendra fin au début de son premier téléchargement (article L221-28, 13° du Code de la consommation).",
     );
   });
 
@@ -267,7 +291,7 @@ describe("ce que Stripe garde de la commande", () => {
     expect(meta[CLES.versionKit]).toBe("1.2");
     expect(meta[CLES.graine]).toBe("k7m2p9q4rs");
     expect(meta[CLES.pays]).toBe("BE");
-    expect(meta[CLES.versionCgv]).toBe("2026-09-24");
+    expect(meta[CLES.versionCgv]).toBe("2026-09-25");
     expect(meta[CLES.accordCgv]).toBe("2026-09-24T12:00:00.000Z");
     expect(meta[CLES.accordAccesImmediat]).toBe("2026-09-24T12:00:00.000Z");
     expect(depassementsDeMetadonnees(meta)).toEqual([]);
@@ -302,8 +326,40 @@ describe("ce que Stripe garde de la commande", () => {
     expect(journaux.join("\n")).not.toContain(morceau.slice(0, 40));
   });
 
-  it("fiche complète exigée : la fiche réelle, convention non signée, garde la vente fermée", async () => {
-    injection.deps = dependances(stripe, { fiche: { ...FICHE_COMPLETE, mediateur: VENDEUR.mediateur } });
+  it("convention non signée : la vente reste fermée en production, et l'essai reste ouvert hors production", async () => {
+    const ficheReelle = { ...FICHE_COMPLETE, mediateur: VENDEUR.mediateur };
+    injection.deps = dependances(stripe, {
+      fiche: ficheReelle,
+      env: environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }),
+    });
     expect((await commander()).status).toBe(503);
+    injection.deps = dependances(stripe, { fiche: ficheReelle });
+    expect((await commander()).status).toBe(200);
+  });
+
+  it("compte d'avance, dans les 50 clés de Stripe, celles écrites après le paiement", async () => {
+    await commander();
+    const meta = stripe.derniereSession().parametres.payment_intent_data!.metadata as Record<string, string>;
+    for (const cle of CLES_APRES_PAIEMENT) expect(meta[cle], cle).toBeUndefined();
+    expect(Object.keys(meta).length + CLES_APRES_PAIEMENT.length).toBeLessThanOrEqual(LIMITES_METADONNEES.cles);
+    const presqueTrop = Object.fromEntries(
+      Array.from({ length: LIMITES_METADONNEES.cles - CLES_APRES_PAIEMENT.length + 1 }, (_, i) => [`k${i}`, "v"]),
+    );
+    expect(depassementsDeMetadonnees(presqueTrop)).toHaveLength(1);
+  });
+});
+
+describe("erreur du moteur à la création de la commande", () => {
+  it("donne une réponse propre, en français, journalisée sans donnée personnelle", async () => {
+    injection.panneDuMoteur = true;
+    const reponse = await commander();
+    expect(reponse.status).toBe(500);
+    expect(reponse.headers.get("Content-Type")).toMatch(/application\/json/);
+    expect(await erreurDe(reponse)).toBe(
+      "Ce jeu n'a pas pu être préparé. Composez un nouvel aperçu, ou réessayez dans quelques minutes.",
+    );
+    expect(stripe.sessionsCreees).toHaveLength(0);
+    expect(journaux).toEqual([JSON.stringify({ route: "commande", evenement: "kit_impossible" })]);
+    expect(marquesDans(journaux.join("\n"))).toEqual([]);
   });
 });

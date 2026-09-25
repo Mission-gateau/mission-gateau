@@ -1,14 +1,17 @@
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import { adresseDuSite, cleConforme, lireEnvironnement, natureCle } from "@/vente/environnement";
-import { CHAMPS_OBLIGATOIRES, ficheComplete, manquesDeLaFiche } from "@/vente/fiche";
-import { livraisonPossible, venteOuverte } from "@/vente/ouverture";
+import { CHAMPS_OBLIGATOIRES, ficheComplete, ficheCompleteHorsConvention, manquesDeLaFiche } from "@/vente/fiche";
+import { exemplaireDEssai, livraisonPossible, venteOuverte } from "@/vente/ouverture";
 import { NOMS_PAYS } from "@/contenu/vente";
 import { PAYS_ACCEPTES, PAYS_UNION_EUROPEENNE, paysAccepte } from "@/vente/pays";
 import { MONTANT_CENTIMES, PRIX_AFFICHE, formaterPrix } from "@/vente/prix";
 import { creerReference, referenceValide, sessionValide } from "@/vente/reference";
 import {
   CLE_REELLE,
+  CLE_RESEND,
   CLE_RESTREINTE_REELLE,
   CLE_RESTREINTE_TEST,
   CLE_TEST,
@@ -55,10 +58,15 @@ describe("nature de la clé Stripe", () => {
   it("lit l'environnement sans rien garder de ce qu'il ne connaît pas", () => {
     const env = lireEnvironnement({
       STRIPE_SECRET_KEY: ` ${CLE_TEST} `,
+      RESEND_API_KEY: ` ${CLE_RESEND} `,
+      CRON_SECRET: "secret-de-la-tache",
       VERCEL_ENV: "preview",
       VERCEL_URL: DOMAINE_PREVERSION,
       VERCEL_PROJECT_PRODUCTION_URL: DOMAINE_PRODUCTION,
       AUTRE: "x",
+      URL_SITE: "https://ailleurs.example",
+      SUPABASE_URL: "https://base.example",
+      LIEN_SECRET: "x",
     });
     expect(env).toEqual({
       cleStripe: CLE_TEST,
@@ -66,8 +74,26 @@ describe("nature de la clé Stripe", () => {
       domaineProduction: DOMAINE_PRODUCTION,
       domaineDeploiement: DOMAINE_PREVERSION,
       port: undefined,
+      cleResend: CLE_RESEND,
+      secretTache: "secret-de-la-tache",
     });
-    expect(lireEnvironnement({ STRIPE_SECRET_KEY: "  " }).cleStripe).toBeUndefined();
+    expect(lireEnvironnement({ STRIPE_SECRET_KEY: "  ", RESEND_API_KEY: " ", CRON_SECRET: "" })).toMatchObject({
+      cleStripe: undefined,
+      cleResend: undefined,
+      secretTache: undefined,
+    });
+  });
+
+  it("ne lit jamais URL_SITE, SUPABASE_URL ni LIEN_SECRET, qui ne servent à rien", () => {
+    const fichiers = (dossier: string): string[] =>
+      readdirSync(dossier).flatMap((nom) => {
+        const chemin = path.join(dossier, nom);
+        return statSync(chemin).isDirectory() ? fichiers(chemin) : [chemin];
+      });
+    const fautifs = fichiers(path.join(process.cwd(), "src")).filter((fichier) =>
+      /\b(URL_SITE|SUPABASE_URL|LIEN_SECRET)\b/.test(readFileSync(fichier, "utf8")),
+    );
+    expect(fautifs).toEqual([]);
   });
 });
 
@@ -84,6 +110,8 @@ describe("fiche du vendeur", () => {
   it("aujourd'hui, il ne manque que la convention avec le médiateur", () => {
     expect(manquesDeLaFiche(VENDEUR)).toEqual(["mediateur.conventionSignee"]);
     expect(ficheComplete(FICHE_COMPLETE)).toBe(true);
+    expect(ficheCompleteHorsConvention(VENDEUR)).toBe(true);
+    expect(ficheCompleteHorsConvention(ficheAvec("siret", ""))).toBe(false);
   });
 
   it("chaque champ obligatoire vide rend la fiche incomplète", () => {
@@ -112,26 +140,55 @@ describe("ouverture de la vente", () => {
 
   it("reste fermée en production aujourd'hui : la convention n'est pas signée", () => {
     expect(venteOuverte(PRODUCTION_REELLE, VENDEUR)).toBe(false);
-    expect(venteOuverte(environnement(), VENDEUR)).toBe(false);
   });
 
-  it("s'ouvre quand tout y est, avec une clé de la bonne nature", () => {
+  it("s'ouvre pour l'essai hors production dès aujourd'hui : clé de test, fiche complète sauf la convention, clé de Resend", () => {
+    expect(venteOuverte(environnement(), VENDEUR)).toBe(true);
+    expect(venteOuverte(environnement({ vercelEnv: undefined, cleStripe: CLE_RESTREINTE_TEST }), VENDEUR)).toBe(true);
+  });
+
+  it("s'ouvre en production quand tout y est, convention comprise", () => {
     expect(venteOuverte(PRODUCTION_REELLE, FICHE_COMPLETE)).toBe(true);
-    expect(venteOuverte(environnement({ cleStripe: CLE_TEST }), FICHE_COMPLETE)).toBe(true);
-    expect(venteOuverte(environnement({ vercelEnv: undefined, cleStripe: CLE_RESTREINTE_TEST }), FICHE_COMPLETE)).toBe(
-      true,
-    );
   });
 
-  it("reste fermée sans clé, ou avec une clé de la mauvaise nature", () => {
-    expect(venteOuverte(environnement({ cleStripe: undefined }), FICHE_COMPLETE)).toBe(false);
-    expect(venteOuverte(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }), FICHE_COMPLETE)).toBe(false);
-    expect(venteOuverte(environnement({ vercelEnv: "preview", cleStripe: CLE_REELLE }), FICHE_COMPLETE)).toBe(false);
+  /**
+   * La matrice complète : production ou non × nature de la clé × fiche ×
+   * convention × clé de Resend. L'attendu est écrit ici indépendamment de
+   * src/vente/ouverture.ts.
+   */
+  it("suit la matrice complète des conditions", () => {
+    const environnements = ["production", "preview", "development", undefined] as const;
+    const cles = [undefined, CLE_TEST, CLE_RESTREINTE_TEST, CLE_REELLE, CLE_RESTREINTE_REELLE, "pk_test_abc"] as const;
+    const fiches = [
+      { nom: "complète", remplie: true },
+      { nom: "SIRET vide", remplie: false },
+    ] as const;
+    let cas = 0;
+    for (const vercelEnv of environnements) {
+      for (const cleStripe of cles) {
+        for (const { nom, remplie } of fiches) {
+          for (const signee of [true, false]) {
+            for (const cleResend of [CLE_RESEND, undefined]) {
+              const fiche = ficheAvec("mediateur.conventionSignee", signee);
+              if (!remplie) fiche.siret = "";
+              const production = vercelEnv === "production";
+              const cleAttendue = production ? cleStripe === CLE_REELLE || cleStripe === CLE_RESTREINTE_REELLE : cleStripe === CLE_TEST || cleStripe === CLE_RESTREINTE_TEST;
+              const attendu = cleAttendue && remplie && (signee || !production) && cleResend !== undefined;
+              const obtenu = venteOuverte(environnement({ vercelEnv, cleStripe, cleResend }), fiche);
+              expect(obtenu, `${vercelEnv} / ${cleStripe} / ${nom} / signée ${signee} / Resend ${Boolean(cleResend)}`).toBe(attendu);
+              cas += 1;
+            }
+          }
+        }
+      }
+    }
+    expect(cas).toBe(4 * 6 * 2 * 2 * 2);
   });
 
-  it("reste fermée dès qu'un champ obligatoire est vide ou que la convention n'est pas signée", () => {
+  it("reste fermée dès qu'un champ obligatoire est vide, en production comme ailleurs", () => {
     for (const chemin of CHAMPS_OBLIGATOIRES) {
       expect(venteOuverte(PRODUCTION_REELLE, ficheAvec(chemin, "")), chemin).toBe(false);
+      expect(venteOuverte(environnement(), ficheAvec(chemin, "")), chemin).toBe(false);
     }
     expect(venteOuverte(PRODUCTION_REELLE, ficheAvec("mediateur.conventionSignee", false))).toBe(false);
   });
@@ -140,6 +197,14 @@ describe("ouverture de la vente", () => {
     expect(livraisonPossible(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }))).toBe(true);
     expect(livraisonPossible(environnement({ vercelEnv: "preview", cleStripe: CLE_REELLE }))).toBe(true);
     expect(livraisonPossible(environnement({ cleStripe: undefined }))).toBe(false);
+  });
+
+  it("le kit livré est un exemplaire d'essai partout, sauf en production", () => {
+    expect(exemplaireDEssai(environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }))).toBe(false);
+    expect(exemplaireDEssai(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }))).toBe(false);
+    for (const vercelEnv of ["preview", "development", undefined]) {
+      expect(exemplaireDEssai(environnement({ vercelEnv })), String(vercelEnv)).toBe(true);
+    }
   });
 });
 

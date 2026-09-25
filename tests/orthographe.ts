@@ -37,6 +37,9 @@ export const LISTE_BLANCHE = new Set(
     // (Stripe Payments Europe, Limited ; Stripe, Inc.), l'hébergeur (Vercel
     // Inc.), et les portefeuilles Apple Pay et Google Pay.
     "Stripe", "Payments", "Limited", "Vercel", "Inc", "Pay",
+    // Le prestataire d'envoi des e-mails, Resend, et la société qui l'exploite
+    // (Plus Five Five, Inc.), cités dans la politique de confidentialité.
+    "Resend", "Five",
     // Sigles juridiques : entrepreneur individuel, Code général des impôts,
     // registre du commerce, règlement général sur la protection des données.
     "EI", "CGI", "RCS", "RGPD",

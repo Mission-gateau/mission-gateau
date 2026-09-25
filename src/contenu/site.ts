@@ -92,13 +92,15 @@ export const SITE = typographier({
   lienCgv: "Conditions générales de vente",
   lienConfidentialite: "Confidentialité",
   lienCredits: "Crédits et licences",
+  /** Libellé imposé de la fonction de rétractation (article D221-5 du Code de la consommation). */
+  lienRenoncer: "Renoncer au contrat ici",
   navigationLegale: "Informations légales",
 } as const);
 
 export const CREDITS = typographier({
   titre: "Crédits et licences",
   intro:
-    "Tout ce que le site et les PDF contiennent est soit écrit ici, soit repris de ressources libres dont voici la liste. Rien n'est chargé depuis un autre domaine au moment où vous utilisez le site : les polices et les images sont servies par missiongateau.com.",
+    "Tout ce que le site et les PDF contiennent est soit écrit ici, soit repris de ressources libres dont voici la liste. Rien n'est chargé depuis un autre domaine au moment où vous utilisez le site : les polices et les images sont servies par le site lui-même.",
   titreRessources: "Ressources reprises",
   ressources: [
     {

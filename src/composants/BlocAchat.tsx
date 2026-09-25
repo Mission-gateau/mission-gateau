@@ -29,7 +29,10 @@ const LIENS_LEGAUX = [
  * des réponses repasse par un nouvel aperçu, qui remplace ce bloc.
  *
  * Les deux cases sont distinctes, non cochées au départ, et toutes deux
- * obligatoires ; la route de commande les revérifie, avec le pays.
+ * obligatoires ; la route de commande les revérifie, avec le pays. La
+ * seconde recueille la demande de recevoir le jeu avant la fin du délai de
+ * rétractation et la reconnaissance de sa perte au premier téléchargement
+ * (article L221-28, 13° du Code de la consommation).
  */
 export function BlocAchat({
   configuration,
@@ -123,6 +126,7 @@ export function BlocAchat({
         <dt className="font-bold">{ACHAT.libelleLivraison}</dt>
         <dd>{ACHAT.livraison}</dd>
       </dl>
+      <p className="mt-3 text-sm leading-relaxed">{ACHAT.retractation}</p>
 
       <form
         className="mt-6"

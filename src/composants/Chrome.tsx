@@ -27,10 +27,17 @@ export function EnTeteSite() {
   );
 }
 
+/**
+ * Les liens légaux du pied de page. « Renoncer au contrat ici » y figure à
+ * côté des autres, aussi visible qu'eux, sur toutes les pages : c'est la
+ * fonction de rétractation (articles L221-21 et D221-5 du Code de la
+ * consommation).
+ */
 const LIENS_LEGAUX = [
   { href: "/mentions-legales", texte: SITE.lienMentions },
   { href: "/cgv", texte: SITE.lienCgv },
   { href: "/confidentialite", texte: SITE.lienConfidentialite },
+  { href: "/renoncer", texte: SITE.lienRenoncer },
   { href: "/credits", texte: SITE.lienCredits },
 ];
 

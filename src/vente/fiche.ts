@@ -57,6 +57,15 @@ export function ficheComplete(fiche: FicheVendeur): boolean {
   return manquesDeLaFiche(fiche).length === 0;
 }
 
+/**
+ * La fiche est complète, la convention avec le médiateur mise à part : c'est
+ * ce qu'exige la vente d'essai, hors production. Le médiateur n'est pas nommé
+ * pour autant tant que la convention n'est pas signée (voir mediateurCite).
+ */
+export function ficheCompleteHorsConvention(fiche: FicheVendeur): boolean {
+  return manquesDeLaFiche(fiche).every((manque) => manque === "mediateur.conventionSignee");
+}
+
 /** « Quentin Courtois EI » : le nom et sa mention, accolés. */
 export function denomination(fiche: FicheVendeur): string {
   return [fiche.nom.trim(), fiche.mention.trim()].filter(Boolean).join(" ");

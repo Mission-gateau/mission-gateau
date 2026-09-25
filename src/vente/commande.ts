@@ -2,12 +2,23 @@ import { graineValide } from "../engine/alea";
 import { schemaConfiguration } from "../engine/configuration";
 import { VERSION_KIT } from "../engine/kit";
 import type { Configuration } from "../engine/types";
-import { CLES, lireCommande, lireConfiguration } from "./metadonnees";
+import { delaiExpire, dernierJourDuDelai, finDuDelai, type Jour } from "./delai";
+import { CLES, lireCommande, lireConfiguration, lireSuivi, type Commande, type Suivi } from "./metadonnees";
 import { referenceValide, sessionValide } from "./reference";
-import type { ClientStripe, PaiementLu } from "./stripe";
+import type { ClientStripe, PaiementLu, SessionLue } from "./stripe";
 
 /** Le lien de téléchargement vaut 30 jours après le paiement ; la configuration est effacée ensuite. */
 export const DUREE_DE_VALIDITE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Le délai de rétractation d'une commande payée. */
+export interface DelaiDeRetractation {
+  /** Dernier jour du délai, à Paris (voir src/vente/delai.ts). */
+  dernierJour: Jour;
+  /** L'instant où le délai est dépassé partout sur Terre. */
+  fin: Date;
+  /** Vrai une fois cet instant passé. */
+  expire: boolean;
+}
 
 export type EtatCommande =
   | {
@@ -15,9 +26,24 @@ export type EtatCommande =
       reference: string;
       configuration: Configuration;
       graine: string;
+      commande: Commande;
+      /** Le paiement tel que Stripe le rend, lu à jour. */
+      paiement: PaiementLu;
+      /** La session Checkout, quand la page y a accès (retour de Stripe) : elle porte l'e-mail de l'acheteur. */
+      session: SessionLue | null;
       payeeLe: Date;
       expireLe: Date;
+      suivi: Suivi;
+      delai: DelaiDeRetractation;
     }
+  | {
+      etat: "retractee";
+      retracteeLe: Date;
+      /** Vrai une fois le paiement remboursé en totalité chez Stripe. */
+      rembourse: boolean;
+      montant: number;
+    }
+  | { etat: "litige" }
   | { etat: "non_aboutie" }
   | { etat: "introuvable" }
   | { etat: "expiree" }
@@ -28,6 +54,8 @@ export type EtatCommande =
 
 export type NomEtat = EtatCommande["etat"];
 
+export type CommandePayee = Extract<EtatCommande, { etat: "payee" }>;
+
 /**
  * Ce que Stripe dit d'une commande, vérifié côté serveur, jamais sur la foi
  * du navigateur.
@@ -35,7 +63,8 @@ export type NomEtat = EtatCommande["etat"];
  * Avec `sessionId` (retour de Stripe juste après le paiement), la session est
  * lue directement : la recherche de Stripe met jusqu'à une minute à voir un
  * paiement neuf. Sans elle (lien de l'e-mail), le paiement est cherché par sa
- * référence. Dans les deux cas, la référence est revérifiée à l'identique.
+ * référence, puis relu par son identifiant. Dans les deux cas, la référence
+ * est revérifiée à l'identique.
  *
  * La configuration est déchiffrée et revalidée pour s'assurer que le jeu peut
  * être produit, mais rien n'est généré ici.
@@ -55,28 +84,47 @@ export async function etatDeLaCommande(entree: {
 
   try {
     let paiement: PaiementLu | null = null;
+    let session: SessionLue | null = null;
     if (sessionValide(sessionId)) {
-      const session = await client.lireSession(sessionId);
-      if (session && session.metadonnees[CLES.reference] === reference) {
-        if (!session.payee) return { etat: "non_aboutie" };
-        paiement = session.paiement;
+      const lue = await client.lireSession(sessionId);
+      if (lue && lue.metadonnees[CLES.reference] === reference) {
+        if (!lue.payee) return { etat: "non_aboutie" };
+        session = lue;
+        paiement = lue.paiement;
       }
     }
     paiement ??= await client.paiementParReference(reference);
     if (!paiement || paiement.metadonnees[CLES.reference] !== reference) return { etat: "introuvable" };
-    return etatDuPaiement(paiement, reference, cleStripe, maintenant);
+    return etatDuPaiement(paiement, reference, cleStripe, maintenant, session);
   } catch {
     return { etat: "indisponible" };
   }
 }
 
+/**
+ * L'état d'une commande, lu sur son paiement. L'ordre compte : un paiement
+ * rétracté l'est avant tout le reste, un litige bloque la livraison avant
+ * même le remboursement, et seul un paiement abouti, confirmé ou non, peut
+ * mener au jeu.
+ */
 export function etatDuPaiement(
   paiement: PaiementLu,
   reference: string,
   cleStripe: string,
   maintenant: Date,
+  session: SessionLue | null = null,
 ): EtatCommande {
   if (paiement.statut !== "succeeded") return { etat: "non_aboutie" };
+  const suivi = lireSuivi(paiement.metadonnees);
+  if (suivi.retractation) {
+    return {
+      etat: "retractee",
+      retracteeLe: suivi.retractation,
+      rembourse: paiement.rembourseEnTotalite,
+      montant: paiement.montant,
+    };
+  }
+  if (paiement.litige) return { etat: "litige" };
   if (paiement.rembourseEnTotalite) return { etat: "remboursee" };
 
   // Les 30 jours courent à partir du débit réussi, pas de la première tentative.
@@ -102,7 +150,33 @@ export function etatDuPaiement(
     reference,
     configuration: analyse.data as Configuration,
     graine: commande.graine,
+    commande,
+    paiement,
+    session,
     payeeLe,
     expireLe,
+    suivi,
+    delai: {
+      dernierJour: dernierJourDuDelai(payeeLe),
+      fin: finDuDelai(payeeLe),
+      expire: delaiExpire(payeeLe, maintenant),
+    },
   };
+}
+
+/**
+ * L'adresse e-mail de l'acheteur : celle qu'il a saisie sur la page de
+ * paiement (customer_details.email de la session Checkout, retrouvée par son
+ * identifiant, sinon par le paiement), à défaut l'e-mail de facturation du
+ * dernier débit. Null si Stripe n'en connaît aucune.
+ */
+export async function emailDeLAcheteur(
+  client: ClientStripe,
+  paiement: PaiementLu,
+  session: SessionLue | null = null,
+): Promise<string | null> {
+  if (session?.email && session.paiement?.id === paiement.id) return session.email;
+  const retrouvee = await client.sessionDuPaiement(paiement.id);
+  if (retrouvee?.email) return retrouvee.email;
+  return paiement.emailDuDebit;
 }

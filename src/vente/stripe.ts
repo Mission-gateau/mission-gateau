@@ -8,7 +8,7 @@ import { CLES, CONFIGURATION_CHIFFREE } from "./metadonnees";
  * Le code de la vente ne connaît qu'elle : en production, elle est servie par
  * le SDK officiel (creerClientStripe, plus bas) ; dans les tests, par un faux
  * client qui enregistre chaque requête. Elle ne rapporte de Stripe que ce
- * dont la livraison a besoin.
+ * dont la vente a besoin.
  */
 
 export type ParametresSession = Stripe.Checkout.SessionCreateParams;
@@ -21,12 +21,19 @@ export interface PaiementLu {
   cree: number;
   /**
    * Heure du paiement, en secondes Unix : celle du dernier débit, qui est le
-   * débit réussi d'un paiement abouti. Les 30 jours courent à partir d'elle.
+   * débit réussi d'un paiement abouti. Les 30 jours courent à partir d'elle,
+   * comme le délai de rétractation.
    */
   payeLe: number;
+  /** Montant payé, en centimes. */
+  montant: number;
   metadonnees: Record<string, string>;
   /** Vrai seulement si le paiement a été remboursé en totalité. */
   rembourseEnTotalite: boolean;
+  /** Vrai si le dernier débit fait l'objet d'un litige (Charge.disputed). */
+  litige: boolean;
+  /** E-mail de facturation du dernier débit : le dernier recours pour écrire à l'acheteur. */
+  emailDuDebit: string | null;
 }
 
 /**
@@ -47,14 +54,37 @@ export interface SessionLue {
   payee: boolean;
   metadonnees: Record<string, string>;
   paiement: PaiementLu | null;
+  /** customer_details.email : l'adresse saisie par l'acheteur sur la page de paiement. */
+  email: string | null;
+}
+
+/** Un remboursement tel que Stripe l'a accepté. */
+export interface RemboursementLu {
+  id: string;
+  /** « succeeded », « pending », « requires_action », « failed » ou « canceled ». */
+  statut: string;
 }
 
 export interface ClientStripe {
   creerSession(parametres: ParametresSession, cleIdempotence: string): Promise<{ url: string }>;
   /** Null si la session n'existe pas. */
   lireSession(id: string): Promise<SessionLue | null>;
-  /** Null si aucun paiement ne porte cette référence. */
+  /**
+   * Le paiement qui porte cette référence, lu à jour : la recherche de Stripe
+   * trouve l'identifiant, puis le paiement est relu par cet identifiant, car
+   * la recherche peut rendre des métadonnées périmées. Null si aucun paiement
+   * ne porte cette référence (ou si la recherche ne le voit pas encore).
+   */
   paiementParReference(reference: string): Promise<PaiementLu | null>;
+  /** Le paiement relu par son identifiant, toujours à jour. Null s'il n'existe pas. */
+  lirePaiement(id: string): Promise<PaiementLu | null>;
+  /** La session Checkout d'un paiement, pour y lire l'e-mail de l'acheteur. */
+  sessionDuPaiement(idPaiement: string): Promise<SessionLue | null>;
+  /** Paiements aboutis créés après `depuis` (secondes Unix), page après page. */
+  paiementsAboutisDepuis(
+    depuis: number,
+    page: string | null,
+  ): Promise<{ paiements: PaiementLu[]; pageSuivante: string | null }>;
   /** Paiements créés avant `avant` (secondes Unix) qui gardent une configuration chiffrée. */
   paiementsAvecConfiguration(
     avant: number,
@@ -67,6 +97,16 @@ export interface ClientStripe {
   ): Promise<{ debits: DebitLu[]; pageSuivante: string | null }>;
   modifierMetadonnees(idPaiement: string, metadonnees: Record<string, string>): Promise<void>;
   modifierMetadonneesDuDebit(idDebit: string, metadonnees: Record<string, string>): Promise<void>;
+  /**
+   * Rembourse la totalité d'un paiement, motif « requested_by_customer ».
+   * Un paiement déjà remboursé en totalité n'est pas une erreur : Stripe le
+   * dit, et le remboursement est tenu pour fait.
+   */
+  rembourser(
+    idPaiement: string,
+    cleIdempotence: string,
+    metadonnees: Record<string, string>,
+  ): Promise<RemboursementLu>;
 }
 
 /**
@@ -83,6 +123,10 @@ export function requeteConfigurationsAvant(avant: number): string {
   return `metadata["${CLES.etatConfiguration}"]:"${CONFIGURATION_CHIFFREE}" AND created<${Math.floor(avant)}`;
 }
 
+export function requetePaiementsAboutisDepuis(depuis: number): string {
+  return `status:"succeeded" AND created>${Math.floor(depuis)}`;
+}
+
 function lirePaiement(paiement: Stripe.PaymentIntent): PaiementLu {
   const charge = paiement.latest_charge && typeof paiement.latest_charge === "object" ? paiement.latest_charge : null;
   return {
@@ -90,8 +134,11 @@ function lirePaiement(paiement: Stripe.PaymentIntent): PaiementLu {
     statut: paiement.status,
     cree: paiement.created,
     payeLe: charge?.created ?? paiement.created,
+    montant: paiement.amount_received || paiement.amount,
     metadonnees: { ...(paiement.metadata ?? {}) },
     rembourseEnTotalite: charge?.refunded === true,
+    litige: charge?.disputed === true,
+    emailDuDebit: charge?.billing_details?.email ?? null,
   };
 }
 
@@ -99,8 +146,22 @@ function lireDebit(debit: Stripe.Charge): DebitLu {
   return { id: debit.id, cree: debit.created, metadonnees: { ...(debit.metadata ?? {}) } };
 }
 
-function ressourceAbsente(erreur: unknown): boolean {
-  return typeof erreur === "object" && erreur !== null && (erreur as { code?: unknown }).code === "resource_missing";
+function lireSessionStripe(session: Stripe.Checkout.Session): SessionLue {
+  const paiement =
+    session.payment_intent && typeof session.payment_intent === "object" ? lirePaiement(session.payment_intent) : null;
+  return {
+    id: session.id,
+    payee: session.payment_status === "paid",
+    metadonnees: { ...(session.metadata ?? {}) },
+    paiement,
+    email: session.customer_details?.email ?? null,
+  };
+}
+
+function codeErreur(erreur: unknown): string | null {
+  if (typeof erreur !== "object" || erreur === null) return null;
+  const code = (erreur as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
 }
 
 /**
@@ -121,6 +182,15 @@ export function creerClientStripe(
     ...(options.httpClient ? { httpClient: options.httpClient } : {}),
   });
 
+  const relire = async (id: string): Promise<PaiementLu | null> => {
+    try {
+      return lirePaiement(await stripe.paymentIntents.retrieve(id, { expand: ["latest_charge"] }));
+    } catch (erreur) {
+      if (codeErreur(erreur) === "resource_missing") return null;
+      throw erreur;
+    }
+  };
+
   return {
     async creerSession(parametres, cleIdempotence) {
       const session = await stripe.checkout.sessions.create(parametres, { idempotencyKey: cleIdempotence });
@@ -130,19 +200,11 @@ export function creerClientStripe(
 
     async lireSession(id) {
       try {
-        const session = await stripe.checkout.sessions.retrieve(id, { expand: ["payment_intent.latest_charge"] });
-        const paiement =
-          session.payment_intent && typeof session.payment_intent === "object"
-            ? lirePaiement(session.payment_intent)
-            : null;
-        return {
-          id: session.id,
-          payee: session.payment_status === "paid",
-          metadonnees: { ...(session.metadata ?? {}) },
-          paiement,
-        };
+        return lireSessionStripe(
+          await stripe.checkout.sessions.retrieve(id, { expand: ["payment_intent.latest_charge"] }),
+        );
       } catch (erreur) {
-        if (ressourceAbsente(erreur)) return null;
+        if (codeErreur(erreur) === "resource_missing") return null;
         throw erreur;
       }
     },
@@ -151,11 +213,33 @@ export function creerClientStripe(
       const resultat = await stripe.paymentIntents.search({
         query: requeteParReference(reference),
         limit: 10,
-        expand: ["data.latest_charge"],
       });
       const memeReference = resultat.data.filter((paiement) => paiement.metadata?.[CLES.reference] === reference);
       const choisi = memeReference.find((paiement) => paiement.status === "succeeded") ?? memeReference[0];
-      return choisi ? lirePaiement(choisi) : null;
+      if (!choisi) return null;
+      const frais = await relire(choisi.id);
+      return frais && frais.metadonnees[CLES.reference] === reference ? frais : null;
+    },
+
+    lirePaiement: relire,
+
+    async sessionDuPaiement(idPaiement) {
+      const resultat = await stripe.checkout.sessions.list({ payment_intent: idPaiement, limit: 1 });
+      const session = resultat.data[0];
+      return session ? lireSessionStripe(session) : null;
+    },
+
+    async paiementsAboutisDepuis(depuis, page) {
+      const resultat = await stripe.paymentIntents.search({
+        query: requetePaiementsAboutisDepuis(depuis),
+        limit: 100,
+        expand: ["data.latest_charge"],
+        ...(page ? { page } : {}),
+      });
+      return {
+        paiements: resultat.data.map(lirePaiement),
+        pageSuivante: resultat.has_more && resultat.next_page ? resultat.next_page : null,
+      };
     },
 
     async paiementsAvecConfiguration(avant, page) {
@@ -189,6 +273,19 @@ export function creerClientStripe(
 
     async modifierMetadonneesDuDebit(idDebit, metadonnees) {
       await stripe.charges.update(idDebit, { metadata: metadonnees });
+    },
+
+    async rembourser(idPaiement, cleIdempotence, metadonnees) {
+      try {
+        const remboursement = await stripe.refunds.create(
+          { payment_intent: idPaiement, reason: "requested_by_customer", metadata: metadonnees },
+          { idempotencyKey: cleIdempotence },
+        );
+        return { id: remboursement.id, statut: remboursement.status ?? "pending" };
+      } catch (erreur) {
+        if (codeErreur(erreur) === "charge_already_refunded") return { id: "", statut: "succeeded" };
+        throw erreur;
+      }
     },
   };
 }

@@ -3,8 +3,9 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { Dependances } from "@/vente/dependances";
 
 /**
- * La livraison d'une commande payée, et rien d'autre : chaque cas où le jeu
- * ne doit pas partir est essayé sur la vraie route, avec un faux Stripe.
+ * La livraison d'une commande payée et confirmée, et rien d'autre : chaque
+ * cas où le jeu ne doit pas partir est essayé sur la vraie route, avec un
+ * faux Stripe et un faux Resend.
  */
 const injection = vi.hoisted(() => ({ deps: null as unknown }));
 vi.mock("@/vente/dependances", async (importOriginal) => {
@@ -13,13 +14,14 @@ vi.mock("@/vente/dependances", async (importOriginal) => {
 });
 
 import { POST as commanderRoute } from "@/app/api/commande/route";
+import { POST as confirmationPost } from "@/app/api/commande/[ref]/confirmation/route";
 import { GET as kitGet, POST as kitPost } from "@/app/api/commande/[ref]/kit/route";
 import { VERSION_KIT, construireKit } from "@/engine/kit";
 import type { Configuration } from "@/engine/types";
 import { documentKit } from "@/pdf/documents/kit";
 import { enregistrerPolices } from "@/pdf/ressources";
 import { etatDeLaCommande } from "@/vente/commande";
-import { CLES, lireConfiguration } from "@/vente/metadonnees";
+import { CLES, lireConfiguration, lireSuivi } from "@/vente/metadonnees";
 import { compterPages, configuration } from "./aide";
 import {
   CLE_REELLE,
@@ -32,12 +34,14 @@ import {
   marquesDans,
   requeteJson,
 } from "./fauxStripe";
+import { FauxEmail } from "./fauxEmail";
 import { CARACTERE_INCONNU, textesDesPages } from "./lirePdf";
 
 const MAINTENANT = new Date("2026-09-24T12:00:00.000Z");
 const JOUR = 24 * 60 * 60 * 1000;
 
 let stripe: FauxStripe;
+let emails: FauxEmail;
 let journaux: string[];
 
 beforeAll(() => {
@@ -46,7 +50,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   stripe = new FauxStripe();
-  injection.deps = dependances(stripe, { maintenant: () => MAINTENANT });
+  emails = new FauxEmail();
+  injection.deps = dependances(stripe, { email: emails, maintenant: () => MAINTENANT });
   journaux = [];
   for (const niveau of ["log", "info", "warn", "error", "debug"] as const) {
     vi.spyOn(console, niveau).mockImplementation((...args: unknown[]) => {
@@ -68,6 +73,40 @@ async function commandeReglee(
   expect(reponse.status).toBe(200);
   return stripe.payer({ payeLe: options.payeLe ?? new Date(MAINTENANT.getTime() - JOUR), statut: options.statut, indexe: options.indexe });
 }
+
+function confirmer(reference: string, corps: unknown = {}): Promise<Response> {
+  return confirmationPost(requeteJson(`http://localhost/api/commande/${reference}/confirmation`, corps), {
+    params: Promise.resolve({ ref: reference }),
+  });
+}
+
+/** Une commande payée, puis confirmée par la route que la page appelle à son chargement. */
+async function commandeConfirmee(options: Parameters<typeof commandeReglee>[0] = {}) {
+  const reglee = await commandeReglee(options);
+  const reponse = await confirmer(reglee.reference, { session_id: reglee.sessionId });
+  expect(reponse.status).toBe(200);
+  return reglee;
+}
+
+/** Le texte de chaque page contient-il `phrase`, au défaut connu de @react-pdf près (un glyphe sans caractère) ? */
+function porteSurChaquePage(pages: string[], phrase: string): boolean {
+  return pages.every((page) => {
+    for (let debut = 0; debut + phrase.length <= page.length; debut += 1) {
+      let inconnus = 0;
+      let ok = true;
+      for (let i = 0; i < phrase.length && ok; i += 1) {
+        const c = page[debut + i];
+        if (c === phrase[i]) continue;
+        if (c === CARACTERE_INCONNU && inconnus < 2) inconnus += 1;
+        else ok = false;
+      }
+      if (ok) return true;
+    }
+    return false;
+  });
+}
+
+const FILIGRANE_ESSAI = "Exemplaire d'essai — sans valeur commerciale";
 
 function telecharger(reference: string, corps: unknown = {}): Promise<Response> {
   return kitPost(requeteJson(`http://localhost/api/commande/${reference}/kit`, corps), {
@@ -161,7 +200,7 @@ describe("état d'une commande, vérifié chez Stripe", () => {
 
   it("remboursée en totalité : plus rien n'est livré", async () => {
     const { reference, sessionId, paiement } = await commandeReglee();
-    stripe.rembourser(paiement.id);
+    stripe.rembourserHorsSite(paiement.id);
     expect((await etat(reference)).etat).toBe("remboursee");
     expect((await etat(reference, sessionId)).etat).toBe("remboursee");
   });
@@ -198,8 +237,8 @@ describe("état d'une commande, vérifié chez Stripe", () => {
 });
 
 describe("route du kit", () => {
-  it("livre le PDF complet d'une commande payée, en pièce jointe, sans prénom dans le nom du fichier", async () => {
-    const { reference, sessionId } = await commandeReglee();
+  it("livre le PDF complet d'une commande payée et confirmée, en pièce jointe, sans prénom dans le nom du fichier", async () => {
+    const { reference, sessionId } = await commandeConfirmee();
     const reponse = await telecharger(reference, { session_id: sessionId });
     expect(reponse.status).toBe(200);
     expect(reponse.headers.get("Content-Type")).toBe("application/pdf");
@@ -212,7 +251,7 @@ describe("route du kit", () => {
   });
 
   it("livre exactement le kit de l'aperçu : même configuration, même graine, même version", async () => {
-    const { reference, paiement } = await commandeReglee();
+    const { reference, paiement } = await commandeConfirmee();
     // Ce que Stripe a gardé redonne la configuration et la graine de l'aperçu…
     const lecture = lireConfiguration(paiement.metadonnees, CLE_TEST);
     expect(lecture).toEqual({ etat: "lue", configuration: configurationMarquee() });
@@ -220,7 +259,8 @@ describe("route du kit", () => {
     expect(paiement.metadonnees[CLES.versionKit]).toBe(VERSION_KIT);
     // … et le PDF livré est celui que ces deux-là produisent, page pour page.
     const livre = Buffer.from(await (await telecharger(reference)).arrayBuffer());
-    const attendu = await renderToBuffer(documentKit(construireKit(configurationMarquee(), "k7m2p9q4rs")));
+    // Hors production, le kit livré porte en plus le filigrane d'essai.
+    const attendu = await renderToBuffer(documentKit(construireKit(configurationMarquee(), "k7m2p9q4rs"), { essai: true }));
     expect(memesPages(textesDesPages(livre), textesDesPages(attendu))).toBe(true);
     expect(textesDesPages(livre).join(" ")).toContain("Zéphyrine");
   });
@@ -246,8 +286,8 @@ describe("route du kit", () => {
       [
         "remboursée",
         async () => {
-          const { reference, paiement } = await commandeReglee();
-          stripe.rembourser(paiement.id);
+          const { reference, paiement } = await commandeConfirmee();
+          stripe.rembourserHorsSite(paiement.id);
           return reference;
         },
         410,
@@ -281,7 +321,7 @@ describe("route du kit", () => {
   });
 
   it("ne sert rien sans clé, ni quand Stripe est en panne", async () => {
-    const { reference } = await commandeReglee();
+    const { reference } = await commandeConfirmee();
     injection.deps = dependances(null, { env: environnement({ cleStripe: undefined }) });
     const sansCle = await telecharger(reference);
     expect(sansCle.status).toBe(404);
@@ -300,15 +340,111 @@ describe("route du kit", () => {
     expect(lourde.status).toBe(413);
   });
 
+  it("refuse la livraison tant que la confirmation n'est pas partie", async () => {
+    const { reference, sessionId, paiement } = await commandeReglee();
+    const avant = await telecharger(reference, { session_id: sessionId });
+    expect(avant.status).toBe(409);
+    expect(await estUnPdf(avant)).toBe(false);
+    expect(((await avant.json()) as { etat: string; erreur: string }).etat).toBe("non_confirmee");
+    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).telechargement).toBeNull();
+    // Un envoi refusé par Resend ne débloque rien non plus.
+    emails.refuse = true;
+    expect((await confirmer(reference, { session_id: sessionId })).status).toBe(503);
+    expect((await telecharger(reference, { session_id: sessionId })).status).toBe(409);
+    emails.refuse = false;
+    expect((await confirmer(reference, { session_id: sessionId })).status).toBe(200);
+    expect((await telecharger(reference, { session_id: sessionId })).status).toBe(200);
+  });
+
+  it("enregistre le premier téléchargement juste avant de livrer, et une seule fois", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).telechargement).toBeNull();
+    const premier = await telecharger(reference);
+    expect(premier.status).toBe(200);
+    const heure = stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement];
+    expect(heure).toBe(MAINTENANT.toISOString());
+    const ecritures = stripe.modifications.filter((m) => CLES.telechargement in m.metadonnees);
+    expect(ecritures).toHaveLength(1);
+
+    injection.deps = dependances(stripe, { email: emails, maintenant: () => new Date(MAINTENANT.getTime() + 3600_000) });
+    expect((await telecharger(reference)).status).toBe(200);
+    expect((await telecharger(reference)).status).toBe(200);
+    expect(stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement]).toBe(heure);
+    expect(stripe.modifications.filter((m) => CLES.telechargement in m.metadonnees)).toHaveLength(1);
+  });
+
+  it("ne livre aucun PDF si le premier téléchargement ne peut pas être enregistré", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.metadonneesEnPanne = true;
+    const reponse = await telecharger(reference);
+    expect(reponse.status).toBe(503);
+    expect(await estUnPdf(reponse)).toBe(false);
+    expect(((await reponse.json()) as { erreur: string }).erreur).toBe(
+      "Votre téléchargement n'a pas pu être enregistré\u00a0: le jeu ne vous est pas envoyé pour le moment. Réessayez dans quelques minutes.",
+    );
+    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).telechargement).toBeNull();
+  });
+
+  it("refuse la livraison après une rétractation, et pendant un litige", async () => {
+    const retractee = await commandeConfirmee();
+    stripe.paiements.get(retractee.paiement.id)!.metadonnees[CLES.retractation] = MAINTENANT.toISOString();
+    const apresRetractation = await telecharger(retractee.reference);
+    expect(apresRetractation.status).toBe(410);
+    expect(await estUnPdf(apresRetractation)).toBe(false);
+    expect(((await apresRetractation.json()) as { etat: string }).etat).toBe("retractee");
+
+    const contestee = await commandeConfirmee();
+    stripe.contester(contestee.paiement.id);
+    const pendantLitige = await telecharger(contestee.reference);
+    expect(pendantLitige.status).toBe(409);
+    expect(await estUnPdf(pendantLitige)).toBe(false);
+    const corps = (await pendantLitige.json()) as { etat: string; erreur: string };
+    expect(corps.etat).toBe("litige");
+    expect(corps.erreur).toMatch(/contestation/);
+  });
+
+  it("refuse aussi un téléchargement qui croise une rétractation enregistrée pendant la préparation du PDF", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    const lirePaiement = stripe.lirePaiement.bind(stripe);
+    // La rétractation arrive entre la vérification de la commande et l'envoi du PDF.
+    stripe.lirePaiement = async (id: string) => {
+      stripe.paiements.get(paiement.id)!.metadonnees[CLES.retractation] = MAINTENANT.toISOString();
+      return lirePaiement(id);
+    };
+    const reponse = await telecharger(reference);
+    expect(reponse.status).toBe(410);
+    expect(await estUnPdf(reponse)).toBe(false);
+    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).telechargement).toBeNull();
+  });
+
+  it("porte le filigrane d'essai sur chaque page hors production, et jamais en production", async () => {
+    const essai = await commandeConfirmee();
+    const pagesEssai = textesDesPages(Buffer.from(await (await telecharger(essai.reference)).arrayBuffer()));
+    expect(pagesEssai.length).toBeGreaterThan(10);
+    expect(porteSurChaquePage(pagesEssai, FILIGRANE_ESSAI)).toBe(true);
+
+    injection.deps = dependances(stripe, {
+      email: emails,
+      env: environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }),
+      maintenant: () => MAINTENANT,
+    });
+    const reelle = await commandeConfirmee();
+    const pagesReelles = textesDesPages(Buffer.from(await (await telecharger(reelle.reference)).arrayBuffer()));
+    expect(pagesReelles.length).toBe(pagesEssai.length);
+    for (const page of pagesReelles) {
+      expect(page).not.toMatch(/xemplaire|essai|valeur commerciale/i);
+    }
+  });
+
   it("la livraison dépend de la clé, pas de l'ouverture de la vente", async () => {
-    const { reference } = await commandeReglee();
+    const { reference } = await commandeConfirmee();
     // Fiche incomplète (convention non signée) : la vente est fermée, la livraison continue.
     injection.deps = { ...dependances(stripe, { maintenant: () => MAINTENANT }), fiche: (await import("@/contenu/vendeur")).VENDEUR };
     expect((await telecharger(reference)).status).toBe(200);
   });
 
   it("n'écrit ni prénom, ni donnée de la fête, ni contenu chiffré dans les journaux", async () => {
-    const { reference, paiement } = await commandeReglee();
+    const { reference, paiement } = await commandeConfirmee();
     await telecharger(reference);
     stripe.paiements.get(paiement.id)!.metadonnees.config_0 = "AAAA";
     await telecharger(reference);
@@ -321,7 +457,7 @@ describe("route du kit", () => {
 
   it("livre un kit dont les invités ont des prénoms inhabituels mais permis", async () => {
     const invites = ["Léa B.", "O'Neil", "Jean-Luc 2", "Anaïs & Zoé", "M'Baye", "Ève (cousine)"];
-    const { reference } = await commandeReglee({
+    const { reference } = await commandeConfirmee({
       corps: corpsDeCommande({ configuration: configuration({ age: 8, nombreEnfants: 8, fete: { invites } }) }),
     });
     const reponse = await telecharger(reference);
@@ -352,7 +488,7 @@ describe("route du kit", () => {
       prenom: "Zéphyrine",
       fete: configurationMarquee().fete,
     });
-    const { reference } = await commandeReglee({ corps: corpsDeCommande({ configuration: lourde }) });
+    const { reference } = await commandeConfirmee({ corps: corpsDeCommande({ configuration: lourde }) });
     const debut = performance.now();
     const reponse = await telecharger(reference);
     const duree = performance.now() - debut;

@@ -89,6 +89,8 @@ export const GUIDE = typographier({
   titreTresor: "Le trésor",
 
   apercuFiligrane: "APERÇU",
+  /** Porté hors production sur chaque page du kit livré (voir src/vente/ouverture.ts). */
+  essaiFiligrane: "Exemplaire d'essai — sans valeur commerciale",
   apercuTitre: "Aperçu gratuit",
   apercuIntro:
     "Voici quatre pages représentatives de votre kit : une invitation, une carte-indice, une énigme et le début du guide. Le kit complet contient toutes les cartes, toutes les énigmes, les solutions, le trésor et les diplômes.",
