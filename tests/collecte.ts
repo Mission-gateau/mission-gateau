@@ -6,7 +6,11 @@ import { GABARITS_LOGIQUE } from "@/contenu/logique";
 import { FORMULAIRE } from "@/contenu/formulaire";
 import { CREDITS, SITE } from "@/contenu/site";
 import { LISTE_THEMES } from "@/contenu/themes";
-import { conditionsGenerales, mentionsLegales, politiqueDeConfidentialite } from "@/contenu/legal";
+import { mentionsLegales, politiqueDeConfidentialite } from "@/contenu/legal";
+import { VERSIONS_CGV } from "@/contenu/cgv";
+import { ACCUSE, CONFIRMATION } from "@/contenu/emails";
+import { MODELE_FORMULAIRE } from "@/contenu/formulaireRetractation";
+import { REPONSES_RETRACTATION, RETRACTATION } from "@/contenu/retractation";
 import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import { ACHAT, COMMANDE, NOMS_PAYS, REPONSES_COMMANDE, TEXTES_STRIPE } from "@/contenu/vente";
 
@@ -36,7 +40,7 @@ function parcourir(valeur: unknown, chemin: string, resultat: TexteRepere[]): vo
  * construites avec elle ne contiennent que la prose écrite pour le site. Les
  * données du vendeur elles-mêmes sont relues à part, depuis la vraie fiche.
  */
-const FICHE_NEUTRE: FicheVendeur = {
+export const FICHE_NEUTRE: FicheVendeur = {
   nom: "{nom}",
   mention: "{mention}",
   statut: "{statut}",
@@ -78,8 +82,15 @@ export function tousLesTextes(): TexteRepere[] {
     ["pays", NOMS_PAYS],
     ["vendeur", VENDEUR],
     ["mentionsLegales", mentionsLegales(FICHE_NEUTRE)],
-    ["cgv", conditionsGenerales(FICHE_NEUTRE, { prix: "{prix}" })],
+    ...VERSIONS_CGV.map(
+      (version): [string, unknown] => [`cgv[${version.identifiant}]`, version.conditions(FICHE_NEUTRE, { prix: "{prix}" })],
+    ),
     ["confidentialite", politiqueDeConfidentialite(FICHE_NEUTRE)],
+    ["retractation", RETRACTATION],
+    ["reponsesRetractation", REPONSES_RETRACTATION],
+    ["formulaireRetractation", MODELE_FORMULAIRE],
+    ["emailConfirmation", CONFIRMATION],
+    ["emailAccuse", ACCUSE],
   ];
   for (const [nom, valeur] of sources) parcourir(valeur, nom, resultat);
   return resultat;

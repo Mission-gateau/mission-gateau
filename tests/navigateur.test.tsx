@@ -6,16 +6,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Le formulaire et le bloc d'achat dans un vrai DOM : parcours jusqu'à
  * l'aperçu, bloc d'achat, départ chez Stripe, retour après annulation, pays
- * refusé, accords obligatoires, et oubli de la sauvegarde une fois payé.
+ * refusé, accords obligatoires, et oubli de la sauvegarde une fois payé. Puis
+ * la page d'une commande (envoi de la confirmation, téléchargement) et le
+ * formulaire de rétractation.
  */
-const navigation = vi.hoisted(() => ({ adresses: [] as string[] }));
+const navigation = vi.hoisted(() => ({ adresses: [] as string[], rafraichissements: 0 }));
 vi.mock("@/composants/navigation", () => ({
   allerVers: (adresse: string) => {
     navigation.adresses.push(adresse);
   },
 }));
+// Comme celui de Next, le faux routeur est le même objet d'un rendu à l'autre.
+const routeur = vi.hoisted(() => ({
+  refresh: () => {
+    navigation.rafraichissements += 1;
+  },
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => routeur }));
 
+import { Confirmation } from "@/composants/Confirmation";
 import { Formulaire } from "@/composants/Formulaire";
+import { FormulaireRetractation } from "@/composants/FormulaireRetractation";
 import { OublierSauvegarde, Telechargement } from "@/composants/Telechargement";
 import { VENDEUR } from "@/contenu/vendeur";
 import { PRIX_AFFICHE } from "@/vente/prix";
@@ -61,6 +72,7 @@ beforeEach(() => {
   racine = createRoot(conteneur);
   sessionStorage.clear();
   navigation.adresses = [];
+  navigation.rafraichissements = 0;
   URL.createObjectURL = vi.fn(() => "blob:faux");
   URL.revokeObjectURL = vi.fn();
   reseau();
@@ -145,7 +157,7 @@ describe("de l'aperçu au paiement", () => {
     // Sans les deux accords, rien ne part.
     await cliquer(bouton("Commander et payer"));
     expect(texte()).toContain("Merci d'accepter les conditions générales de vente.");
-    expect(texte()).toContain("Merci de demander l'accès immédiat à votre jeu");
+    expect(texte()).toContain("Merci de cocher la seconde case");
     expect(appels.filter((appel) => appel.url === "/api/commande")).toHaveLength(0);
 
     const [cgv, acces] = casesAcocher();
@@ -317,6 +329,8 @@ describe("page d'une commande payée", () => {
       { url: "/api/commande/AbCdEfGhIjKlMnOpQrStUv/kit", corps: { session_id: "cs_test_a1b2c3d4e5" } },
     ]);
     expect(telecharges).toEqual(["mission-gateau-pirates-mission.pdf"]);
+    // La page se met à jour : elle dira désormais quand a eu lieu le premier téléchargement.
+    expect(navigation.rafraichissements).toBe(1);
   });
 
   it("dit pourquoi le téléchargement est refusé", async () => {
@@ -324,5 +338,177 @@ describe("page d'une commande payée", () => {
     await rendre(<Telechargement reference="AbCdEfGhIjKlMnOpQrStUv" sessionId={null} />);
     await cliquer(bouton("Télécharger mon jeu (PDF)"));
     expect(texte()).toContain("Commande remboursée.");
+    expect(navigation.rafraichissements).toBe(0);
+  });
+});
+
+describe("page d'une commande payée, avant sa confirmation", () => {
+  const REFERENCE = "AbCdEfGhIjKlMnOpQrStUv";
+  const EMAIL = "service@exemple.fr";
+
+  it("envoie la confirmation à son chargement, en POST avec la session, puis recharge la page", async () => {
+    reseau({ "/confirmation": () => Response.json({ etat: "confirmee" }) });
+    await rendre(<Confirmation reference={REFERENCE} sessionId="cs_test_a1b2c3d4e5" email={EMAIL} />);
+    expect(appels).toEqual([
+      { url: `/api/commande/${REFERENCE}/confirmation`, corps: { session_id: "cs_test_a1b2c3d4e5" } },
+    ]);
+    expect(navigation.rafraichissements).toBe(1);
+    expect(conteneur.querySelectorAll("button")).toHaveLength(0);
+  });
+
+  it("si l'envoi échoue, le dit, propose de réessayer ou d'écrire, et n'affiche aucun bouton de téléchargement", async () => {
+    reseau({ "/confirmation": () => Response.json({ etat: "echec" }, { status: 503 }) });
+    await rendre(<Confirmation reference={REFERENCE} sessionId={null} email={EMAIL} />);
+    expect(texte()).toContain("Votre confirmation de commande n'a pas pu vous être envoyée par e-mail pour le moment");
+    expect(texte()).toContain(`écrivez-nous à ${EMAIL}`);
+    expect(texte()).not.toContain("Télécharger mon jeu");
+    expect(navigation.rafraichissements).toBe(0);
+    reseau({ "/confirmation": () => Response.json({ etat: "confirmee" }) });
+    await cliquer(bouton("Réessayer"));
+    expect(navigation.rafraichissements).toBe(1);
+  });
+
+  it("confirmation en cours : patiente, puis réessaie", async () => {
+    vi.useFakeTimers();
+    try {
+      let essais = 0;
+      reseau({
+        "/confirmation": () => {
+          essais += 1;
+          return essais === 1 ? Response.json({ etat: "en_cours" }, { status: 202 }) : Response.json({ etat: "confirmee" });
+        },
+      });
+      await rendre(<Confirmation reference={REFERENCE} sessionId={null} email={EMAIL} />);
+      expect(texte()).toContain("Votre confirmation de commande est en cours d'envoi.");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(essais).toBe(2);
+      expect(navigation.rafraichissements).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("confirmation impossible : invite à écrire au service client", async () => {
+    reseau({ "/confirmation": () => Response.json({ etat: "impossible" }, { status: 500 }) });
+    await rendre(<Confirmation reference={REFERENCE} sessionId={null} email={EMAIL} />);
+    expect(texte()).toContain("Votre confirmation de commande ne peut pas être préparée.");
+    expect(texte()).toContain(EMAIL);
+    expect(conteneur.querySelectorAll("button")).toHaveLength(0);
+  });
+});
+
+describe("formulaire de rétractation", () => {
+  const EMAIL = "service@exemple.fr";
+
+  async function remplir(valeurs: { nom: string; prenom: string; reference: string; email: string }): Promise<void> {
+    await saisir(champ<HTMLInputElement>("#nom"), valeurs.nom);
+    await saisir(champ<HTMLInputElement>("#prenom"), valeurs.prenom);
+    await saisir(champ<HTMLInputElement>("#reference"), valeurs.reference);
+    await saisir(champ<HTMLInputElement>("#email"), valeurs.email);
+  }
+
+  const ACCUSE = {
+    issue: "accuse",
+    accuse: {
+      objet: "Accusé de réception de votre rétractation — Mission Gâteau",
+      blocs: [
+        { type: "titre", texte: "Votre déclaration" },
+        { type: "lignes", lignes: [{ libelle: "Nom", valeur: "Martin" }] },
+      ],
+    },
+    envoi: { etat: "envoye", adresse: "delivered@resend.dev", saisie: "camille@exemple.fr", remplacee: true, copieAcheteur: true },
+  };
+
+  it("vérifie chaque champ, affiche le récapitulatif, puis envoie la déclaration par « Confirmer la rétractation »", async () => {
+    reseau({ "/api/renoncer": () => Response.json(ACCUSE) });
+    await rendre(<FormulaireRetractation referenceInitiale="AbCdEfGhIjKlMnOpQrStUv" email={EMAIL} />);
+    expect(champ<HTMLInputElement>("#reference").value).toBe("AbCdEfGhIjKlMnOpQrStUv");
+
+    // Rien ne part tant qu'un champ manque.
+    await saisir(champ<HTMLInputElement>("#reference"), "");
+    await cliquer(bouton("Vérifier ma déclaration"));
+    for (const erreur of [
+      "Indiquez votre nom.",
+      "Indiquez votre prénom.",
+      "Indiquez la référence de votre commande, ou collez son lien.",
+      "Indiquez une adresse e-mail valable",
+    ]) {
+      expect(texte()).toContain(erreur);
+    }
+    expect(appels).toHaveLength(0);
+
+    await remplir({ nom: "Martin", prenom: "Camille", reference: "https://site/commande/AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
+    await cliquer(bouton("Vérifier ma déclaration"));
+    expect(texte()).toContain("Je renonce au contrat portant sur la commande indiquée ci-dessous.");
+    expect(appels).toHaveLength(0);
+    const confirmer = bouton("Confirmer la rétractation");
+    expect(confirmer.textContent).toBe("Confirmer la rétractation");
+    await cliquer(confirmer);
+
+    expect(appels).toEqual([
+      {
+        url: "/api/renoncer",
+        corps: {
+          nom: "Martin",
+          prenom: "Camille",
+          reference: "https://site/commande/AbCdEfGhIjKlMnOpQrStUv",
+          email: "camille@exemple.fr",
+          champ_libre: "",
+        },
+      },
+    ]);
+    expect(texte()).toContain("Votre déclaration est reçue");
+    expect(texte()).toContain("Un accusé de réception vous a été envoyé par e-mail à delivered@resend.dev.");
+    expect(texte()).toContain("Une copie est aussi partie à l'adresse e-mail donnée lors du paiement.");
+    expect(texte()).toContain("l'accusé est parti à delivered@resend.dev au lieu de camille@exemple.fr");
+    // Le contenu de l'accusé de réception, tel qu'il est parti.
+    expect(texte()).toContain("Accusé de réception de votre rétractation — Mission Gâteau");
+    expect(texte()).toContain("Votre déclaration");
+  });
+
+  it("si l'accusé n'a pas pu partir, propose de le renvoyer", async () => {
+    let essais = 0;
+    reseau({
+      "/api/renoncer": () => {
+        essais += 1;
+        return Response.json(essais === 1 ? { ...ACCUSE, envoi: { etat: "echec" } } : ACCUSE);
+      },
+    });
+    await rendre(<FormulaireRetractation referenceInitiale="" email={EMAIL} />);
+    await remplir({ nom: "Martin", prenom: "Camille", reference: "AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
+    await cliquer(bouton("Vérifier ma déclaration"));
+    await cliquer(bouton("Confirmer la rétractation"));
+    expect(texte()).toContain("L'accusé de réception n'a pas pu partir pour le moment.");
+    expect(texte()).toContain(`écrivez-nous à ${EMAIL}`);
+    await cliquer(bouton("Renvoyer l'accusé de réception"));
+    expect(appels).toHaveLength(2);
+    expect(appels[1]!.corps).toEqual(appels[0]!.corps);
+    expect(texte()).toContain("Un accusé de réception vous a été envoyé par e-mail");
+  });
+
+  it("rappelle une rétractation déjà enregistrée, sans nouvel e-mail", async () => {
+    reseau({
+      "/api/renoncer": () =>
+        Response.json({ issue: "deja_enregistree", date: "24 septembre 2026", heure: "10\u00a0h\u00a030", remboursement: "effectue" }),
+    });
+    await rendre(<FormulaireRetractation referenceInitiale="AbCdEfGhIjKlMnOpQrStUv" email={EMAIL} />);
+    await remplir({ nom: "Martin", prenom: "Camille", reference: "AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
+    await cliquer(bouton("Vérifier ma déclaration"));
+    await cliquer(bouton("Confirmer la rétractation"));
+    expect(texte()).toContain("Votre rétractation est déjà enregistrée");
+    expect(texte().replace(/\u00a0/g, " ")).toContain("enregistrée le 24 septembre 2026 à 10 h 30");
+    expect(texte()).toContain("Remboursement : effectué par Stripe".replace(" :", "\u00a0:"));
+  });
+
+  it("dit quand la déclaration n'a pas pu partir", async () => {
+    reseau({ "/api/renoncer": () => Response.json({ erreur: "x" }, { status: 400 }) });
+    await rendre(<FormulaireRetractation referenceInitiale="" email={EMAIL} />);
+    await remplir({ nom: "Martin", prenom: "Camille", reference: "AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
+    await cliquer(bouton("Vérifier ma déclaration"));
+    await cliquer(bouton("Confirmer la rétractation"));
+    expect(texte()).toContain("Votre déclaration n'a pas pu être envoyée.");
+    expect(texte()).toContain(EMAIL);
   });
 });

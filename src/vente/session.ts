@@ -17,6 +17,11 @@ export function lienDeCommande(adresseSite: string, reference: string): string {
   return `${adresseSite}/commande/${reference}`;
 }
 
+/** Le lien « Renoncer au contrat ici », référence préremplie. */
+export function lienDeRenonciation(adresseSite: string, reference: string): string {
+  return `${adresseSite}/renoncer?ref=${encodeURIComponent(reference)}`;
+}
+
 /**
  * Pied de la facture : l'identité du vendeur, sa mention de TVA et, quand la
  * convention est signée, le médiateur. Un champ vide n'y figure pas.

@@ -1,23 +1,39 @@
 import { VENDEUR, type FicheVendeur } from "../contenu/vendeur";
-import { cleConforme, lireEnvironnement, natureCle, type Environnement } from "./environnement";
-import { ficheComplete } from "./fiche";
+import { cleConforme, enProduction, lireEnvironnement, natureCle, type Environnement } from "./environnement";
+import { ficheComplete, ficheCompleteHorsConvention } from "./fiche";
 
 /**
- * La vente n'est ouverte que si deux conditions sont réunies : une clé Stripe
- * de la bonne nature pour l'environnement, et une fiche du vendeur complète,
- * médiateur compris. Tant qu'il manque quelque chose, aucun prix n'est
- * affiché, aucun bouton d'achat n'apparaît, et la route de commande répond 503.
+ * La vente n'est ouverte que si tout ce qu'il faut pour vendre, confirmer la
+ * commande par e-mail et livrer est réuni :
+ *
+ * - en production : une clé Stripe réelle, la fiche du vendeur complète,
+ *   convention avec le médiateur comprise, et la clé de Resend ;
+ * - partout ailleurs (préversions, local) : une clé Stripe de test, la fiche
+ *   complète sauf la convention, et la clé de Resend.
+ *
+ * Tant qu'il manque quelque chose, aucun prix n'est affiché, aucun bouton
+ * d'achat n'apparaît, et la route de commande répond 503.
  */
 export function venteOuverte(env: Environnement, fiche: FicheVendeur = VENDEUR): boolean {
-  return cleConforme(env) && ficheComplete(fiche);
+  if (!cleConforme(env) || !env.cleResend) return false;
+  return enProduction(env) ? ficheComplete(fiche) : ficheCompleteHorsConvention(fiche);
 }
 
 /**
  * La livraison des commandes déjà payées ne dépend pas de l'ouverture de la
- * vente : elle n'a besoin que d'une clé, quelle que soit sa nature.
+ * vente : elle n'a besoin que d'une clé Stripe, quelle que soit sa nature. La
+ * confirmation par e-mail, qui doit partir avant, a besoin de la clé de Resend.
  */
 export function livraisonPossible(env: Environnement): boolean {
   return natureCle(env.cleStripe) !== null;
+}
+
+/**
+ * Hors production, le kit livré porte sur chaque page la mention « Exemplaire
+ * d'essai » ; en production, jamais.
+ */
+export function exemplaireDEssai(env: Environnement): boolean {
+  return !enProduction(env);
 }
 
 /**

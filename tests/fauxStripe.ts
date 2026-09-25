@@ -2,7 +2,7 @@ import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import type { Configuration } from "@/engine/types";
 import type { Dependances } from "@/vente/dependances";
 import type { Environnement } from "@/vente/environnement";
-import type { ClientStripe, DebitLu, PaiementLu, ParametresSession, SessionLue } from "@/vente/stripe";
+import type { ClientStripe, DebitLu, PaiementLu, ParametresSession, RemboursementLu, SessionLue } from "@/vente/stripe";
 import { configuration } from "./aide";
 
 /**
@@ -12,7 +12,9 @@ import { configuration } from "./aide";
  * chaque requête telle que le site l'envoie, et garde en mémoire les
  * sessions et les paiements. `payer()` simule un paiement abouti : le
  * paiement reçoit exactement les métadonnées que le site a confiées à la
- * session, comme chez Stripe.
+ * session, comme chez Stripe. `rembourser()` suit les règles de Stripe : une
+ * même clé d'idempotence rend le même remboursement, et un paiement n'est
+ * jamais remboursé au-delà de son montant.
  */
 export class FauxStripe implements ClientStripe {
   readonly sessionsCreees: { parametres: ParametresSession; cleIdempotence: string }[] = [];
@@ -22,6 +24,18 @@ export class FauxStripe implements ClientStripe {
   readonly modifications: { id: string; metadonnees: Record<string, string> }[] = [];
   readonly modificationsDeDebits: { id: string; metadonnees: Record<string, string> }[] = [];
   readonly recherchesDeDebits: { avant: number; page: string | null }[] = [];
+  readonly recherchesAbouties: { depuis: number; page: string | null }[] = [];
+  readonly paiementsRelus: string[] = [];
+  readonly sessionsCherchees: string[] = [];
+  /** Chaque demande de remboursement, telle que le site l'envoie. */
+  readonly demandesDeRemboursement: { id: string; cle: string; metadonnees: Record<string, string> }[] = [];
+  /** Les remboursements réellement faits : un par paiement au plus. */
+  readonly remboursements: { id: string; idPaiement: string }[] = [];
+  private readonly reponsesDeRemboursement = new Map<string, RemboursementLu>();
+  /** Quand c'est vrai, chaque remboursement échoue (carte fermée, par exemple). */
+  remboursementEnPanne = false;
+  /** Quand c'est vrai, chaque modification de métadonnées échoue. */
+  metadonneesEnPanne = false;
   readonly sessions = new Map<string, SessionLue>();
   readonly paiements = new Map<string, PaiementLu>();
   /** Débits : comme chez Stripe, chacun garde une copie des métadonnées du paiement prise à sa création. */
@@ -50,7 +64,13 @@ export class FauxStripe implements ClientStripe {
     this.sessionsCreees.push({ parametres: structuredClone(parametres), cleIdempotence });
     this.compteur += 1;
     const id = `cs_test_faux${String(this.compteur).padStart(4, "0")}`;
-    this.sessions.set(id, { id, payee: false, metadonnees: { ...(parametres.metadata ?? {}) } as Record<string, string>, paiement: null });
+    this.sessions.set(id, {
+      id,
+      payee: false,
+      metadonnees: { ...(parametres.metadata ?? {}) } as Record<string, string>,
+      paiement: null,
+      email: null,
+    });
     return { url: `https://checkout.stripe.com/c/pay/${id}` };
   }
 
@@ -68,6 +88,39 @@ export class FauxStripe implements ClientStripe {
       if (!this.nonIndexes.has(paiement.id) && paiement.metadonnees.ref === reference) return structuredClone(paiement);
     }
     return null;
+  }
+
+  async lirePaiement(id: string): Promise<PaiementLu | null> {
+    this.panne();
+    this.paiementsRelus.push(id);
+    const paiement = this.paiements.get(id);
+    return paiement ? structuredClone(paiement) : null;
+  }
+
+  async sessionDuPaiement(idPaiement: string): Promise<SessionLue | null> {
+    this.panne();
+    this.sessionsCherchees.push(idPaiement);
+    for (const session of this.sessions.values()) {
+      if (session.paiement?.id === idPaiement) return structuredClone(session);
+    }
+    return null;
+  }
+
+  async paiementsAboutisDepuis(
+    depuis: number,
+    page: string | null,
+  ): Promise<{ paiements: PaiementLu[]; pageSuivante: string | null }> {
+    this.panne();
+    this.recherchesAbouties.push({ depuis, page });
+    const trouves = [...this.paiements.values()].filter(
+      (paiement) => !this.nonIndexes.has(paiement.id) && paiement.statut === "succeeded" && paiement.cree > depuis,
+    );
+    const debut = page ? Number(page) : 0;
+    const suite = debut + this.taillePage;
+    return {
+      paiements: trouves.slice(debut, suite).map((paiement) => structuredClone(paiement)),
+      pageSuivante: suite < trouves.length ? String(suite) : null,
+    };
   }
 
   async paiementsAvecConfiguration(
@@ -110,6 +163,7 @@ export class FauxStripe implements ClientStripe {
 
   async modifierMetadonnees(id: string, metadonnees: Record<string, string>): Promise<void> {
     this.panne();
+    if (this.metadonneesEnPanne) throw Object.assign(new Error("panne simulée"), { type: "StripeAPIError" });
     this.modifications.push({ id, metadonnees: { ...metadonnees } });
     const paiement = this.paiements.get(id);
     if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing" });
@@ -123,6 +177,24 @@ export class FauxStripe implements ClientStripe {
     const debit = this.debits.get(id);
     if (!debit) throw Object.assign(new Error("absent"), { code: "resource_missing" });
     appliquer(debit.metadonnees, metadonnees);
+  }
+
+  async rembourser(idPaiement: string, cle: string, metadonnees: Record<string, string>): Promise<RemboursementLu> {
+    this.panne();
+    this.demandesDeRemboursement.push({ id: idPaiement, cle, metadonnees: { ...metadonnees } });
+    const deja = this.reponsesDeRemboursement.get(cle);
+    if (deja) return { ...deja };
+    const paiement = this.paiements.get(idPaiement);
+    if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing" });
+    if (this.remboursementEnPanne) throw Object.assign(new Error("refus simulé"), { type: "StripeCardError", code: "card_declined" });
+    if (paiement.litige) throw Object.assign(new Error("litige"), { type: "StripeInvalidRequestError", code: "charge_disputed" });
+    // Comme le vrai client : un paiement déjà remboursé en totalité compte pour remboursé.
+    if (paiement.rembourseEnTotalite) return { id: "", statut: "succeeded" };
+    paiement.rembourseEnTotalite = true;
+    const remboursement = { id: `re_faux${this.remboursements.length + 1}`, statut: "succeeded" };
+    this.remboursements.push({ id: remboursement.id, idPaiement });
+    this.reponsesDeRemboursement.set(cle, remboursement);
+    return { ...remboursement };
   }
 
   /** La dernière session créée par le site, et sa référence. */
@@ -142,7 +214,18 @@ export class FauxStripe implements ClientStripe {
    * simule une carte refusée avant le débit réussi : le paiement est alors
    * créé à la première tentative, et chaque tentative laisse un débit.
    */
-  payer(options: { payeLe?: Date; premiereTentative?: Date; statut?: string; indexe?: boolean } = {}): {
+  payer(
+    options: {
+      payeLe?: Date;
+      premiereTentative?: Date;
+      statut?: string;
+      indexe?: boolean;
+      /** L'adresse saisie sur la page de paiement (customer_details.email). */
+      email?: string | null;
+      /** L'e-mail de facturation du débit, s'il diffère. */
+      emailDuDebit?: string | null;
+    } = {},
+  ): {
     sessionId: string;
     reference: string;
     paiement: PaiementLu;
@@ -153,13 +236,17 @@ export class FauxStripe implements ClientStripe {
     const payeLe = Math.floor((options.payeLe ?? new Date()).getTime() / 1000);
     const cree = options.premiereTentative ? Math.floor(options.premiereTentative.getTime() / 1000) : payeLe;
     const numero = this.paiements.size + 1;
+    const email = options.email === undefined ? EMAIL_ACHETEUR : options.email;
     const paiement: PaiementLu = {
       id: `pi_faux${numero}`,
       statut,
       cree,
       payeLe,
+      montant: 1290,
       metadonnees: { ...metadonnees },
       rembourseEnTotalite: false,
+      litige: false,
+      emailDuDebit: options.emailDuDebit === undefined ? email : options.emailDuDebit,
     };
     this.paiements.set(paiement.id, paiement);
     if (options.premiereTentative) {
@@ -167,18 +254,23 @@ export class FauxStripe implements ClientStripe {
     }
     this.debits.set(`ch_faux${numero}`, { id: `ch_faux${numero}`, cree: payeLe, metadonnees: { ...metadonnees } });
     if (options.indexe === false) this.nonIndexes.add(paiement.id);
-    this.sessions.set(id, { id, payee: statut === "succeeded", metadonnees: { ref: reference }, paiement });
+    this.sessions.set(id, { id, payee: statut === "succeeded", metadonnees: { ref: reference }, paiement, email });
     return { sessionId: id, reference, paiement };
   }
 
-  rembourser(idPaiement: string): void {
-    const paiement = this.paiements.get(idPaiement)!;
-    paiement.rembourseEnTotalite = true;
-    for (const session of this.sessions.values()) {
-      if (session.paiement?.id === idPaiement) session.paiement.rembourseEnTotalite = true;
-    }
+  /** Un remboursement fait hors du site, depuis le tableau de bord de Stripe. */
+  rembourserHorsSite(idPaiement: string): void {
+    this.paiements.get(idPaiement)!.rembourseEnTotalite = true;
+  }
+
+  /** Un litige ouvert par la banque de l'acheteur. */
+  contester(idPaiement: string): void {
+    this.paiements.get(idPaiement)!.litige = true;
   }
 }
+
+/** L'adresse que l'acheteur saisit sur la page de paiement, dans les tests. */
+export const EMAIL_ACHETEUR = "parent.acheteur@exemple.fr";
 
 /** Une mise à jour de métadonnées à la manière de Stripe : une valeur vide supprime la clé. */
 function appliquer(cible: Record<string, string>, modifications: Record<string, string>): void {
@@ -196,11 +288,13 @@ export const CLE_TEST = ["sk", "test", "faux".repeat(8)].join("_");
 export const CLE_REELLE = ["sk", "live", "faux".repeat(8)].join("_");
 export const CLE_RESTREINTE_TEST = ["rk", "test", "faux".repeat(8)].join("_");
 export const CLE_RESTREINTE_REELLE = ["rk", "live", "faux".repeat(8)].join("_");
+export const CLE_RESEND = ["re", "faux".repeat(6)].join("_");
+export const SECRET_TACHE = "secret-de-la-tache-quotidienne-0123456789";
 
 export const DOMAINE_PRODUCTION = "mission-gateau.vercel.app";
 export const DOMAINE_PREVERSION = "mission-gateau-a1b2c3d4e-facelessbuilds-projects.vercel.app";
 
-/** Une préversion avec une clé de test : la bonne nature hors production. */
+/** Une préversion avec une clé de test et la clé de Resend : la vente d'essai est ouverte. */
 export function environnement(partiel: Partial<Environnement> = {}): Environnement {
   return {
     cleStripe: CLE_TEST,
@@ -208,6 +302,8 @@ export function environnement(partiel: Partial<Environnement> = {}): Environneme
     domaineProduction: DOMAINE_PRODUCTION,
     domaineDeploiement: DOMAINE_PREVERSION,
     port: undefined,
+    cleResend: CLE_RESEND,
+    secretTache: undefined,
     ...partiel,
   };
 }
@@ -223,6 +319,7 @@ export function dependances(client: ClientStripe | null, partiel: Partial<Depend
     env: environnement(),
     fiche: FICHE_COMPLETE,
     client,
+    email: null,
     maintenant: () => new Date("2026-09-24T12:00:00.000Z"),
     ...partiel,
   };

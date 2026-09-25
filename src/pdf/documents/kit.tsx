@@ -18,7 +18,7 @@ import {
 } from "../composants/sections";
 import { deroule } from "../deroule";
 import { indicesProgressifs } from "../indices";
-import { COULEURS, LARGEUR_UTILE, styles } from "../styles";
+import { COULEURS, HAUTEUR_PAGE, LARGEUR_PAGE, LARGEUR_UTILE, styles } from "../styles";
 
 const s = StyleSheet.create({
   ligneDeroule: { flexDirection: "row", marginBottom: 3 },
@@ -33,7 +33,33 @@ const s = StyleSheet.create({
   },
   fiche: { borderWidth: 1, borderColor: COULEURS.trait, borderRadius: 8, padding: 14 },
   tresor: { alignItems: "center", justifyContent: "center", flexGrow: 1 },
+  essai: {
+    position: "absolute",
+    top: HAUTEUR_PAGE / 2 - 60,
+    left: -LARGEUR_PAGE * 0.1,
+    width: LARGEUR_PAGE * 1.2,
+    textAlign: "center",
+    fontFamily: "Fredoka",
+    fontSize: 40,
+    lineHeight: 1.2,
+    color: "#000000",
+    opacity: 0.16,
+    transform: "rotate(-32deg)",
+  },
 });
+
+/**
+ * Hors production, chaque page du kit porte « Exemplaire d'essai — sans
+ * valeur commerciale », par le même mécanisme que le filigrane de l'aperçu :
+ * un texte fixe, en travers de la page, sous le contenu.
+ */
+function FiligraneEssai() {
+  return (
+    <Text style={s.essai} fixed>
+      {GUIDE.essaiFiligrane}
+    </Text>
+  );
+}
 
 /** Découpe une liste en paquets de n. */
 function paquets<T>(liste: T[], n: number): T[][] {
@@ -42,8 +68,13 @@ function paquets<T>(liste: T[], n: number): T[][] {
   return resultat;
 }
 
-/** Construit l'élément du kit complet, prêt pour renderToBuffer. */
-export function documentKit(kit: Kit) {
+/**
+ * Construit l'élément du kit complet, prêt pour renderToBuffer. Avec
+ * `essai`, chaque page porte le filigrane d'essai ; sans, le kit est
+ * exactement celui des lots précédents.
+ */
+export function documentKit(kit: Kit, options: { essai?: boolean } = {}) {
+  const essai = options.essai ? <FiligraneEssai /> : null;
   const contenu = theme(kit.configuration.theme);
   const textes = contenu.formats[kit.format];
   const moments = deroule(kit);
@@ -66,6 +97,7 @@ export function documentKit(kit: Kit) {
       {/* ---------------------------------------------------- 1. Guide ---- */}
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Guide" />
+        {essai}
         <Text style={styles.titre1}>{textes.titreKit}</Text>
         <Text style={{ fontSize: 13, color: COULEURS.encreClaire, marginBottom: 4 }}>{GUIDE.sousTitre}</Text>
         <Text style={styles.paragraphe}>{GUIDE.intro}</Text>
@@ -100,6 +132,7 @@ export function documentKit(kit: Kit) {
 
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Guide" />
+        {essai}
         <View wrap={false}>
           <Text style={styles.titre2}>{GUIDE.titrePreparation}</Text>
           {GUIDE.preparation.map((ligne) => (
@@ -135,6 +168,7 @@ export function documentKit(kit: Kit) {
 
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Guide" />
+        {essai}
         <Text style={styles.titre1}>{GUIDE.titreLecture}</Text>
         <View style={styles.encadre}>
           <Text style={{ fontSize: 12, lineHeight: 1.6 }}>{remplir(selonEquipes(textes.histoire, kit.equipes.length), valeursTextes(kit))}</Text>
@@ -154,6 +188,7 @@ export function documentKit(kit: Kit) {
 
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Guide" />
+        {essai}
         {/* Un titre ne doit jamais rester seul en bas de page : on exige
             derrière lui la place d'entrer dans le vif du sujet. */}
         <View minPresenceAhead={110}>
@@ -187,6 +222,7 @@ export function documentKit(kit: Kit) {
       {paquets(Array.from({ length: kit.nombreInvitations }, (_, i) => i), 4).map((groupe, page) => (
         <Page key={`inv-${page}`} size="A4" style={styles.page}>
           <PiedDePage note="Invitations" />
+          {essai}
           {page === 0 ? <Text style={styles.titre2}>{GUIDE.titreInvitations}</Text> : null}
           {paquets(groupe, 2).map((paire, ligne) => (
             <View key={ligne}>
@@ -206,6 +242,7 @@ export function documentKit(kit: Kit) {
         paquets(equipe.cartes, 2).map((paire, page) => (
           <Page key={`cartes-${equipe.id}-${page}`} size="A4" style={styles.page}>
             <PiedDePage note="Cartes" />
+            {essai}
             {page === 0 ? (
               <View style={{ marginBottom: 6 }}>
                 <Text style={styles.titre2}>
@@ -230,6 +267,7 @@ export function documentKit(kit: Kit) {
         fichesEquipe(equipe).map((fiche) => (
           <Page key={`fiche-${equipe.id}-${fiche.numero}`} size="A4" style={styles.page}>
             <PiedDePage note="Fiches" />
+            {essai}
             {fiche.numero === 1 ? (
               <View style={{ marginBottom: 4 }}>
                 <Text style={styles.titre2}>{GUIDE.titreFiches}</Text>
@@ -257,6 +295,7 @@ export function documentKit(kit: Kit) {
       {/* ------------------------------------- 5. Trésor et diplômes ------- */}
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Trésor" />
+        {essai}
         <View style={s.tresor}>
           <View style={{ flexDirection: "row", gap: 14, marginBottom: 14 }}>
             <Icone cle="gateau" taille={46} />
@@ -278,6 +317,7 @@ export function documentKit(kit: Kit) {
       {paquets(nomsDiplomes, 2).map((paire, page) => (
         <Page key={`dip-${page}`} size="A4" style={styles.page}>
           <PiedDePage note="Diplômes" />
+          {essai}
           {page === 0 ? <Text style={styles.titre2}>{GUIDE.titreDiplomes}</Text> : null}
           {paire.map((nom, i) => (
             <View key={i}>
@@ -291,6 +331,7 @@ export function documentKit(kit: Kit) {
       {/* -------------------------------------------- 6. Solutions --------- */}
       <Page size="A4" style={styles.page}>
         <PiedDePage note="Solutions" />
+        {essai}
         <Text style={styles.titre1}>{GUIDE.titreSolutions}</Text>
         <Text style={styles.paragraphe}>{GUIDE.solutionsIntro}</Text>
         <TableauSolutions kit={kit} />

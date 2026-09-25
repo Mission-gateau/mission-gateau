@@ -5,6 +5,7 @@ import { VENDEUR } from "@/contenu/vendeur";
 import { etatDeLaCommande } from "@/vente/commande";
 import { dependancesReelles } from "@/vente/dependances";
 import { referenceValide, sessionValide } from "@/vente/reference";
+import { situationDeLaCommande } from "@/vente/situation";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * La page d'une commande, où mène le retour de Stripe et le lien de l'e-mail.
- * Elle vérifie la commande chez Stripe, côté serveur, et ne génère rien : le
- * kit n'est produit que lorsque le bouton de téléchargement est actionné.
+ * La page d'une commande, où mènent le retour de Stripe et le lien de
+ * l'e-mail de confirmation. Elle vérifie la commande chez Stripe, côté
+ * serveur, et ne génère rien : tant que la confirmation n'est pas partie, elle
+ * la fait envoyer par sa route à son chargement ; ensuite, le kit n'est
+ * produit que lorsque le bouton de téléchargement est actionné.
  */
 export default async function PageCommande({
   params,
@@ -37,14 +40,14 @@ export default async function PageCommande({
     cleStripe: deps.env.cleStripe,
     maintenant: deps.maintenant(),
   });
+  const situation = await situationDeLaCommande(etat, deps);
 
   return (
     <>
       <EnTeteSite />
       <main id="contenu" className="mx-auto w-full max-w-2xl flex-1 px-5 py-10">
         <VueCommande
-          etat={etat.etat}
-          expireLe={etat.etat === "payee" ? etat.expireLe : null}
+          situation={situation}
           reference={referenceValide(ref) ? ref : null}
           sessionId={sessionId}
           email={VENDEUR.email}

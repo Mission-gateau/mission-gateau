@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { COMMANDE } from "@/contenu/vente";
 import { oublierSauvegarde } from "./sauvegarde";
@@ -13,9 +14,11 @@ function nomDuFichier(entete: string | null): string {
 /**
  * Le bouton « Télécharger mon jeu ». Il appelle la route du kit en POST : la
  * page elle-même ne génère rien, et un robot qui suit le lien de l'e-mail
- * n'actionne pas ce bouton.
+ * n'actionne pas ce bouton. Une fois le fichier reçu, la page se met à jour :
+ * elle dit alors quand le premier téléchargement a eu lieu.
  */
 export function Telechargement({ reference, sessionId }: { reference: string; sessionId: string | null }) {
+  const router = useRouter();
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -41,6 +44,7 @@ export function Telechargement({ reference, sessionId }: { reference: string; se
       lien.click();
       lien.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      router.refresh();
     } catch {
       setErreur(COMMANDE.payee.erreurReseau);
     } finally {

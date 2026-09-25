@@ -5,9 +5,14 @@ import { chiffrer, dechiffrer, decouper } from "./chiffrement";
  * Ce que Stripe garde d'une commande, dans les métadonnées du paiement.
  *
  * En clair : la référence, la version du kit, la graine, le pays déclaré, la
- * version des CGV acceptée et l'heure des deux accords. Chiffrée : la
- * configuration complète, découpée en morceaux pour tenir dans les limites de
- * Stripe. Aucune donnée saisie par le parent n'y figure en clair.
+ * version des CGV acceptée et l'heure des deux accords, puis, au fil de la
+ * commande, l'heure de l'envoi de la confirmation (et son identifiant chez
+ * Resend), celle du premier téléchargement et celle de la rétractation (et
+ * l'identifiant de son accusé de réception). Chiffrée : la configuration
+ * complète, découpée en morceaux pour tenir dans les limites de Stripe. Aucune
+ * donnée saisie par le parent n'y figure en clair.
+ *
+ * C'est tout l'état d'une commande : le site n'a pas de base de données.
  */
 
 /** Limites des métadonnées Stripe : 50 clés, 40 caractères par clé, 500 par valeur. */
@@ -24,7 +29,30 @@ export const CLES = {
   /** « chiffree » tant que la configuration est là, « effacee » ensuite. */
   etatConfiguration: "config",
   nombreMorceaux: "config_morceaux",
+  /** Heure du serveur à l'envoi de l'e-mail de confirmation, ISO 8601. */
+  confirmation: "confirmation",
+  /** Identifiant de cet e-mail chez Resend. */
+  confirmationId: "confirmation_id",
+  /** Heure du serveur au premier téléchargement : l'exécution a commencé. */
+  telechargement: "telechargement",
+  /** Heure de réception de la déclaration de rétractation, ISO 8601. */
+  retractation: "retractation",
+  /** Identifiant, chez Resend, de l'accusé de réception de cette déclaration. */
+  accuseRetractation: "retractation_accuse",
 } as const;
+
+/**
+ * Les clés écrites après le paiement. Elles comptent dès la création de la
+ * commande : la commande doit pouvoir les recevoir toutes sans dépasser les
+ * 50 clés de Stripe.
+ */
+export const CLES_APRES_PAIEMENT = [
+  CLES.confirmation,
+  CLES.confirmationId,
+  CLES.telechargement,
+  CLES.retractation,
+  CLES.accuseRetractation,
+] as const;
 
 const PREFIXE_MORCEAU = "config_";
 const MOTIF_MORCEAU = /^config_\d+$/;
@@ -72,12 +100,16 @@ export function metadonneesDuPaiement(
   return metadonnees;
 }
 
-/** Les dépassements des limites de Stripe. Vide quand tout tient. */
+/**
+ * Les dépassements des limites de Stripe. Vide quand tout tient. Les clés
+ * écrites après le paiement sont comptées d'avance.
+ */
 export function depassementsDeMetadonnees(metadonnees: Record<string, string>): string[] {
   const problemes: string[] = [];
   const cles = Object.keys(metadonnees);
-  if (cles.length > LIMITES_METADONNEES.cles) {
-    problemes.push(`${cles.length} clés pour ${LIMITES_METADONNEES.cles} au plus`);
+  const total = new Set([...cles, ...CLES_APRES_PAIEMENT]).size;
+  if (total > LIMITES_METADONNEES.cles) {
+    problemes.push(`${total} clés, dont celles écrites après le paiement, pour ${LIMITES_METADONNEES.cles} au plus`);
   }
   for (const cle of cles) {
     if (cle.length > LIMITES_METADONNEES.longueurCle || /[[\]]/.test(cle)) problemes.push(`clé « ${cle} »`);
@@ -100,6 +132,38 @@ export function lireCommande(metadonnees: Record<string, string>): Commande | nu
     accordAccesImmediat: metadonnees[CLES.accordAccesImmediat] ?? "",
   };
   return Object.values(commande).every((valeur) => valeur !== "") ? commande : null;
+}
+
+/** Ce qui est arrivé à une commande après son paiement. */
+export interface Suivi {
+  /** Envoi de l'e-mail de confirmation. */
+  confirmation: Date | null;
+  /** Premier téléchargement : l'exécution du contrat a commencé. */
+  telechargement: Date | null;
+  /** Réception de la déclaration de rétractation. */
+  retractation: Date | null;
+  /** Identifiant de l'accusé de réception de la rétractation, une fois parti. */
+  accuseRetractation: string | null;
+}
+
+/**
+ * Une heure écrite par le site (ISO 8601) ou, pour une rétractation reçue par
+ * e-mail ou par courrier, par le vendeur dans le tableau de bord de Stripe
+ * (une date ISO suffit). Une valeur illisible compte comme absente.
+ */
+function lireHeure(valeur: string | undefined): Date | null {
+  if (!valeur) return null;
+  const heure = new Date(valeur);
+  return Number.isNaN(heure.getTime()) ? null : heure;
+}
+
+export function lireSuivi(metadonnees: Record<string, string>): Suivi {
+  return {
+    confirmation: lireHeure(metadonnees[CLES.confirmation]),
+    telechargement: lireHeure(metadonnees[CLES.telechargement]),
+    retractation: lireHeure(metadonnees[CLES.retractation]),
+    accuseRetractation: metadonnees[CLES.accuseRetractation] || null,
+  };
 }
 
 export type LectureConfiguration =

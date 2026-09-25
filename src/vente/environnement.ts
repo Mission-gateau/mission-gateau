@@ -1,10 +1,11 @@
 /**
  * Ce que le site lit de son environnement.
  *
- * `STRIPE_SECRET_KEY` est la seule variable propre au site ; les autres sont
- * posées par Vercel. Rien n'est lu au moment du build : ces fonctions ne sont
- * appelées que pendant une requête, et le build, les tests et l'intégration
- * continue passent sans clé.
+ * Trois variables sont propres au site : `STRIPE_SECRET_KEY`,
+ * `RESEND_API_KEY` et `CRON_SECRET` ; les autres sont posées par Vercel. Rien
+ * n'est lu au moment du build : ces fonctions ne sont appelées que pendant une
+ * requête, et le build, les tests et l'intégration continue passent sans
+ * aucune d'elles. Aucune autre variable n'est lue.
  */
 
 export interface Environnement {
@@ -18,6 +19,10 @@ export interface Environnement {
   domaineDeploiement: string | undefined;
   /** PORT : port du serveur local. */
   port: string | undefined;
+  /** RESEND_API_KEY : clé du prestataire d'envoi des e-mails. */
+  cleResend: string | undefined;
+  /** CRON_SECRET : secret que Vercel envoie à la tâche quotidienne. */
+  secretTache: string | undefined;
 }
 
 export function lireEnvironnement(env: Record<string, string | undefined> = process.env): Environnement {
@@ -27,6 +32,8 @@ export function lireEnvironnement(env: Record<string, string | undefined> = proc
     domaineProduction: env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || undefined,
     domaineDeploiement: env.VERCEL_URL?.trim() || undefined,
     port: env.PORT?.trim() || undefined,
+    cleResend: env.RESEND_API_KEY?.trim() || undefined,
+    secretTache: env.CRON_SECRET?.trim() || undefined,
   };
 }
 

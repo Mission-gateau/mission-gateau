@@ -150,6 +150,8 @@ describe("gabarits", () => {
       "prix", "nomCommercial", "vendeur", "email", "date", "theme", "ref", "versionCgv", "lien", "adresse",
       "site", "mention", "statut", "capital", "directeur", "siret", "rcs", "rue", "codePostal", "ville",
       "pays", "telephone", "tva",
+      // Confirmation, rétractation et e-mails.
+      "heure", "montant", "produit", "test", "article", "version", "fichier",
     ]);
     const inconnues = new Set<string>();
     for (const { texte } of textesDeProse()) {

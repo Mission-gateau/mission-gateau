@@ -12,6 +12,7 @@ import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import { piedDeFacture } from "@/vente/session";
 import { PRIX_AFFICHE } from "@/vente/prix";
 import { FICHE_COMPLETE } from "./fauxStripe";
+import { FORMULAIRE_OFFICIEL } from "./officiels";
 
 /**
  * L'encadré de l'annexe à l'article D211-3 du Code de la consommation (décret
@@ -120,7 +121,7 @@ describe("conditions générales de vente", () => {
       "5. Pays acceptés",
       "6. Commande et paiement",
       "7. Livraison",
-      "8. Absence de droit de rétractation",
+      "8. Droit de rétractation",
       "9. Service client et réclamations",
       "10. Garantie légale de conformité",
       "11. Médiation de la consommation",
@@ -128,6 +129,7 @@ describe("conditions générales de vente", () => {
       "13. Usage familial",
       "14. Données personnelles",
       "15. Version",
+      "Annexe\u00a0: formulaire type de rétractation",
     ]);
   });
 
@@ -142,25 +144,59 @@ describe("conditions générales de vente", () => {
       "TVA non applicable, article 293 B du CGI",
       "27 pays de l'Union européenne, en Suisse, à Monaco ou au Canada",
       "la case par laquelle vous acceptez les présentes conditions",
-      "accès immédiat",
+      // Article 6 : les deux accords, dans la nouvelle formulation, puis le paiement et l'e-mail de confirmation.
+      "vous cochez la case par laquelle vous demandez à recevoir votre jeu dès le paiement, avant la fin du délai de rétractation de 14 jours, et reconnaissez que vous perdrez votre droit de rétractation dès le début de son premier téléchargement",
       "par carte bancaire",
       "page de paiement sécurisée de Stripe",
-      "livré par téléchargement, immédiatement après le paiement",
+      "nous vous envoyons la confirmation de votre commande par e-mail",
+      "les présentes conditions y sont jointes en PDF, dans la version que vous avez acceptée",
+      // Article 7 : l'e-mail d'abord, puis le téléchargement sur la page de la commande.
+      "nous vous envoyons d'abord l'e-mail de confirmation de votre commande",
+      "puis le jeu se télécharge sur la page de votre commande",
+      "son lien figure dans l'e-mail de confirmation",
       "valable 30 jours",
-      "article L221-28, 13° du Code de la consommation",
-      "accord préalable exprès",
-      "renoncement exprès",
-      "vous les confirme sur un support durable",
+      // Article 8 : le délai, son calcul, sa fin, les trois façons, l'accusé, le remboursement.
+      "Vous disposez d'un délai de 14 jours pour vous rétracter",
+      "le jour du paiement ne compte pas",
+      "S'il expire un samedi, un dimanche ou un jour férié ou chômé, il est prolongé jusqu'au premier jour ouvrable suivant",
+      "et que l'e-mail de confirmation de votre commande vous a été envoyé avant, votre droit de rétractation prend fin au début du premier téléchargement de votre jeu (article L221-28, 13° du Code de la consommation)",
+      "vous avez trois possibilités",
+      // Le nom de la fonction est un lien : le texte visible y est coupé par la balise.
+      "la fonction « Renoncer au contrat ici »",
+      "dont le lien figure en bas de chaque page du site, sur la page de votre commande et dans l'e-mail de confirmation",
+      "le formulaire type de rétractation reproduit en annexe",
+      "toute autre déclaration dénuée d'ambiguïté",
+      "par courrier à 7 impasse des Bosquets, 34670 Baillargues, France",
+      "un accusé de réception de votre rétractation, qui reprend le contenu de votre déclaration ainsi que la date et l'heure de son envoi",
+      "Nous vous remboursons la totalité du prix payé, sans frais, sans retard injustifié et au plus tard 14 jours",
+      "par le même moyen de paiement que celui utilisé pour la commande",
+      "le jeu n'est plus livré",
       "Nous répondons sous 7 jours au plus",
       "droit français",
       "usage familial",
       "revente",
       "interdites",
-      "Version du 24 septembre 2026",
+      "Version du 25 septembre 2026",
+      "La version que vous avez acceptée vous est envoyée en PDF avec l'e-mail de confirmation de votre commande",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
     expect(html).toContain('href="/confidentialite"');
+    expect(html).toContain('href="/renoncer"');
+    // Plus aucune renonciation au moment du paiement.
+    expect(texte).not.toMatch(/renoncement exprès|Absence de droit de rétractation/);
+  });
+
+  it("reproduisent en annexe le formulaire type, mot pour mot, rempli avec le nom, l'adresse et l'e-mail du vendeur", () => {
+    const annexe = /<div data-encadre="formulaire-retractation" class="([^"]*)">([\s\S]*?)<\/div>/.exec(html);
+    expect(annexe).not.toBeNull();
+    const paragraphes = [...annexe![2]!.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map((m) => espacesOrdinaires(texteVisible(m[1]!)));
+    expect(paragraphes).toEqual(
+      FORMULAIRE_OFFICIEL.replace(
+        "[le professionnel insère ici son nom, son adresse géographique et son adresse électronique]",
+        "Quentin Courtois EI, 7 impasse des Bosquets, 34670 Baillargues, France, quentin.courtois090+missiongateau@gmail.com",
+      ).split("\n"),
+    );
   });
 
   it("nomment le garant de la conformité avec ses coordonnées postales, téléphoniques et électroniques", () => {
@@ -207,7 +243,7 @@ describe("conditions générales de vente", () => {
   });
 
   it("portent la version que Stripe garde avec chaque commande", () => {
-    expect(VERSION_CGV.identifiant).toBe("2026-09-24");
+    expect(VERSION_CGV.identifiant).toBe("2026-09-25");
     expect(texte).toContain(`version du ${VERSION_CGV.libelle}`);
   });
 });
@@ -220,17 +256,25 @@ describe("politique de confidentialité", () => {
     for (const attendu of [
       "Quentin Courtois EI, entrepreneur individuel",
       "rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers",
-      "chiffrées : aucune n'y figure en clair",
+      "seuls le thème et la tranche d'âge du jeu y figurent en clair, sur la ligne de commande et sur la facture",
       "30 jours",
       "effacées automatiquement",
+      // La trace de la commande, et combien de temps elle reste.
+      "celle de l'envoi de la confirmation, celle du premier téléchargement et, si vous vous rétractez, celle de votre rétractation restent avec la commande chez Stripe aussi longtemps que la facture, dix ans",
       "Votre adresse e-mail, votre nom et votre adresse de facturation",
       "dix ans (article L123-22 du Code de commerce)",
+      // Les copies des e-mails gardées par le vendeur.
+      "Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie comme preuve de leur envoi pendant cinq ans",
+      "Votre déclaration de rétractation",
       "L'exécution du contrat (article 6, paragraphe 1, b du RGPD)",
       "L'obligation légale (article 6, paragraphe 1, c du RGPD)",
-      "Mise à jour le 24 septembre 2026",
+      "L'intérêt légitime du vendeur (article 6, paragraphe 1, f du RGPD)",
+      "Mise à jour le 25 septembre 2026",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
+    // Corrigé : le thème et la tranche d'âge figurent en clair chez Stripe.
+    expect(texte).not.toContain("aucune n'y figure en clair");
   });
 
   it("nomme les destinataires et l'encadrement de leurs transferts, tel qu'ils le déclarent", () => {
@@ -239,13 +283,24 @@ describe("politique de confidentialité", () => {
       "clauses contractuelles types",
       "cadre de protection des données UE–États-Unis",
       "politique de confidentialité de Stripe",
+      // Resend, tel qu'il se déclare lui-même.
+      "Plus Five Five, Inc. (Resend), prestataire d'envoi d'e-mails",
+      "votre adresse e-mail, leur contenu et les conditions générales de vente jointes à la confirmation",
+      "Resend déclare stocker ces e-mails et leurs journaux d'envoi aux États-Unis, et les garder 30 jours",
+      "Resend déclare s'appuyer sur les clauses contractuelles types de la Commission européenne et sur son adhésion au cadre de protection des données UE–États-Unis",
+      "mise à jour le 21 septembre 2026",
+      "mis à jour le 27 août 2026",
       "Vercel Inc.",
-      "politique de confidentialité de Vercel",
+      "avis de confidentialité de Vercel",
+      "en vigueur depuis le 1er juin 2026",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
     expect(html).toContain('href="https://stripe.com/fr/privacy"');
-    expect(html).toContain('href="https://vercel.com/legal/privacy-policy"');
+    expect(html).toContain('href="https://resend.com/security/gdpr"');
+    expect(html).toContain('href="https://resend.com/legal/dpa"');
+    expect(html).toContain('href="https://vercel.com/legal/privacy-notice"');
+    expect(html).not.toContain("vercel.com/legal/privacy-policy");
   });
 
   it("ne promet aucun cookie ni traceur, et dit le rôle du sessionStorage pendant le paiement", () => {

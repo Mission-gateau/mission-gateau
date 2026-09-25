@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { VERSION_CGV } from "@/contenu/legal";
 import { metadonneesDuPaiement } from "@/vente/metadonnees";
 import { parametresDeSession } from "@/vente/session";
-import { creerClientStripe, requeteConfigurationsAvant, requeteParReference } from "@/vente/stripe";
+import {
+  creerClientStripe,
+  requeteConfigurationsAvant,
+  requeteParReference,
+  requetePaiementsAboutisDepuis,
+} from "@/vente/stripe";
 import { CLE_TEST, FICHE_COMPLETE, configurationMarquee, environnement, marquesDans } from "./fauxStripe";
 
 /**
@@ -63,12 +68,14 @@ function parametres() {
   });
 }
 
-function paiement(statut: string, ref: string, rembourse = false) {
+function paiement(statut: string, ref: string, rembourse = false, options: { litige?: boolean; email?: string | null } = {}) {
   return {
     id: `pi_${ref.slice(0, 6)}`,
     object: "payment_intent",
     status: statut,
     created: 1790000000,
+    amount: 1290,
+    amount_received: statut === "succeeded" ? 1290 : 0,
     metadata: { ref },
     latest_charge: {
       id: "ch_1",
@@ -76,6 +83,8 @@ function paiement(statut: string, ref: string, rembourse = false) {
       created: 1790003600,
       refunded: rembourse,
       amount_refunded: rembourse ? 1290 : 0,
+      disputed: options.litige ?? false,
+      billing_details: { email: options.email === undefined ? "facturation@exemple.fr" : options.email },
     },
   };
 }
@@ -134,6 +143,7 @@ describe("client Stripe réel", () => {
         object: "checkout.session",
         payment_status: "paid",
         metadata: { ref: REFERENCE },
+        customer_details: { email: "parent@exemple.fr" },
         payment_intent: paiement("succeeded", REFERENCE, rembourse),
       },
     }));
@@ -141,14 +151,18 @@ describe("client Stripe réel", () => {
       id: "cs_test_1",
       payee: true,
       metadonnees: { ref: REFERENCE },
+      email: "parent@exemple.fr",
       paiement: {
         id: "pi_AbCdEf",
         statut: "succeeded",
         cree: 1790000000,
         // L'heure du paiement est celle du débit, pas celle de la première tentative.
         payeLe: 1790003600,
+        montant: 1290,
         metadonnees: { ref: REFERENCE },
         rembourseEnTotalite: false,
+        litige: false,
+        emailDuDebit: "facturation@exemple.fr",
       },
     });
     expect(vues[0]!.url.pathname).toBe("/v1/checkout/sessions/cs_test_1");
@@ -165,23 +179,115 @@ describe("client Stripe réel", () => {
     expect(await client.lireSession("cs_test_inconnue")).toBeNull();
   });
 
-  it("cherche un paiement par sa référence et ignore ce qui ne lui correspond qu'à la casse près", async () => {
+  it("cherche un paiement par sa référence, ignore ce qui ne lui correspond qu'à la casse près, et le relit à jour", async () => {
     const autre = `${REFERENCE.slice(0, -1)}${REFERENCE.at(-1)!.toLowerCase()}`;
+    const { client, vues } = reseau((requete) =>
+      requete.url.pathname.endsWith("/search")
+        ? {
+            json: {
+              object: "search_result",
+              // La recherche peut rendre des métadonnées périmées…
+              data: [paiement("succeeded", autre), { ...paiement("succeeded", REFERENCE), metadata: { ref: REFERENCE } }],
+              has_more: false,
+              next_page: null,
+            },
+          }
+        : // … la relecture par l'identifiant, elle, est à jour.
+          { json: { ...paiement("succeeded", REFERENCE), metadata: { ref: REFERENCE, confirmation: "2026-09-24T12:00:00.000Z" } } },
+    );
+    const trouve = await client.paiementParReference(REFERENCE);
+    expect(trouve?.metadonnees).toEqual({ ref: REFERENCE, confirmation: "2026-09-24T12:00:00.000Z" });
+    const recherche = vues[0]!.url;
+    expect(recherche.pathname).toBe("/v1/payment_intents/search");
+    expect(recherche.searchParams.get("query")).toBe(`metadata["ref"]:"${REFERENCE}"`);
+    expect(recherche.searchParams.get("limit")).toBe("10");
+    expect(vues[1]!.url.pathname).toBe("/v1/payment_intents/pi_AbCdEf");
+    expect(vues[1]!.url.searchParams.getAll("expand[0]")).toEqual(["latest_charge"]);
+    expect(vues).toHaveLength(2);
+  });
+
+  it("relit un paiement : montant, litige, remboursement et e-mail de facturation du dernier débit", async () => {
+    const { client } = reseau(() => ({ json: paiement("succeeded", REFERENCE, false, { litige: true, email: null }) }));
+    expect(await client.lirePaiement("pi_AbCdEf")).toMatchObject({
+      montant: 1290,
+      litige: true,
+      rembourseEnTotalite: false,
+      emailDuDebit: null,
+    });
+    const absent = reseau(() => ({
+      statut: 404,
+      json: { error: { type: "invalid_request_error", code: "resource_missing", message: "No such payment_intent" } },
+    }));
+    expect(await absent.client.lirePaiement("pi_inconnu")).toBeNull();
+  });
+
+  it("retrouve la session Checkout d'un paiement pour y lire l'e-mail de l'acheteur", async () => {
     const { client, vues } = reseau(() => ({
       json: {
-        object: "search_result",
-        data: [paiement("succeeded", autre), paiement("succeeded", REFERENCE)],
+        object: "list",
+        data: [
+          {
+            id: "cs_test_1",
+            object: "checkout.session",
+            payment_status: "paid",
+            metadata: { ref: REFERENCE },
+            customer_details: { email: "parent@exemple.fr" },
+            payment_intent: "pi_AbCdEf",
+          },
+        ],
         has_more: false,
-        next_page: null,
       },
     }));
-    const trouve = await client.paiementParReference(REFERENCE);
-    expect(trouve?.metadonnees.ref).toBe(REFERENCE);
-    const url = vues[0]!.url;
-    expect(url.pathname).toBe("/v1/payment_intents/search");
-    expect(url.searchParams.get("query")).toBe(`metadata["ref"]:"${REFERENCE}"`);
-    expect(url.searchParams.get("limit")).toBe("10");
-    expect(url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge"]);
+    const session = await client.sessionDuPaiement("pi_AbCdEf");
+    expect(session?.email).toBe("parent@exemple.fr");
+    expect(session?.paiement).toBeNull();
+    expect(vues[0]!.methode).toBe("GET");
+    expect(vues[0]!.url.pathname).toBe("/v1/checkout/sessions");
+    expect(vues[0]!.url.searchParams.get("payment_intent")).toBe("pi_AbCdEf");
+    expect(vues[0]!.url.searchParams.get("limit")).toBe("1");
+  });
+
+  it("cherche les paiements aboutis depuis une date, page après page", async () => {
+    const { client, vues } = reseau(() => ({
+      json: { object: "search_result", data: [paiement("succeeded", REFERENCE)], has_more: false, next_page: null },
+    }));
+    const { paiements, pageSuivante } = await client.paiementsAboutisDepuis(1786000000, null);
+    expect(paiements).toHaveLength(1);
+    expect(pageSuivante).toBeNull();
+    expect(vues[0]!.url.pathname).toBe("/v1/payment_intents/search");
+    expect(vues[0]!.url.searchParams.get("query")).toBe('status:"succeeded" AND created>1786000000');
+    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge"]);
+    expect(requetePaiementsAboutisDepuis(1786000000.7)).toBe('status:"succeeded" AND created>1786000000');
+  });
+
+  it("rembourse la totalité du paiement, motif « requested_by_customer », avec sa clé d'idempotence", async () => {
+    const { client, vues } = reseau(() => ({ json: { id: "re_1", object: "refund", status: "succeeded", amount: 1290 } }));
+    expect(await client.rembourser("pi_AbCdEf", `retractation-${REFERENCE}`, { ref: REFERENCE, motif: "retractation" })).toEqual({
+      id: "re_1",
+      statut: "succeeded",
+    });
+    const [requete] = vues;
+    expect(requete!.methode).toBe("POST");
+    expect(requete!.url.pathname).toBe("/v1/refunds");
+    expect(requete!.entetes.get("Idempotency-Key")).toBe(`retractation-${REFERENCE}`);
+    const champs = new URLSearchParams(requete!.corps);
+    expect(champs.get("payment_intent")).toBe("pi_AbCdEf");
+    expect(champs.get("reason")).toBe("requested_by_customer");
+    expect(champs.get("amount")).toBeNull();
+    expect(champs.get("metadata[ref]")).toBe(REFERENCE);
+  });
+
+  it("tient pour fait le remboursement d'un paiement déjà remboursé, et laisse passer les autres refus", async () => {
+    const deja = reseau(() => ({
+      statut: 400,
+      json: { error: { type: "invalid_request_error", code: "charge_already_refunded", message: "already refunded" } },
+    }));
+    expect(await deja.client.rembourser("pi_AbCdEf", "cle", {})).toEqual({ id: "", statut: "succeeded" });
+    const litige = reseau(() => ({
+      statut: 400,
+      json: { error: { type: "invalid_request_error", code: "charge_disputed", message: "disputed" } },
+    }));
+    await expect(litige.client.rembourser("pi_AbCdEf", "cle", {})).rejects.toMatchObject({ code: "charge_disputed" });
   });
 
   it("cherche les configurations à effacer, page après page", async () => {
