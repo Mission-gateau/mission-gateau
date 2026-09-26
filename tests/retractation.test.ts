@@ -182,6 +182,33 @@ describe("rétractation valable", () => {
     expect(reponse.envoi).toEqual({ etat: "envoye", adresse: SAISIE, saisie: SAISIE, remplacee: false });
   });
 
+  it("écrit la rétractation dès que le paiement est jugé rétractable, avant de chercher l'adresse de l'acheteur et de rembourser", async () => {
+    const { reference } = await commandeConfirmee();
+    const ordre: string[] = [];
+    const modifier = stripe.modifierMetadonnees.bind(stripe);
+    const session = stripe.sessionDuPaiement.bind(stripe);
+    const rembourser = stripe.rembourser.bind(stripe);
+    stripe.modifierMetadonnees = async (id, metadonnees) => {
+      ordre.push(`écriture ${Object.keys(metadonnees).sort().join("+")}`);
+      return modifier(id, metadonnees);
+    };
+    stripe.sessionDuPaiement = async (id) => {
+      ordre.push("adresse de l'acheteur");
+      return session(id);
+    };
+    stripe.rembourser = async (id, cle, metadonnees) => {
+      ordre.push("remboursement");
+      return rembourser(id, cle, metadonnees);
+    };
+    await renoncer(declaration(reference));
+    expect(ordre).toEqual([
+      "écriture retractation+retractation_empreinte",
+      "remboursement",
+      "adresse de l'acheteur",
+      "écriture retractation_accuse",
+    ]);
+  });
+
   it("accepte le lien complet de la commande, et ne reprend que la référence extraite", async () => {
     const { reference, paiement } = await commandeConfirmee();
     const lien = `  https://mission-gateau.vercel.app/commande/${reference}?session_id=cs_test_abcdefgh  `;

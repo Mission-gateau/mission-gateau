@@ -20,6 +20,7 @@ import { GET as effacer } from "@/app/api/effacement/route";
 import { CLES, configurationPresente, lireCommande } from "@/vente/metadonnees";
 import type { PaiementLu } from "@/vente/stripe";
 import {
+  CLE_TEST,
   FauxStripe,
   SECRET_TACHE,
   corpsDeCommande,
@@ -236,6 +237,21 @@ describe("effacement à 30 jours", () => {
     expect(statut).toBe(200);
     expect(bilan).toEqual({ tache: "quotidienne", sansCle: 1 });
     expect(journaux).toHaveLength(1);
+  });
+
+  it("en production avec une clé de test, les vraies dépendances ne créent aucun client : la tâche ne touche à rien", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("STRIPE_SECRET_KEY", CLE_TEST);
+    vi.stubEnv("CRON_SECRET", SECRET_TACHE);
+    try {
+      injection.deps = null;
+      journaux.length = 0;
+      const { statut, bilan } = await lancer();
+      expect(statut).toBe(200);
+      expect(bilan).toEqual({ tache: "quotidienne", sansCle: 1 });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("n'efface que la configuration : aucune session créée, aucune commande cherchée par sa référence", async () => {
