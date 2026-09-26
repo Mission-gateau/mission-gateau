@@ -5,6 +5,7 @@ import { metadonneesDuPaiement } from "@/vente/metadonnees";
 import { parametresDeSession } from "@/vente/session";
 import {
   creerClientStripe,
+  limiteDeDebit,
   requeteConfigurationsAvant,
   requeteParReference,
   requetePaiementsAboutisDepuis,
@@ -247,7 +248,7 @@ describe("client Stripe réel", () => {
     expect(vues[0]!.url.searchParams.get("limit")).toBe("1");
   });
 
-  it("cherche les paiements aboutis depuis une date, page après page", async () => {
+  it("cherche les paiements aboutis de cette boutique depuis une date, page après page", async () => {
     const { client, vues } = reseau(() => ({
       json: { object: "search_result", data: [paiement("succeeded", REFERENCE)], has_more: false, next_page: null },
     }));
@@ -255,9 +256,13 @@ describe("client Stripe réel", () => {
     expect(paiements).toHaveLength(1);
     expect(pageSuivante).toBeNull();
     expect(vues[0]!.url.pathname).toBe("/v1/payment_intents/search");
-    expect(vues[0]!.url.searchParams.get("query")).toBe('status:"succeeded" AND created>1786000000');
+    expect(vues[0]!.url.searchParams.get("query")).toBe(
+      'status:"succeeded" AND created>1786000000 AND metadata["boutique"]:"mission-gateau"',
+    );
     expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge"]);
-    expect(requetePaiementsAboutisDepuis(1786000000.7)).toBe('status:"succeeded" AND created>1786000000');
+    expect(requetePaiementsAboutisDepuis(1786000000.7)).toBe(
+      'status:"succeeded" AND created>1786000000 AND metadata["boutique"]:"mission-gateau"',
+    );
   });
 
   it("rembourse la totalité du paiement, motif « requested_by_customer », avec sa clé d'idempotence", async () => {
@@ -347,6 +352,32 @@ describe("client Stripe réel", () => {
     expect(champs.get("metadata[config]")).toBe("effacee");
     expect(champs.get("metadata[config_0]")).toBe("");
     expect(champs.get("metadata[config_morceaux]")).toBe("");
+  });
+
+  it("rend le paiement tel que Stripe le renvoie en réponse à une écriture, débit compris", async () => {
+    const ecrit = { ...paiement("succeeded", REFERENCE), metadata: { ref: REFERENCE, retractation: "2026-09-26T08:30:00.000Z", telechargement: "2026-09-26T08:29:59.000Z" } };
+    const { client, vues } = reseau(() => ({ json: ecrit }));
+    const lu = await client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:00.000Z" });
+    // Le débit est développé dans la même requête : un seul aller-retour.
+    expect(vues).toHaveLength(1);
+    expect(new URLSearchParams(vues[0]!.corps).getAll("expand[0]")).toEqual(["latest_charge"]);
+    expect(lu).toMatchObject({
+      id: "pi_AbCdEf",
+      statut: "succeeded",
+      payeLe: 1790003600,
+      metadonnees: { ref: REFERENCE, retractation: "2026-09-26T08:30:00.000Z", telechargement: "2026-09-26T08:29:59.000Z" },
+    });
+  });
+
+  it("reconnaît la limitation de débit de Stripe", async () => {
+    const { client } = reseau(() => ({
+      statut: 429,
+      json: { error: { type: "invalid_request_error", code: "rate_limit", message: "Too many requests" } },
+    }));
+    const erreur = await client.paiementParReference(REFERENCE).catch((e: unknown) => e);
+    expect(limiteDeDebit(erreur)).toBe(true);
+    expect(limiteDeDebit(Object.assign(new Error("x"), { type: "StripeConnectionError" }))).toBe(false);
+    expect(limiteDeDebit(null)).toBe(false);
   });
 
   it("forme des requêtes de recherche sans surprise", () => {

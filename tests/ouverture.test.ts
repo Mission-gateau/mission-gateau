@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import { adresseDuSite, cleConforme, lireEnvironnement, natureCle } from "@/vente/environnement";
 import { CHAMPS_OBLIGATOIRES, ficheComplete, ficheCompleteHorsConvention, manquesDeLaFiche } from "@/vente/fiche";
-import { exemplaireDEssai, livraisonPossible, venteOuverte } from "@/vente/ouverture";
+import { exemplaireDEssai, livraisonPossible, stripePermis, venteOuverte } from "@/vente/ouverture";
 import { NOMS_PAYS } from "@/contenu/vente";
 import { PAYS_ACCEPTES, PAYS_UNION_EUROPEENNE, paysAccepte } from "@/vente/pays";
 import { MONTANT_CENTIMES, PRIX_AFFICHE, formaterPrix } from "@/vente/prix";
@@ -18,6 +18,7 @@ import {
   DOMAINE_PREVERSION,
   DOMAINE_PRODUCTION,
   FICHE_COMPLETE,
+  FICHE_SANS_CONVENTION,
   environnement,
 } from "./fauxStripe";
 
@@ -104,14 +105,22 @@ describe("fiche du vendeur", () => {
     expect(VENDEUR.siret.replace(/\s/g, "")).toBe("99266700600017");
     expect(VENDEUR.rcs).toBe("");
     expect(VENDEUR.capital).toBe("");
-    expect(VENDEUR.mediateur.conventionSignee).toBe(false);
+    // La convention avec le médiateur a été signée le 25 septembre 2026 ; le médiateur reste celui de la fiche.
+    expect(VENDEUR.mediateur.conventionSignee).toBe(true);
+    expect(VENDEUR.mediateur.nom).toBe("Société Médiation Professionnelle");
+    expect(VENDEUR.mediateur.site).toBe("https://www.mediateur-consommation-smp.fr");
+    expect(VENDEUR.mediateur.demande).toBe("https://www.mediateur-consommation-smp.fr/demander-une-mediation/");
   });
 
-  it("aujourd'hui, il ne manque que la convention avec le médiateur", () => {
-    expect(manquesDeLaFiche(VENDEUR)).toEqual(["mediateur.conventionSignee"]);
-    expect(ficheComplete(FICHE_COMPLETE)).toBe(true);
+  it("est complète, convention avec le médiateur comprise", () => {
+    expect(manquesDeLaFiche(VENDEUR)).toEqual([]);
+    expect(ficheComplete(VENDEUR)).toBe(true);
+    expect(FICHE_COMPLETE).toBe(VENDEUR);
     expect(ficheCompleteHorsConvention(VENDEUR)).toBe(true);
+    expect(manquesDeLaFiche(FICHE_SANS_CONVENTION)).toEqual(["mediateur.conventionSignee"]);
     expect(ficheCompleteHorsConvention(ficheAvec("siret", ""))).toBe(false);
+    // La page de demande de médiation est facultative : le site du médiateur en tient lieu.
+    expect(ficheComplete(ficheAvec("mediateur.demande", ""))).toBe(true);
   });
 
   it("chaque champ obligatoire vide rend la fiche incomplète", () => {
@@ -138,8 +147,13 @@ describe("fiche du vendeur", () => {
 describe("ouverture de la vente", () => {
   const PRODUCTION_REELLE = environnement({ vercelEnv: "production", cleStripe: CLE_REELLE });
 
-  it("reste fermée en production aujourd'hui : la convention n'est pas signée", () => {
-    expect(venteOuverte(PRODUCTION_REELLE, VENDEUR)).toBe(false);
+  it("reste fermée en production aujourd'hui : aucune clé Stripe réelle", () => {
+    // Aujourd'hui : aucune STRIPE_SECRET_KEY en production ; une clé de test n'ouvrirait rien non plus.
+    expect(venteOuverte(environnement({ vercelEnv: "production", cleStripe: undefined }), VENDEUR)).toBe(false);
+    expect(venteOuverte(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }), VENDEUR)).toBe(false);
+    // Avec une clé réelle, la fiche étant désormais complète, elle ouvrirait.
+    expect(venteOuverte(PRODUCTION_REELLE, VENDEUR)).toBe(true);
+    expect(venteOuverte(PRODUCTION_REELLE, FICHE_SANS_CONVENTION)).toBe(false);
   });
 
   it("s'ouvre pour l'essai hors production dès aujourd'hui : clé de test, fiche complète sauf la convention, clé de Resend", () => {
@@ -193,17 +207,36 @@ describe("ouverture de la vente", () => {
     expect(venteOuverte(PRODUCTION_REELLE, ficheAvec("mediateur.conventionSignee", false))).toBe(false);
   });
 
-  it("la livraison des commandes payées n'a besoin que d'une clé, quelle qu'elle soit", () => {
-    expect(livraisonPossible(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }))).toBe(true);
+  it("en production, seule une clé réelle donne un client Stripe ; ailleurs, toute clé valable", () => {
+    for (const cle of [CLE_REELLE, CLE_RESTREINTE_REELLE]) {
+      expect(stripePermis(environnement({ vercelEnv: "production", cleStripe: cle })), cle).toBe(true);
+    }
+    for (const cle of [CLE_TEST, CLE_RESTREINTE_TEST, undefined, "pk_live_abc"]) {
+      expect(stripePermis(environnement({ vercelEnv: "production", cleStripe: cle })), String(cle)).toBe(false);
+    }
+    for (const vercelEnv of ["preview", "development", undefined]) {
+      for (const cle of [CLE_TEST, CLE_RESTREINTE_TEST, CLE_REELLE]) {
+        expect(stripePermis(environnement({ vercelEnv, cleStripe: cle })), `${vercelEnv} ${cle}`).toBe(true);
+      }
+      expect(stripePermis(environnement({ vercelEnv, cleStripe: undefined })), String(vercelEnv)).toBe(false);
+    }
+  });
+
+  it("la livraison des commandes payées n'a besoin que de ce client, pas de l'ouverture de la vente", () => {
+    expect(livraisonPossible(environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }))).toBe(true);
+    expect(livraisonPossible(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }))).toBe(false);
     expect(livraisonPossible(environnement({ vercelEnv: "preview", cleStripe: CLE_REELLE }))).toBe(true);
     expect(livraisonPossible(environnement({ cleStripe: undefined }))).toBe(false);
   });
 
-  it("le kit livré est un exemplaire d'essai partout, sauf en production", () => {
+  it("le kit livré est un exemplaire d'essai hors production, et en production sans clé réelle", () => {
     expect(exemplaireDEssai(environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }))).toBe(false);
-    expect(exemplaireDEssai(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }))).toBe(false);
+    expect(exemplaireDEssai(environnement({ vercelEnv: "production", cleStripe: CLE_RESTREINTE_REELLE }))).toBe(false);
+    expect(exemplaireDEssai(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }))).toBe(true);
+    expect(exemplaireDEssai(environnement({ vercelEnv: "production", cleStripe: undefined }))).toBe(true);
     for (const vercelEnv of ["preview", "development", undefined]) {
       expect(exemplaireDEssai(environnement({ vercelEnv })), String(vercelEnv)).toBe(true);
+      expect(exemplaireDEssai(environnement({ vercelEnv, cleStripe: CLE_REELLE })), String(vercelEnv)).toBe(true);
     }
   });
 });

@@ -38,7 +38,7 @@ import {
   DOMAINE_PREVERSION,
   DOMAINE_PRODUCTION,
   FauxStripe,
-  FICHE_COMPLETE,
+  FICHE_SANS_CONVENTION,
   configurationMarquee,
   corpsDeCommande,
   dependances,
@@ -78,14 +78,13 @@ async function erreurDe(reponse: Response): Promise<string> {
 }
 
 describe("vente fermée", () => {
-  it("répond 503 avec un message en français tant que la convention n'est pas signée", async () => {
-    injection.deps = dependances(stripe, {
-      env: environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }),
-      fiche: VENDEUR,
-    });
-    const reponse = await commander();
-    expect(reponse.status).toBe(503);
-    expect(await erreurDe(reponse)).toBe("La vente du jeu complet n'est pas encore ouverte.");
+  it("répond 503 avec un message en français en production sans clé réelle, comme aujourd'hui", async () => {
+    for (const cleStripe of [undefined, CLE_TEST]) {
+      injection.deps = dependances(stripe, { env: environnement({ vercelEnv: "production", cleStripe }), fiche: VENDEUR });
+      const reponse = await commander();
+      expect(reponse.status).toBe(503);
+      expect(await erreurDe(reponse)).toBe("La vente du jeu complet n'est pas encore ouverte.");
+    }
     expect(stripe.sessionsCreees).toHaveLength(0);
   });
 
@@ -204,7 +203,7 @@ describe("session Stripe Checkout", () => {
     // Plus aucun « renoncé » au moment du paiement : le droit ne prend fin qu'au premier téléchargement.
     expect(description).not.toMatch(/renonc/i);
     expect(description).toContain("valable 30 jours");
-    expect(description).toContain("version du 25 septembre 2026");
+    expect(description).toContain("version du 26 septembre 2026");
     const pied = facture.invoice_data!.footer!;
     for (const attendu of [
       "Quentin Courtois EI",
@@ -291,7 +290,9 @@ describe("ce que Stripe garde de la commande", () => {
     expect(meta[CLES.versionKit]).toBe("1.2");
     expect(meta[CLES.graine]).toBe("k7m2p9q4rs");
     expect(meta[CLES.pays]).toBe("BE");
-    expect(meta[CLES.versionCgv]).toBe("2026-09-25");
+    expect(meta[CLES.versionCgv]).toBe("2026-09-26");
+    // La boutique : la tâche quotidienne ne touche qu'aux paiements qui la portent.
+    expect(meta[CLES.boutique]).toBe("mission-gateau");
     expect(meta[CLES.accordCgv]).toBe("2026-09-24T12:00:00.000Z");
     expect(meta[CLES.accordAccesImmediat]).toBe("2026-09-24T12:00:00.000Z");
     expect(depassementsDeMetadonnees(meta)).toEqual([]);
@@ -326,20 +327,25 @@ describe("ce que Stripe garde de la commande", () => {
     expect(journaux.join("\n")).not.toContain(morceau.slice(0, 40));
   });
 
-  it("convention non signée : la vente reste fermée en production, et l'essai reste ouvert hors production", async () => {
-    const ficheReelle = { ...FICHE_COMPLETE, mediateur: VENDEUR.mediateur };
+  it("sans convention signée, la vente resterait fermée en production, et l'essai ouvert hors production", async () => {
     injection.deps = dependances(stripe, {
-      fiche: ficheReelle,
+      fiche: FICHE_SANS_CONVENTION,
       env: environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }),
     });
     expect((await commander()).status).toBe(503);
-    injection.deps = dependances(stripe, { fiche: ficheReelle });
+    injection.deps = dependances(stripe, { fiche: FICHE_SANS_CONVENTION });
+    expect((await commander()).status).toBe(200);
+    // La convention signée, la fiche réelle ouvre la vente, en production avec une clé réelle comme à l'essai.
+    injection.deps = dependances(stripe, { fiche: VENDEUR, env: environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }) });
     expect((await commander()).status).toBe(200);
   });
 
   it("compte d'avance, dans les 50 clés de Stripe, celles écrites après le paiement", async () => {
     await commander();
     const meta = stripe.derniereSession().parametres.payment_intent_data!.metadata as Record<string, string>;
+    // Les nouvelles clés du lot 6 : `boutique` dès la création, les trois autres après le paiement.
+    expect(Object.keys(meta)).toContain("boutique");
+    for (const cle of ["accuses", "course", "retractation_empreinte"]) expect(CLES_APRES_PAIEMENT, cle).toContain(cle);
     for (const cle of CLES_APRES_PAIEMENT) expect(meta[cle], cle).toBeUndefined();
     expect(Object.keys(meta).length + CLES_APRES_PAIEMENT.length).toBeLessThanOrEqual(LIMITES_METADONNEES.cles);
     const presqueTrop = Object.fromEntries(

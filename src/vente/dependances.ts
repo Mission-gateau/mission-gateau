@@ -1,6 +1,7 @@
 import { VENDEUR, type FicheVendeur } from "../contenu/vendeur";
 import { creerClientEmail, type ClientEmail } from "./envoi";
 import { lireEnvironnement, type Environnement } from "./environnement";
+import { stripePermis } from "./ouverture";
 import { creerClientStripe, type ClientStripe } from "./stripe";
 
 /**
@@ -16,13 +17,17 @@ export interface Dependances {
   maintenant: () => Date;
 }
 
-/** Lu à chaque requête, jamais au build. */
+/**
+ * Lu à chaque requête, jamais au build. En production, sans clé Stripe réelle,
+ * aucun client Stripe n'est créé : rien ne peut alors toucher un paiement de
+ * test (voir stripePermis).
+ */
 export function dependancesReelles(): Dependances {
   const env = lireEnvironnement();
   return {
     env,
     fiche: VENDEUR,
-    client: creerClientStripe(env),
+    client: stripePermis(env) ? creerClientStripe(env) : null,
     email: creerClientEmail(env),
     maintenant: () => new Date(),
   };

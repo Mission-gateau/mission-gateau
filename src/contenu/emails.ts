@@ -28,7 +28,8 @@ export const CONFIRMATION = typographier({
   titreJeu: "Votre jeu",
   telechargement:
     "Votre jeu se télécharge sur la page de votre commande, par son bouton « Télécharger mon jeu (PDF) » :",
-  validite: "Ce lien reste valable 30 jours après le paiement, jusqu'au {date} : pensez à enregistrer le fichier.",
+  validite:
+    "Ce lien reste valable 30 jours après le paiement, jusqu'au {date} à {heure} (heure de Paris) : pensez à enregistrer le fichier.",
 
   titreAccord: "Votre demande de recevoir le jeu dès le paiement",
   accord:
@@ -59,6 +60,8 @@ export const CONFIRMATION = typographier({
   garantie:
     "Comme tout contenu numérique, votre jeu bénéficie de la garantie légale de conformité et de la garantie légale des vices cachés : voir l'article {article} des conditions générales de vente jointes.",
   mediateur: "Médiateur de la consommation dont relève le vendeur : {nom}, {adresse}, {site}.",
+  mediation:
+    "La médiation est gratuite pour vous. Elle suppose une réclamation écrite adressée d'abord au vendeur et restée sans solution, puis une saisine du médiateur dans l'année qui suit cette réclamation (article L612-2 du Code de la consommation) : en ligne, sur {demande}, ou par courrier à l'adresse ci-dessus.",
 
   pieceJointe: "Pièce jointe : nos conditions générales de vente, version du {version} (fichier {fichier}).",
 } as const);
@@ -92,29 +95,35 @@ export const ACCUSE = typographier({
     statut: "remboursement à venir",
     texte: "Nous vous rembourserons {montant} sur la carte utilisée pour le paiement, sous 14 jours au plus.",
   },
-  dejaRembourse: {
-    statut: "commande déjà remboursée",
-    texte: "Cette commande avait déjà été remboursée en totalité : vous n'avez rien d'autre à faire.",
-  },
   litige: {
     statut: "paiement contesté, remboursement non automatique",
     texte:
       "Le paiement de cette commande fait l'objet d'une contestation auprès de votre banque : il ne peut pas être remboursé automatiquement. Nous vous répondons sous 7 jours au plus.",
   },
+  dejaRetractee: {
+    statut: "rétractation déjà enregistrée",
+    texte:
+      "Votre rétractation de cette commande a déjà été enregistrée le {date} à {heure} (heure de Paris), à la réception d'une précédente déclaration. Cette nouvelle déclaration, envoyée le {dateDeclaration} à {heureDeclaration}, n'y change rien : votre jeu n'est plus disponible au téléchargement, et aucun second remboursement n'est fait.",
+  },
   telechargee: {
     statut: "droit de rétractation éteint au premier téléchargement",
     texte:
-      "Votre droit de rétractation a pris fin au début du premier téléchargement de votre jeu, le {date} à {heure} (heure de Paris), comme vous l'aviez demandé et reconnu avant de payer (article L221-28, 13° du Code de la consommation). Votre commande est donc maintenue, sans remboursement, et votre jeu reste disponible sur la page de votre commande.",
+      "Votre droit de rétractation a pris fin au début du premier téléchargement de votre jeu, le {date} à {heure} (heure de Paris), comme vous l'aviez demandé et reconnu avant de payer (article L221-28, 13° du Code de la consommation). Votre commande est donc maintenue, sans remboursement.",
+  },
+  simultanee: {
+    statut: "déclaration arrivée en même temps que le premier téléchargement, examinée par le vendeur",
+    texte:
+      "Votre déclaration et le premier téléchargement de votre jeu, le {date} à {heure} (heure de Paris), sont arrivés presque en même temps. Le vendeur examine votre commande et vous répond sous 7 jours au plus.",
   },
   expiree: {
     statut: "délai de rétractation expiré",
     texte: "Le délai de rétractation de cette commande a pris fin le {date}. Votre commande est donc maintenue, sans remboursement.",
   },
   erreur: "Si vous pensez qu'il s'agit d'une erreur, répondez à cet e-mail : nous vous répondons sous 7 jours au plus.",
-  nonReliee: {
-    statut: "déclaration à examiner par le vendeur",
+  manuelle: {
+    statut: "déclaration traitée à la main par le vendeur, qui vous répond sous 7 jours",
     texte:
-      "Votre déclaration n'a pas encore pu être reliée à une commande. Nous l'examinons et vous répondons sous 7 jours au plus.",
+      "Votre déclaration est bien reçue, mais elle n'a pas pu être traitée automatiquement : le vendeur la traite à la main et vous répond sous 7 jours au plus. Aucun remboursement n'est fait automatiquement d'ici là.",
   },
 
   titreVendeur: "Le vendeur",

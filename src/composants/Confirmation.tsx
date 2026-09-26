@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { remplir } from "@/engine/texte";
 import { COMMANDE } from "@/contenu/vente";
 
-type Affichage = "envoi" | "en_attente" | "echec" | "impossible";
+type Affichage = "envoi" | "en_attente" | "echec" | "non_enregistree" | "impossible";
 
 /** Au plus six nouvelles tentatives, espacées de cinq secondes, tant que Resend répond « en cours ». */
 const ESSAIS_EN_ATTENTE = 6;
@@ -66,6 +66,10 @@ export function Confirmation({
           setAffichage("impossible");
           return;
         }
+        if (etat === "non_enregistree") {
+          setAffichage("non_enregistree");
+          return;
+        }
         if (etat === null || etat === "echec" || etat === "indisponible") {
           setAffichage("echec");
           return;
@@ -90,21 +94,20 @@ export function Confirmation({
         ? COMMANDE.confirmation.enAttente
         : affichage === "impossible"
           ? remplir(COMMANDE.confirmation.impossible, { email })
-          : remplir(COMMANDE.confirmation.echec, { email });
+          : affichage === "non_enregistree"
+            ? COMMANDE.confirmation.nonEnregistree
+            : remplir(COMMANDE.confirmation.echec, { email });
+  const alerte = affichage === "echec" || affichage === "non_enregistree" || affichage === "impossible";
 
   return (
     <div className="mt-6">
       <p
-        role={affichage === "echec" || affichage === "impossible" ? "alert" : "status"}
-        className={
-          affichage === "echec" || affichage === "impossible"
-            ? "rounded-xl border-2 border-brique bg-white p-4 font-bold text-brique"
-            : "rounded-xl bg-creme-fonce p-4"
-        }
+        role={alerte ? "alert" : "status"}
+        className={alerte ? "rounded-xl border-2 border-brique bg-white p-4 font-bold text-brique" : "rounded-xl bg-creme-fonce p-4"}
       >
         {texte}
       </p>
-      {affichage === "echec" ? (
+      {affichage === "echec" || affichage === "non_enregistree" ? (
         <button
           type="button"
           onClick={() => {

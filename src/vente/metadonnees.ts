@@ -4,13 +4,16 @@ import { chiffrer, dechiffrer, decouper } from "./chiffrement";
 /**
  * Ce que Stripe garde d'une commande, dans les métadonnées du paiement.
  *
- * En clair : la référence, la version du kit, la graine, le pays déclaré, la
- * version des CGV acceptée et l'heure des deux accords, puis, au fil de la
- * commande, l'heure de l'envoi de la confirmation (et son identifiant chez
- * Resend), celle du premier téléchargement et celle de la rétractation (et
- * l'identifiant de son accusé de réception). Chiffrée : la configuration
- * complète, découpée en morceaux pour tenir dans les limites de Stripe. Aucune
- * donnée saisie par le parent n'y figure en clair.
+ * En clair : la boutique, la référence, la version du kit, la graine, le pays
+ * déclaré, la version des CGV acceptée et l'heure des deux accords, puis, au
+ * fil de la commande, l'heure de l'envoi de la confirmation (et son
+ * identifiant chez Resend), celle du premier téléchargement, celle de la
+ * rétractation (avec l'empreinte de la déclaration qui l'a enregistrée et
+ * l'identifiant de son accusé de réception), la marque qui l'a emporté quand
+ * téléchargement et rétractation se sont croisés, et le nombre des autres
+ * accusés de réception envoyés. Chiffrée : la configuration complète, découpée
+ * en morceaux pour tenir dans les limites de Stripe. Aucune donnée saisie par
+ * le parent n'y figure en clair.
  *
  * C'est tout l'état d'une commande : le site n'a pas de base de données.
  */
@@ -18,7 +21,12 @@ import { chiffrer, dechiffrer, decouper } from "./chiffrement";
 /** Limites des métadonnées Stripe : 50 clés, 40 caractères par clé, 500 par valeur. */
 export const LIMITES_METADONNEES = { cles: 50, longueurCle: 40, longueurValeur: 500 } as const;
 
+/** La valeur de `boutique` : les paiements de ce site, et d'aucun autre produit du même compte Stripe. */
+export const BOUTIQUE = "mission-gateau";
+
 export const CLES = {
+  /** Toujours « mission-gateau » : la tâche quotidienne ne touche qu'aux paiements qui la portent. */
+  boutique: "boutique",
   reference: "ref",
   versionKit: "version_kit",
   graine: "graine",
@@ -37,8 +45,22 @@ export const CLES = {
   telechargement: "telechargement",
   /** Heure de réception de la déclaration de rétractation, ISO 8601. */
   retractation: "retractation",
+  /**
+   * Empreinte de la déclaration qui a enregistré la rétractation : les 16
+   * premiers caractères hexadécimaux du SHA-256 de ses champs normalisés.
+   * Une déclaration identique reçue ensuite reçoit exactement le même accusé.
+   */
+  empreinteRetractation: "retractation_empreinte",
   /** Identifiant, chez Resend, de l'accusé de réception de cette déclaration. */
   accuseRetractation: "retractation_accuse",
+  /**
+   * Quand un premier téléchargement et une rétractation se sont croisés : la
+   * marque qui l'a emporté (« telechargement » ou « retractation »), écrite
+   * par la route qui a perdu (voir src/vente/course.ts).
+   */
+  course: "course",
+  /** Nombre des accusés de réception envoyés aux autres déclarations (3 au plus). */
+  accuses: "accuses",
 } as const;
 
 /**
@@ -51,7 +73,10 @@ export const CLES_APRES_PAIEMENT = [
   CLES.confirmationId,
   CLES.telechargement,
   CLES.retractation,
+  CLES.empreinteRetractation,
   CLES.accuseRetractation,
+  CLES.course,
+  CLES.accuses,
 ] as const;
 
 const PREFIXE_MORCEAU = "config_";
@@ -84,6 +109,7 @@ export function metadonneesDuPaiement(
   const bloc = chiffrer(JSON.stringify(configuration), cleStripe, contexte(commande));
   const morceaux = decouper(bloc, LIMITES_METADONNEES.longueurValeur);
   const metadonnees: Record<string, string> = {
+    [CLES.boutique]: BOUTIQUE,
     [CLES.reference]: commande.reference,
     [CLES.versionKit]: commande.versionKit,
     [CLES.graine]: commande.graine,
@@ -134,6 +160,9 @@ export function lireCommande(metadonnees: Record<string, string>): Commande | nu
   return Object.values(commande).every((valeur) => valeur !== "") ? commande : null;
 }
 
+/** Les deux marques qui peuvent se croiser : le premier téléchargement et la rétractation. */
+export type Marque = "telechargement" | "retractation";
+
 /** Ce qui est arrivé à une commande après son paiement. */
 export interface Suivi {
   /** Envoi de l'e-mail de confirmation. */
@@ -142,8 +171,14 @@ export interface Suivi {
   telechargement: Date | null;
   /** Réception de la déclaration de rétractation. */
   retractation: Date | null;
+  /** Empreinte de la déclaration qui a enregistré la rétractation. */
+  empreinteRetractation: string | null;
   /** Identifiant de l'accusé de réception de la rétractation, une fois parti. */
   accuseRetractation: string | null;
+  /** La marque qui l'a emporté, quand les deux existent ; null si elle n'est pas écrite. */
+  course: Marque | null;
+  /** Accusés de réception envoyés aux autres déclarations. */
+  accuses: number;
 }
 
 /**
@@ -157,12 +192,22 @@ function lireHeure(valeur: string | undefined): Date | null {
   return Number.isNaN(heure.getTime()) ? null : heure;
 }
 
+/** Un compteur écrit par le site : un entier positif, sinon zéro. */
+function lireCompteur(valeur: string | undefined): number {
+  const nombre = Number(valeur);
+  return Number.isInteger(nombre) && nombre > 0 ? nombre : 0;
+}
+
 export function lireSuivi(metadonnees: Record<string, string>): Suivi {
+  const course = metadonnees[CLES.course];
   return {
     confirmation: lireHeure(metadonnees[CLES.confirmation]),
     telechargement: lireHeure(metadonnees[CLES.telechargement]),
     retractation: lireHeure(metadonnees[CLES.retractation]),
+    empreinteRetractation: metadonnees[CLES.empreinteRetractation] || null,
     accuseRetractation: metadonnees[CLES.accuseRetractation] || null,
+    course: course === "telechargement" || course === "retractation" ? course : null,
+    accuses: lireCompteur(metadonnees[CLES.accuses]),
   };
 }
 

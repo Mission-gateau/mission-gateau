@@ -8,17 +8,22 @@ d'enfants, la durée et les cachettes dont il dispose chez lui. Le site compose
 aussitôt un kit complet : guide de l'organisateur, invitations, cartes-indices
 à cacher, fiches d'énigmes, page du trésor, diplômes et page de solutions.
 
-Le dépôt en est au **lot 5**. Les lots 1 à 3 ont livré le moteur de jeu, le
+Le dépôt en est au **lot 6**. Les lots 1 à 3 ont livré le moteur de jeu, le
 kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs de
 deux audits. Le lot 4 a ajouté la vente du jeu complet à 12,90 € par Stripe, sa
-livraison et les pages légales. Le lot 5 met la vente en conformité avec le
+livraison et les pages légales. Le lot 5 a mis la vente en conformité avec le
 droit de rétractation : confirmation de commande par e-mail avant tout
 téléchargement, droit de rétractation jusqu'au premier téléchargement, et
-fonction « Renoncer au contrat ici ». La vente reste fermée en production tant
-qu'il lui manque quelque chose (voir « La vente »). Les pages de contenu
-viendront plus tard. Le site reste volontairement invisible des moteurs de
-recherche : `robots.txt` interdit tout, et chaque page porte une balise
-`noindex, nofollow`.
+fonction « Renoncer au contrat ici ». Le lot 6 corrige l'audit du lot 5 : la
+fonction de rétractation n'écrit plus qu'à propos d'une commande payée
+retrouvée chez Stripe, toutes les routes POST refusent ce qui ne vient pas
+d'une page du site, un premier téléchargement et une rétractation simultanés
+ne peuvent plus donner à la fois le PDF et le remboursement, et le médiateur
+est cité partout, la convention étant signée. La vente reste fermée en
+production tant qu'il lui manque quelque chose — aujourd'hui, une clé Stripe
+réelle (voir « La vente »). Les pages de contenu viendront plus tard. Le site
+reste volontairement invisible des moteurs de recherche : `robots.txt`
+interdit tout, et chaque page porte une balise `noindex, nofollow`.
 
 ## Démarrer
 
@@ -72,10 +77,14 @@ src/contenu/    tous les textes, séparés du code
   retractation.ts la page « Renoncer au contrat »
 src/vente/      la vente : ouverture, Stripe, Resend, chiffrement, livraison,
                 confirmation, rétractation, délai légal, tâche quotidienne
+  garde.ts        le contrôle commun des routes POST (JSON, même origine)
+  declaration.ts  les entrées de la rétractation, vérifiées ici et dans le navigateur
+  course.ts       premier téléchargement contre rétractation : qui l'emporte
 src/pdf/        les documents imprimés (@react-pdf/renderer)
 src/app/        les pages du site et ses routes
 tests/          vitest (un faux Stripe, tests/fauxStripe.ts, et un faux
-                Resend, tests/fauxEmail.ts)
+                Resend, tests/fauxEmail.ts ; tests/course.test.ts force tous
+                les ordres des appels à Stripe de deux routes concurrentes)
 samples/        neuf kits, neuf aperçus et leur structure en JSON
 vercel.json     les deux passages quotidiens de la tâche
 ```
@@ -159,7 +168,9 @@ ménager. Aucune cachette n'oblige à grimper.
    avant la fin du délai de rétractation, avec la reconnaissance que ce droit
    se perd au début du premier téléchargement (article L221-28, 13° du Code
    de la consommation). Puis le bouton « Commander et payer 12,90 € ». Le bloc
-   achète exactement la configuration et la graine de cet aperçu.
+   tient lieu de bon de commande : il nomme aussi le médiateur de la
+   consommation et donne l'adresse de son site (article R616-1). Il achète
+   exactement la configuration et la graine de cet aperçu.
 2. `POST /api/commande` revérifie tout (configuration, graine, pays, accords),
    compose le kit et le contrôle — une erreur du moteur donne une réponse
    propre, en français, journalisée sans donnée —, puis crée une session
@@ -178,41 +189,60 @@ ménager. Aucune cachette n'oblige à grimper.
    commande par e-mail** (voir plus bas), puis la page se recharge.
 5. La confirmation partie, la page dit à quelle adresse (masquée), rappelle
    que le téléchargement commence l'exécution et met fin au droit de
-   rétractation, propose « Renoncer au contrat ici », puis le bouton
+   rétractation, propose « Renoncer au contrat ici » (le lien transmet la
+   référence et, au retour de Stripe, le `session_id`), puis le bouton
    « Télécharger mon jeu (PDF) ». Il appelle `POST /api/commande/<ref>/kit`, qui
    refait la vérification, déchiffre la configuration, construit le kit avec
-   la graine, le passe par `verifierKit`, relit le paiement et, au premier
-   téléchargement, enregistre son heure **avant** de renvoyer le PDF (si cet
-   enregistrement échoue : 503, aucun PDF). La page dit ensuite « Premier
-   téléchargement le … à … : votre droit de rétractation a pris fin à ce
-   moment ». Délai passé sans téléchargement : « Votre délai de rétractation a
+   la graine, le passe par `verifierKit` et, au premier téléchargement,
+   enregistre son heure **avant** de renvoyer le PDF, en décidant sur le
+   paiement que Stripe renvoie en réponse à cette écriture (voir « Premier
+   téléchargement et rétractation en même temps » ; si l'enregistrement
+   échoue : 503, aucun PDF). La page dit ensuite « Premier téléchargement le …
+   à … : votre droit de rétractation a pris fin à ce moment », et la validité
+   du lien à la minute près (« jusqu'au 25 octobre 2026 à 0 h 05 (heure de
+   Paris) »). Délai passé sans téléchargement : « Votre délai de rétractation a
    pris fin le … », sans le lien.
 6. Stripe envoie de son côté la facture et le reçu ; plus rien ne s'appuie
    dessus.
 
 `<ref>` est une référence de 128 bits tirée au hasard. Hors d'une commande
 payée **et confirmée**, aucune route ne sert le kit complet ; une commande
-impayée, introuvable, expirée, remboursée en totalité, rétractée, en litige,
-d'une autre version du kit ou illisible reçoit un message clair, et rien
-d'autre.
+impayée, introuvable, expirée, remboursée en totalité, rétractée, à examiner,
+en litige, d'une autre version du kit ou illisible reçoit un message clair, et
+rien d'autre.
+
+Toutes les routes POST (`/api/apercu`, `/api/commande`,
+`/api/commande/<ref>/confirmation`, `/api/commande/<ref>/kit`,
+`/api/renoncer`) passent d'abord par le même contrôle, écrit une fois dans
+`src/vente/garde.ts` : `Content-Type` égal à `application/json` (paramètres
+ignorés), sinon 415 ; 403, en français, si `Sec-Fetch-Site` vaut
+`cross-site`, si `Origin` vaut `null`, ou si l'hôte d'`Origin` n'est pas celui
+de la requête (première valeur de `x-forwarded-host`, sinon `host`, sinon
+l'adresse de la requête). Une page d'un autre site ne peut donc plus rien
+faire envoyer par le navigateur de ses visiteurs.
 
 ### La confirmation de commande
 
-Elle part à l'adresse que l'acheteur a saisie chez Stripe : `customer_details.email`
-de la session Checkout (lue par son identifiant au retour de Stripe, sinon
-retrouvée par `checkout.sessions.list({ payment_intent })`), à défaut
-`billing_details.email` du dernier débit. Elle contient, dans l'ordre : la
+Elle part à l'adresse que l'acheteur a saisie chez Stripe, trouvée par un seul
+chemin, le même depuis la page et depuis la tâche quotidienne :
+`customer_details.email` de la session Checkout retrouvée par le paiement
+(`checkout.sessions.list({ payment_intent })`), à défaut `billing_details.email`
+du dernier débit. Une nouvelle tentative envoie ainsi toujours exactement la
+même requête à Resend. Elle contient, dans l'ordre : la
 commande (référence, date et heure du paiement à Paris, le jeu par son thème
 et sa tranche d'âge, 12,90 € et la mention de TVA, payé par carte) ; le lien
-de la page de la commande et sa validité ; la confirmation de l'accord donné
+de la page de la commande et sa validité (date et heure de Paris) ; la
+confirmation de l'accord donné
 avant le paiement, mot pour mot, avec sa date et son heure ; le droit de
 rétractation (jusqu'au premier téléchargement et au plus tard le dernier jour
 du délai, par « Renoncer au contrat ici », par le formulaire type ou par toute
 déclaration claire ; remboursement sous 14 jours) ; le formulaire type rempli
 avec les coordonnées du vendeur ; le vendeur, le service client, la garantie
-légale (avec l'article des CGV) et le médiateur, seulement une fois la
-convention signée ; enfin, en pièce jointe annoncée, **les CGV dans la version
-acceptée**, prix compris, en PDF (`cgv-mission-gateau-<version>.pdf`).
+légale (avec l'article des CGV) et le médiateur (la convention est signée
+depuis le 25 septembre 2026), avec la gratuité de la médiation, la
+réclamation écrite préalable restée sans solution, le délai d'un an et les
+deux voies de saisine ; enfin, en pièce jointe annoncée, **les CGV dans la
+version acceptée**, prix compris, en PDF (`cgv-mission-gateau-<version>.pdf`).
 
 **Un seul envoi par commande**, même quand la page, un second onglet et la
 tâche quotidienne la demandent en même temps : la marque `confirmation` (heure
@@ -226,8 +256,13 @@ dit « confirmation en cours » et réessaie), et 409 `invalid_idempotent_reques
 à une requête différente sous la même clé (erreur journalisée). Un envoi
 refusé (domaine de l'expéditeur non vérifié, par exemple) est un échec comme
 un autre : la page le dit, propose de réessayer plus tard ou d'écrire au
-service client, et n'affiche aucun bouton de téléchargement. Version des CGV
-introuvable : aucun envoi, « confirmation impossible ».
+service client, et n'affiche aucun bouton de téléchargement. Un e-mail parti
+dont la marque n'a pas pu être posée chez Stripe a son propre message
+(« Votre confirmation de commande est partie, mais n'a pas pu être
+enregistrée : rechargez cette page dans quelques minutes. ») : la tentative
+suivante renvoie la même requête, que Resend ne renvoie pas, puis pose la
+marque. Version des CGV introuvable : aucun envoi, « confirmation
+impossible ».
 
 **Le PDF des CGV est identique octet pour octet d'un rendu à l'autre** : sa date
 de création est celle de sa version, et il emploie ses propres polices
@@ -252,59 +287,180 @@ Le droit prend fin au début du premier téléchargement (article L221-28, 13°)
 l'acheteur l'a demandé et reconnu par la seconde case, et la confirmation lui
 a été envoyée avant, puisque rien n'est livré sans elle.
 
-Le lien « Renoncer au contrat ici » figure dans le pied de toutes les pages, à
-côté des liens légaux, sur la page de la commande et dans la confirmation. Il
-mène à `/renoncer` (`?ref=` préremplit la référence), toujours accessible :
-nom, prénom, référence (ou lien de la commande), e-mail où recevoir l'accusé,
-un récapitulatif, puis « Confirmer la rétractation ». `POST /api/renoncer`
-valide avec `zod`, borne la taille à 4 ko, et refuse sans rien faire une
-déclaration dont le champ piège (invisible, hors du clavier et des lecteurs
-d'écran) est rempli. L'heure de réception par le serveur est celle de l'envoi
-de la déclaration. La commande est jugée **sur le paiement lui-même** :
+Le lien « Renoncer au contrat ici » figure dans le pied de toutes les pages
+(page 404 comprise), à côté des liens légaux, sur la page de la commande et
+dans la confirmation. Il mène à `/renoncer`, toujours accessible : `?ref=`
+préremplit la référence, et `?session_id=` (que donne le lien de la page de la
+commande au retour de Stripe) permet de retrouver un paiement tout neuf. Au-
+dessus du formulaire, la page dit qu'il faut la référence de la commande,
+qu'elle figure dans l'e-mail de confirmation, et qu'à défaut on peut se
+rétracter par e-mail ou par courrier. Puis : nom, prénom, référence (ou lien
+de la commande), e-mail où recevoir l'accusé, un récapitulatif, et « Confirmer
+la rétractation ». Les erreurs s'affichent sous chaque champ, annoncées aux
+lecteurs d'écran (`role="alert"`), le focus allant au premier champ en
+erreur ; à chaque changement d'étape, il va au titre de l'étape.
 
-- rétractation déjà enregistrée : la page rappelle sa date et l'état du
-  remboursement, sans second remboursement ni second e-mail ;
-- déjà téléchargée : accusé qui explique que le droit a pris fin au premier
-  téléchargement, sans remboursement ; la livraison continue ;
-- délai expiré : accusé qui donne le dernier jour, sans remboursement ;
-- sinon, la rétractation est valable : `retractation` est enregistrée (la
-  livraison est aussitôt bloquée), puis le paiement est remboursé en totalité
-  par Stripe (clé d'idempotence `retractation-<ref>`, motif
-  `requested_by_customer`). L'accusé dit « remboursé » si Stripe l'a fait,
-  sinon « remboursé sous 14 jours au plus », et la tâche quotidienne retente.
-  Déjà remboursée hors rétractation : l'accusé le dit. Litige en cours :
-  aucun remboursement automatique, le vendeur répond sous 7 jours ;
-- paiement introuvable (référence inconnue, paiement pas encore visible dans
-  la recherche de Stripe, Stripe indisponible, ou enregistrement impossible) :
-  l'accusé part quand même, en disant que la déclaration n'a pas encore pu
-  être reliée à une commande ; sa copie au vendeur, qui porte ce statut, est
-  à traiter à la main.
+**Entrées strictes**, vérifiées de la même façon dans le navigateur et par
+`POST /api/renoncer` (zod, `src/vente/declaration.ts`), qui borne aussi la
+taille à 4 ko et refuse sans rien faire une déclaration dont le champ piège
+est rempli :
 
-L'accusé de réception reprend la déclaration (nom, prénom, référence, e-mail),
-la date et l'heure de son envoi (heure de Paris), et la suite donnée, avec une
-ligne « Statut ». Il part sans délai à l'adresse saisie, en copie cachée à
-l'adresse de l'acheteur chez Stripe si elle diffère, et au vendeur. La page
-affiche le même contenu, dit où il est parti et, s'il n'a pas pu partir,
-propose de le renvoyer : le renvoi d'une rétractation enregistrée repart avec
-l'heure enregistrée et la même clé (`accuse-<ref>`), une seule fois ; la marque
-`retractation_accuse` retient qu'il est parti.
+- référence : exactement 22 caractères `A-Z a-z 0-9 _ -`, ou un texte dont le
+  chemin contient `/commande/<référence>` ; seule la référence extraite est
+  gardée, affichée et envoyée, jamais le texte saisi ;
+- nom et prénom, après normalisation NFC : 1 à 60 caractères, lettres de
+  toute écriture (`\p{L}`, `\p{M}`), espaces, apostrophes et traits d'union,
+  avec au moins une lettre : ni chiffre, ni `@`, ni `:`, ni `/`, ni point, ni
+  caractère de contrôle ou de mise en forme (dont ceux du sens de lecture) ;
+- e-mail : 254 caractères au plus ; `session_id` : facultatif, au format de
+  Stripe.
 
-Une rétractation reçue par e-mail ou par courrier se traite à la main dans le
-tableau de bord de Stripe : ajouter au paiement la métadonnée `retractation`
-(une date ISO, par exemple `2026-10-02`), ce qui bloque aussitôt la livraison,
-puis rembourser ; la tâche quotidienne retente le remboursement s'il manque.
+**Rien n'est reçu sans commande retrouvée.** Une déclaration n'est traitée,
+enregistrée s'il y a lieu et accusée par e-mail que si elle désigne un
+paiement abouti retrouvé chez Stripe : par la session quand le lien de la
+page de la commande la donne (elle doit porter la même référence ; sinon elle
+est ignorée), sinon par la recherche sur la référence. Sinon, rien n'est
+enregistré ni envoyé, et la réponse le dit :
+
+- aucune commande payée ne correspond (et toujours sans client Stripe, comme
+  la production aujourd'hui) : 404, « Nous ne trouvons aucune commande payée
+  sous cette référence : votre déclaration n'a pas été transmise et aucun
+  accusé de réception ne partira. », puis où trouver la référence, réessayer
+  si le paiement vient d'avoir lieu, ou se rétracter par e-mail ou par
+  courrier (formulaire type en annexe des CGV, ou toute déclaration claire) ;
+- Stripe ne répond pas ou limite le débit : 503, « Nous ne pouvons pas
+  vérifier votre commande pour le moment… », avec un bouton qui ouvre la
+  messagerie de la personne (`mailto:` vers l'e-mail du vendeur, objet et
+  corps remplis avec nom, prénom, référence, e-mail, date et heure) : aucun
+  e-mail ne part du site, et elle garde sa propre preuve d'envoi. Le même
+  bouton est proposé quand la commande est introuvable.
+
+Dans ces deux cas, le journal note `declaration_non_transmise`, sa cause
+(`introuvable`, `stripe_indisponible`, `stripe_limite`), la référence extraite
+et l'heure — jamais un nom ni une adresse. Personne ne peut donc plus faire
+écrire le site à une adresse quelconque : il faut la référence d'une commande
+payée.
+
+**La commande retrouvée**, elle est jugée **sur le paiement lui-même**, jamais
+sur l'état de la page de la commande :
+
+- rétractation possible (ni rétractation, ni téléchargement, délai en cours) :
+  `retractation` (l'heure de réception) et `retractation_empreinte` (les 16
+  premiers caractères hexadécimaux du SHA-256 des champs normalisés : nom,
+  prénom, référence, e-mail) sont écrites **dès que le paiement est retrouvé**,
+  avant de chercher l'adresse de l'acheteur ; la décision se prend sur le
+  paiement que Stripe renvoie (voir la section suivante). Si la rétractation
+  l'emporte, le paiement est remboursé en totalité (clé d'idempotence
+  `retractation-<ref>`, motif `requested_by_customer`), sauf s'il l'est déjà
+  ou s'il est contesté (le vendeur répond alors sous 7 jours). Cette
+  déclaration reçoit **toujours** son accusé par e-mail, sous la clé
+  `accuse-<ref>` ; une fois parti, `retractation_accuse` retient son
+  identifiant chez Resend ;
+- déclaration identique à celle qui a enregistré la rétractation (même
+  empreinte, par exemple « Renvoyer » après un échec d'envoi) : exactement le
+  même accusé, à l'heure enregistrée, sous la même clé, hors plafond ; Resend
+  ne le renvoie pas dans les 24 heures ;
+- toute autre déclaration (rétractation déjà enregistrée par une déclaration
+  différente, commande déjà téléchargée, délai expiré) est nouvelle, avec sa
+  propre heure : elle reçoit un accusé par e-mail dans la limite de **trois par
+  commande**. L'e-mail n° n (n = `accuses` + 1) part sous la clé
+  `accuse-<ref>-<n>`, puis `accuses` passe à n. Au-delà, la page affiche
+  l'accusé et dit qu'il n'est pas renvoyé par e-mail, avec l'adresse du
+  vendeur. Jamais un second remboursement. L'accusé d'une rétractation déjà
+  enregistrée donne les deux heures (enregistrement et nouvelle déclaration) ;
+  celui d'une commande déjà téléchargée ne promet plus que le jeu reste
+  disponible ;
+- une écriture ou une relecture chez Stripe échoue : la déclaration est reçue
+  quand même, son accusé part hors plafond avec le statut « traitée à la main
+  par le vendeur, qui vous répond sous 7 jours » (la copie cachée au vendeur
+  porte ce statut), et rien n'est remboursé automatiquement.
+
+Quand Resend répond que la même clé est en cours ou a déjà servi pour une autre
+requête (409), la route relit le paiement et répond selon ce qui est
+enregistré : accusé déjà parti, numéro suivant, ou « Votre déclaration est en
+cours de traitement : rechargez la page dans quelques instants. ». La page ne
+dit jamais qu'un accusé est parti quand il n'est pas parti.
+
+L'accusé de réception reprend la déclaration (champs normalisés, référence
+extraite), la date et l'heure de son envoi (heure de Paris), et la suite
+donnée, avec une ligne « Statut ». Il part à l'adresse saisie, en copie cachée
+à l'adresse de l'acheteur chez Stripe si elle diffère, et au vendeur. La
+réponse de l'API ne dit pas si l'adresse saisie est celle de l'acheteur : la
+page dit que l'accusé est parti à l'adresse saisie, et qu'une copie part aussi
+à l'adresse utilisée lors du paiement quand elle est différente. Un accusé qui
+n'a pas pu partir laisse dans le journal `accuse_non_envoye` et la référence
+extraite.
+
+### Premier téléchargement et rétractation en même temps
+
+Deux onglets suffisent pour qu'une déclaration et un premier téléchargement
+soient traités au même instant. Comparer les heures ne suffit pas : l'heure de
+réception d'une déclaration est prise à son arrivée, bien avant son écriture.
+La règle, écrite une seule fois dans `src/vente/course.ts` et suivie par la
+route du kit, la page de la commande, la fonction de rétractation, la tâche
+quotidienne et les accusés :
+
+- l'emporte la première des deux marques (`telechargement`, `retractation`)
+  écrite chez Stripe ;
+- chaque route décide sur le paiement que Stripe lui renvoie en réponse à sa
+  propre écriture (la mise à jour d'un paiement rend l'objet à jour) : si la
+  marque de l'autre y figure déjà, l'autre l'emporte ; sinon, elle l'emporte ;
+- la route qui perd écrit `course` = le nom de la marque gagnante ; quand les
+  deux marques existent, tout le reste lit `course`. Si cette écriture échoue,
+  la commande est « à examiner » : ni livraison ni remboursement
+  automatiques, le vendeur répond sous 7 jours.
+
+Route du kit qui perd : 410, aucun PDF. Rétractation qui perd : aucun
+remboursement, et un accusé qui dit que le droit a pris fin au début du
+premier téléchargement — sauf si la déclaration avait été reçue avant le début
+de ce téléchargement : l'accusé dit alors que les deux sont arrivés presque en
+même temps et que le vendeur répond sous 7 jours (la copie au vendeur le
+signale). `tests/course.test.ts` rejoue les deux routes sur un faux Stripe en
+forçant tous les ordres possibles de leurs lectures et écritures : jamais le
+PDF et le remboursement ensemble ; sans panne de Stripe, jamais ni l'un ni
+l'autre.
+
+### Une rétractation reçue par e-mail ou par courrier, ou non transmise
+
+Elle se traite à la main :
+
+1. retrouver la commande dans le tableau de bord de Stripe (recherche sur la
+   métadonnée `ref`, ou par l'e-mail de l'acheteur) et vérifier qu'elle n'est
+   ni téléchargée (`telechargement`) ni hors délai (14 jours après le
+   paiement, prorogés comme le calcule `src/vente/delai.ts`) — une déclaration
+   envoyée avant la fin du délai compte, même lue après ;
+2. ajouter au paiement la métadonnée `retractation` (une date ISO, par
+   exemple `2026-10-02`), ce qui bloque aussitôt la livraison, puis
+   rembourser ; la tâche quotidienne retente le remboursement s'il manque ;
+3. envoyer au client, par e-mail, un accusé de réception qui reprend sa
+   déclaration et sa date d'envoi (article 8 des CGV), à l'adresse qu'il a
+   indiquée ou, à défaut, à celle de la commande.
+
+Un journal `declaration_non_transmise` (Stripe injoignable ou débit limité
+pendant la déclaration) donne la référence et l'heure d'une déclaration faite
+pendant une panne : la personne a pu l'envoyer par e-mail avec le bouton de la
+page ; sinon, lui écrire et traiter la rétractation comme ci-dessus, en
+tenant compte de l'heure du journal. Un journal `accuse_non_envoye` donne la
+référence d'une commande dont l'accusé n'est pas parti : la déclaration est
+enregistrée si la rétractation l'a emporté ; écrire au client pour lui
+accuser réception. Les journaux de l'offre Hobby ne sont gardés qu'une heure
+(voir « Choix et limites »).
 
 ### Ce que Stripe garde
 
-Dans les métadonnées du paiement : la référence, `VERSION_KIT`, la graine, le
-pays déclaré, la version des CGV acceptée, l'heure des deux accords (heure du
-serveur), la configuration complète **chiffrée** (AES-256-GCM, clé dérivée de
-`STRIPE_SECRET_KEY` par HKDF-SHA256 avec une étiquette propre à cet usage),
-découpée en morceaux de 500 caractères, puis, au fil de la commande :
-`confirmation` et `confirmation_id`, `telechargement`, `retractation` et
-`retractation_accuse`. C'est tout l'état d'une commande : le site n'a pas de
-base de données. Ces cinq clés sont comptées dès la création de la commande
-dans les 50 clés permises par Stripe (`depassementsDeMetadonnees`). Aucune
+Dans les métadonnées du paiement : `boutique` (toujours `mission-gateau`), la
+référence, `VERSION_KIT`, la graine, le pays déclaré, la version des CGV
+acceptée, l'heure des deux accords (heure du serveur), la configuration
+complète **chiffrée** (AES-256-GCM, clé dérivée de `STRIPE_SECRET_KEY` par
+HKDF-SHA256 avec une étiquette propre à cet usage), découpée en morceaux de
+500 caractères, puis, au fil de la commande : `confirmation` et
+`confirmation_id`, `telechargement`, `retractation`, `retractation_empreinte`
+et `retractation_accuse`, `course` (la marque qui l'a emporté quand
+téléchargement et rétractation se sont croisés) et `accuses` (le nombre des
+accusés envoyés aux autres déclarations). C'est tout l'état d'une commande :
+le site n'a pas de base de données. Ces huit clés écrites après le paiement
+sont comptées dès la création de la commande, avec `boutique`, dans les 50
+clés permises par Stripe (`depassementsDeMetadonnees`). Aucune
 donnée saisie par le parent — prénoms, date, heure, adresse, contact — ne
 part en clair : le produit est décrit par son thème et sa tranche d'âge, qui
 figurent en clair sur la ligne de commande et la facture.
@@ -321,8 +477,9 @@ par son identifiant.
 Prestataire : Resend, par son SDK officiel (`resend`), derrière la petite
 interface de `src/vente/envoi.ts` (faux client dans les tests). Expéditeur
 « Mission Gâteau <commandes@missiongateau.com> », réponses vers l'e-mail de la
-fiche du vendeur, copie cachée de chaque confirmation et de chaque accusé de
-réception à ce même e-mail (preuve de l'envoi). Une version texte et une
+fiche du vendeur (une messagerie Gmail, hébergée par Google), copie cachée de
+chaque confirmation et de chaque accusé de réception à ce même e-mail (preuve
+de l'envoi). Une version texte et une
 version HTML simple, rendues du même contenu ; aucune image ni ressource
 distante ; aucune donnée du jeu. **Le domaine `missiongateau.com` doit être
 vérifié dans Resend** : sans cela, Resend refuse l'expéditeur, la confirmation
@@ -339,22 +496,31 @@ UTC : sur l'offre Hobby, chaque tâche ne s'exécute qu'une fois par jour, à
 l'heure près (jusqu'à 59 minutes de retard), et une même route peut porter
 deux tâches. Elle n'agit que si la requête porte
 `Authorization: Bearer <CRON_SECRET>`, que Vercel envoie de lui-même ; sinon, ou
-sans la variable, 401 et rien d'autre. Elle :
+sans la variable, 401 et rien d'autre. Sans client Stripe (la production
+aujourd'hui), elle écrit `{"tache":"quotidienne","sansCle":1}` et répond 200.
+Sinon, en trois phases :
 
-1. efface la configuration chiffrée des paiements **et** des débits de plus de
-   30 jours (comptés à partir du débit réussi) ;
-2. envoie la confirmation des commandes payées depuis plus d'une heure qui
-   n'en ont pas, sauf celles rétractées, remboursées ou en litige, sans jamais
-   en envoyer deux ;
-3. retente le remboursement des rétractations enregistrées qui ne sont pas
-   encore remboursées, hors litige, une fois par jour (clé
-   `retractation-<ref>-<jour>` ; Stripe ne rembourse jamais au-delà du montant
-   payé).
+1. `effacement` : la configuration chiffrée des paiements **et** des débits de
+   plus de 30 jours (comptés à partir du débit réussi), comme avant ;
+2. `confirmations` : la confirmation des commandes payées depuis plus d'une
+   heure qui n'en ont pas, sauf celles rétractées, remboursées, en litige ou à
+   examiner, sans jamais en envoyer deux ;
+3. `remboursements` : le remboursement des rétractations qui ont emporté la
+   course (voir plus haut), relues à jour, pas encore remboursées, hors
+   litige, une fois par jour (clé `retractation-<ref>-<jour>` ; Stripe ne
+   rembourse jamais au-delà du montant payé). Une rétractation battue par le
+   premier téléchargement, ou une commande à examiner, n'est jamais
+   remboursée ici.
 
+Les phases 2 et 3 ne voient que les paiements de cette boutique : la recherche
+exige `boutique` = `mission-gateau`, et chaque paiement rendu est revérifié ;
+un paiement d'un autre produit du même compte Stripe n'est jamais touché.
 Elle examine les paiements aboutis des 45 derniers jours, au plus 2 000 par
-passage. Ses compteurs ne partent que dans les journaux ; la réponse ne dit
-que `{ "ok": true }` ou `{ "ok": false }`. Une panne en cours de route ne fait
-pas perdre les compteurs déjà faits.
+passage. Chaque phase écrit sa ligne de journal dès qu'elle finit
+(`{"tache":"quotidienne","phase":"effacement",…}`, puis `confirmations`, puis
+`remboursements`) : un dépassement de durée ne fait pas perdre les compteurs
+des phases déjà faites. La réponse ne dit que `{ "ok": true }` ou
+`{ "ok": false }`.
 
 ### Quand la vente est-elle ouverte ?
 
@@ -363,17 +529,24 @@ Seulement si tout ce qu'il faut pour vendre, confirmer et livrer est réuni
 
 - en production (`VERCEL_ENV=production`) : une clé Stripe **réelle**
   (`sk_live_…` ou `rk_live_…`), la fiche du vendeur complète, convention avec
-  le médiateur comprise, et `RESEND_API_KEY` ;
+  le médiateur comprise, et `RESEND_API_KEY`. La fiche est complète depuis la
+  signature de la convention (25 septembre 2026) : seule manque aujourd'hui la
+  clé réelle, et la vente reste fermée ;
 - partout ailleurs (préversions, local) : une clé Stripe **de test**
-  (`sk_test_…` ou `rk_test_…`), la fiche complète sauf la convention, et
-  `RESEND_API_KEY`. Le médiateur reste non nommé tant que la convention n'est
-  pas signée. Le kit livré porte alors sur chaque page, bien visible,
-  « Exemplaire d'essai — sans valeur commerciale » (même mécanisme que le
-  filigrane de l'aperçu) ; en production, jamais.
+  (`sk_test_…` ou `rk_test_…`), la fiche complète (elle l'est désormais,
+  convention comprise), et `RESEND_API_KEY`.
+
+**En production, sans clé réelle, aucun client Stripe n'est créé**
+(`stripePermis`, `src/vente/dependances.ts`) : ni la livraison, ni la
+confirmation, ni la rétractation, ni la tâche quotidienne ne peuvent toucher un
+paiement de test. Le kit livré porte sur chaque page, bien visible,
+« Exemplaire d'essai — sans valeur commerciale » (même mécanisme que le
+filigrane de l'aperçu) hors production, et aussi en production si la clé
+n'est pas réelle ; une vente réelle le livre sans elle.
 
 Vente fermée : aucun prix affiché, aucun bouton d'achat, `POST /api/commande`
 répond 503, et `/creer` annonce après l'aperçu que la vente ouvre bientôt. La
-livraison des commandes déjà payées et confirmées n'a besoin que d'une clé
+livraison des commandes déjà payées et confirmées n'a besoin que d'un client
 Stripe. Toutes les pages sont rendues à la demande : les variables ne sont
 lues qu'à l'exécution, jamais au build, et le build, les tests et la CI
 passent sans aucune d'elles.
@@ -400,8 +573,11 @@ acceptée, et sa confirmation joint le PDF de celle-là. `/cgv` affiche la
 dernière de `VERSIONS_CGV`. Pour changer les CGV : copier le dernier fichier
 sous un nouvel identifiant (la date de publication), l'écrire, l'ajouter à la
 fin de `VERSIONS_CGV`, puis ajouter son empreinte dans `tests/cgv.test.ts`, qui
-refuse toute retouche d'une version publiée. La version du 24 septembre 2026
-reste disponible pour les commandes passées sous elle.
+refuse toute retouche d'une version publiée (texte et fichier). Les versions
+du 24 et du 25 septembre 2026 restent disponibles pour les commandes passées
+sous elles ; la version en vigueur est celle du 26 septembre 2026. Rendues avec
+la fiche réelle, toutes citent désormais le médiateur, comme leur code le
+prévoit depuis le départ.
 
 ### La fiche du vendeur, et comment changer de vendeur
 
@@ -411,6 +587,20 @@ client, mention de TVA, médiateur, hébergeur, prestataire de paiement. Les
 pages légales, le pied de page, les e-mails, la facture Stripe et la condition
 d'ouverture lisent ce seul fichier ; un champ vide n'est jamais affiché, et
 tant que `conventionSignee` est faux, le médiateur n'est nommé nulle part.
+
+La convention avec le médiateur (Société Médiation Professionnelle) est
+signée depuis le 25 septembre 2026 : `conventionSignee` vaut `true`, et le
+médiateur est cité partout où la fiche le prévoit — mentions légales, CGV (de
+toutes les versions), e-mail de confirmation, pied de la facture Stripe, et
+une ligne du bloc d'achat, qui tient lieu de bon de commande (article R616-1 :
+nom du médiateur et adresse de son site). Les clients y lisent que la
+médiation est gratuite pour eux, qu'elle suppose une réclamation écrite
+préalable au vendeur restée sans solution, et une saisine du médiateur dans
+l'année qui suit cette réclamation (article L612-2), en ligne sur sa page de
+demande de médiation (`mediateur.demande`) ou par courrier à son adresse.
+**Quand une réclamation n'a pas pu être réglée, le vendeur communique au
+client les coordonnées du médiateur** (article L616-1), par écrit, avec la
+réponse qui clôt la réclamation.
 
 Pour changer de vendeur (une société remplaçant la micro-entreprise) :
 modifier ce fichier (dénomination, forme, capital, RCS, TVA…), relire la
@@ -430,37 +620,57 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
 - Stripe, Informations publiques : dénomination, adresse et e-mail du service
   client, et l'adresse de la politique de confidentialité (`/confidentialite`).
 - Stripe, Moyens de paiement : Apple Pay et Google Pay activés pour les cartes.
-- Vercel, pare-feu : une règle de limitation de débit sur `/api/renoncer`
-  (voir « Choix et limites »).
+- Vercel, pare-feu : une règle de limitation de débit sur les routes
+  `POST /api/*`, défense d'appoint à poser hors de ce dépôt (voir « Choix et
+  limites »).
 
 ### Choix et limites
 
-- **La fonction de rétractation peut servir à écrire à des inconnus** : n'importe
-  qui peut saisir n'importe quelle adresse et lui faire envoyer un accusé de
-  réception, ou épuiser le quota d'e-mails (offre gratuite de Resend : 100
-  e-mails par jour, chaque destinataire compte, copies cachées comprises). Le
-  champ piège n'arrête que les robots naïfs. Parade : une règle de limitation
-  de débit du pare-feu de Vercel sur `/api/renoncer`, par adresse IP (l'offre
-  Hobby permet une règle, en fenêtre fixe de 10 secondes à 10 minutes), par
-  exemple 5 requêtes par 10 minutes. Elle se pose dans le tableau de bord de
-  Vercel, hors de ce dépôt.
+- **Chaque requête bien formée coûte une recherche chez Stripe**, limitée à 20
+  lectures par seconde : une déclaration de rétractation comme une visite de
+  `/commande/<ref>`. Un afflux de requêtes peut donc ralentir la fonction de
+  rétractation et les pages de commande ; si Stripe limite alors le débit, la
+  déclaration n'est pas transmise et la page propose l'e-mail de secours. La
+  règle de limitation de débit du pare-feu de Vercel sur les routes
+  `POST /api/*` (par adresse IP ; l'offre Hobby en permet une, en fenêtre
+  fixe de 10 secondes à 10 minutes) reste une défense d'appoint, à poser dans
+  le tableau de bord de Vercel, hors de ce dépôt ; elle ne protège pas à elle
+  seule le quota de Resend (offre gratuite : 100 e-mails par jour, chaque
+  destinataire compte, copies cachées comprises). Ce qui le protège : aucun
+  e-mail sans commande payée retrouvée, trois accusés au plus par commande
+  hors déclaration qui enregistre la rétractation, des noms sans lien ni
+  adresse, et le refus des requêtes d'un autre site.
+- Qui connaît la référence d'une commande payée (l'acheteur, ou quelqu'un à
+  qui il l'a donnée) peut encore faire partir des accusés vers des adresses de
+  son choix : trois au plus, plus celui de la déclaration qui enregistre la
+  rétractation et ses renvois identiques. Leur contenu est fixe, sans lien ni
+  texte libre.
 - Hors production, toutes les adresses sauf celles de test et celle du vendeur
   sont remplacées : l'abus y est limité à `…@resend.dev` et au vendeur.
-- Il n'y a pas de verrou : une rétractation déclarée à l'instant exact d'un
-  premier téléchargement peut passer avec lui. La route du kit relit le
-  paiement juste avant de livrer, ce qui réduit cette fenêtre à quelques
-  dizaines de millisecondes ; le cas restant se règle à la main.
+- Deux déclarations différentes reçues au même instant sur une commande
+  rétractable s'enregistrent toutes deux (la dernière écriture garde son heure
+  et son empreinte) ; un seul remboursement (même clé d'idempotence) et un
+  seul accusé `accuse-<ref>` partent, l'autre déclaration lit « en cours de
+  traitement ». Stripe n'offre pas d'écriture conditionnelle.
+- La clé d'idempotence de Resend vit 24 heures. Au-delà, une déclaration
+  identique renvoie un vrai second exemplaire du même accusé ; une
+  confirmation dont la marque n'a pas pu être posée chez Stripe repartirait ;
+  et si le compteur `accuses` n'a pas pu être écrit après un envoi, le
+  plafond de trois pourrait être dépassé d'un e-mail. Il faut pour cela que
+  Stripe refuse une écriture.
+- Les journaux d'exécution de l'offre Hobby de Vercel ne sont gardés qu'une
+  heure : une ligne `declaration_non_transmise` ou `accuse_non_envoye` doit
+  être lue dans l'heure (ou exportée par un drain de journaux, payant). Le
+  bouton d'e-mail de secours, lui, laisse la preuve chez la personne.
+- Une course téléchargement / rétractation dont la route perdante n'a pas pu
+  écrire `course` reste « à examiner » : c'est au vendeur de trancher, en
+  écrivant `course` (`telechargement` ou `retractation`) dans le tableau de
+  bord de Stripe, et de rembourser s'il le faut.
 - Un litige se lit sur `disputed` du dernier débit. La documentation de Stripe
   ne dit pas si ce drapeau repasse à faux une fois le litige clos : par
-  prudence, tant qu'il est vrai, la commande reste bloquée, et le service
-  client la débloque à la main s'il le faut.
-- Un paiement de moins d'une minute n'est pas toujours visible dans la
-  recherche de Stripe : une rétractation déclarée juste après le paiement peut
-  être « non reliée », donc traitée à la main.
-- La clé d'idempotence de Resend vit 24 heures : au-delà, une confirmation dont
-  l'envoi a réussi sans que sa marque ait pu être posée chez Stripe
-  repartirait une seconde fois. Il faut pour cela que Stripe refuse
-  l'écriture puis que 24 heures passent sans nouvelle tentative réussie.
+  prudence, tant qu'il est vrai, la commande reste bloquée. Aucun déblocage à
+  la main n'existe dans le code : si un litige se termine en faveur du
+  vendeur, le client est servi à la main.
 - Le lien des e-mails suit l'adresse du déploiement : si le domaine de
   production change entre deux tentatives d'une même confirmation (moins de
   24 heures), la seconde est une requête différente pour Resend, journalisée ;
@@ -470,18 +680,16 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   livraison, elle, s'arrête à 30 jours pile).
 - Pas de webhook : le site ne sait d'une commande que ce qu'il demande à Stripe
   au moment où une page, un bouton ou la tâche l'interrogent.
-- Sans clé Stripe, une référence est « introuvable » : un déploiement sans clé
-  n'a jamais pu vendre. Retirer la clé de la production après l'ouverture
-  ferait donc lire « commande introuvable » à des clients qui ont payé (le
-  service client reste indiqué) ; une panne de Stripe, elle, affiche
-  « vérification momentanément impossible ».
+- Sans clé Stripe (ou en production sans clé réelle), une référence est
+  « introuvable » : un tel déploiement n'a jamais pu vendre. Retirer la clé de
+  la production après l'ouverture ferait donc lire « commande introuvable » à
+  des clients qui ont payé, et « aucune commande payée » à leurs déclarations
+  (le service client et l'e-mail de secours restent indiqués) ; une panne de
+  Stripe, elle, affiche « vérification momentanément impossible ».
 - Le retour de Stripe se fait sur l'adresse du déploiement (production :
   `VERCEL_PROJECT_PRODUCTION_URL` ; préversion : `VERCEL_URL`). Un parent parti
   d'une autre adresse (alias de branche d'une préversion, autre alias
   `*.vercel.app`) ne retrouve pas son formulaire en cas d'annulation.
-- Aucune autre limite de débit : chaque visite de `/commande/<ref>`, chaque
-  commande et chaque passage de la tâche interrogent Stripe, dont la recherche
-  est limitée à 20 lectures par seconde.
 - Les champs libres (invités, date, heure, adresse, contact) refusent les
   accolades, qui casseraient les gabarits du kit. Un caractère absent des
   polices Nunito et Fredoka (émoji, écriture non latine) serait dessiné avec
@@ -501,11 +709,16 @@ heures de son suivi, chez Stripe, aussi longtemps que la facture (10 ans) ;
 l'e-mail, le nom, l'adresse de facturation et la facture, chez Stripe, au
 titre des obligations comptables (10 ans) ; les e-mails de confirmation et
 d'accusé de réception chez Resend (30 jours, selon Resend), et leur copie dans
-la messagerie du vendeur (5 ans). Une déclaration de rétractation n'est gardée
-que dans son accusé de réception et sa copie. Aucun journal, de Vercel ou du
+la messagerie du vendeur, hébergée par Google (Gmail, 5 ans). Une déclaration
+de rétractation n'est gardée que dans son accusé de réception et sa copie ;
+s'y ajoutent chez Stripe l'heure de la rétractation, l'empreinte de la
+déclaration qui l'a enregistrée et le nombre d'accusés envoyés. Une
+déclaration non transmise n'est gardée nulle part, sinon sa référence et son
+heure dans le journal (une heure chez Vercel). Aucun journal, de Vercel ou du
 code, ne contient de prénom, de donnée de la fête, d'e-mail, de nom ni de
 contenu chiffré : les routes de la vente ne journalisent que des noms
-d'événements et des compteurs, et les tests le vérifient.
+d'événements, des compteurs et, quand le vendeur peut avoir à agir, la
+référence d'une commande ; les tests le vérifient.
 
 Le site ne pose aucun cookie, n'emploie aucun traceur, et ne charge aucune
 ressource depuis un autre domaine : polices et images sont servies par le site

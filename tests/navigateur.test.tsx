@@ -33,7 +33,7 @@ import { PRIX_AFFICHE } from "@/vente/prix";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const OFFRE = { prix: PRIX_AFFICHE, tva: VENDEUR.tva };
+const OFFRE = { prix: PRIX_AFFICHE, tva: VENDEUR.tva, mediateur: { nom: VENDEUR.mediateur.nom, site: VENDEUR.mediateur.site } };
 const GRAINE = "k7m2p9q4rs";
 const CLE_SAUVEGARDE = "mission-gateau:commande-en-cours";
 
@@ -390,6 +390,20 @@ describe("page d'une commande payée, avant sa confirmation", () => {
     }
   });
 
+  it("confirmation partie mais pas enregistrée : un message à part, qui ne dit pas qu'elle n'est pas partie", async () => {
+    reseau({ "/confirmation": () => Response.json({ etat: "non_enregistree" }, { status: 503 }) });
+    await rendre(<Confirmation reference={REFERENCE} sessionId={null} email={EMAIL} />);
+    expect(texte()).toContain(
+      "Votre confirmation de commande est partie, mais n'a pas pu être enregistrée : rechargez cette page dans quelques minutes.".replace(" :", "\u00a0:"),
+    );
+    expect(texte()).not.toContain("n'a pas pu vous être envoyée");
+    expect(conteneur.querySelector('[role="alert"]')).not.toBeNull();
+    expect(texte()).not.toContain("Télécharger mon jeu");
+    reseau({ "/confirmation": () => Response.json({ etat: "confirmee" }) });
+    await cliquer(bouton("Réessayer"));
+    expect(navigation.rafraichissements).toBe(1);
+  });
+
   it("confirmation impossible : invite à écrire au service client", async () => {
     reseau({ "/confirmation": () => Response.json({ etat: "impossible" }, { status: 500 }) });
     await rendre(<Confirmation reference={REFERENCE} sessionId={null} email={EMAIL} />);
@@ -400,7 +414,9 @@ describe("page d'une commande payée, avant sa confirmation", () => {
 });
 
 describe("formulaire de rétractation", () => {
-  const EMAIL = "service@exemple.fr";
+  const VENDEUR_AFFICHE = { email: "service@exemple.fr", adresse: "1 rue du Test, 75000 Paris, France" };
+  const REFERENCE = "AbCdEfGhIjKlMnOpQrStUv";
+  const SESSION = "cs_test_a1b2c3d4e5";
 
   async function remplir(valeurs: { nom: string; prenom: string; reference: string; email: string }): Promise<void> {
     await saisir(champ<HTMLInputElement>("#nom"), valeurs.nom);
@@ -408,6 +424,8 @@ describe("formulaire de rétractation", () => {
     await saisir(champ<HTMLInputElement>("#reference"), valeurs.reference);
     await saisir(champ<HTMLInputElement>("#email"), valeurs.email);
   }
+
+  const VALABLE = { nom: "Martin", prenom: "Camille", reference: REFERENCE, email: "camille@exemple.fr" };
 
   const ACCUSE = {
     issue: "accuse",
@@ -418,30 +436,66 @@ describe("formulaire de rétractation", () => {
         { type: "lignes", lignes: [{ libelle: "Nom", valeur: "Martin" }] },
       ],
     },
-    envoi: { etat: "envoye", adresse: "delivered@resend.dev", saisie: "camille@exemple.fr", remplacee: true, copieAcheteur: true },
+    envoi: { etat: "envoye", adresse: "delivered@resend.dev", saisie: "camille@exemple.fr", remplacee: true },
   };
 
-  it("vérifie chaque champ, affiche le récapitulatif, puis envoie la déclaration par « Confirmer la rétractation »", async () => {
-    reseau({ "/api/renoncer": () => Response.json(ACCUSE) });
-    await rendre(<FormulaireRetractation referenceInitiale="AbCdEfGhIjKlMnOpQrStUv" email={EMAIL} />);
-    expect(champ<HTMLInputElement>("#reference").value).toBe("AbCdEfGhIjKlMnOpQrStUv");
+  function espaces(texteBrut: string): string {
+    return texteBrut.replace(/[  ]/g, " ");
+  }
 
-    // Rien ne part tant qu'un champ manque.
-    await saisir(champ<HTMLInputElement>("#reference"), "");
+  async function envoyerUneDeclaration(reponse: () => Response, props: { referenceInitiale?: string; sessionId?: string | null } = {}) {
+    reseau({ "/api/renoncer": reponse });
+    await rendre(
+      <FormulaireRetractation referenceInitiale={props.referenceInitiale ?? ""} sessionId={props.sessionId ?? null} vendeur={VENDEUR_AFFICHE} />,
+    );
+    await remplir(VALABLE);
     await cliquer(bouton("Vérifier ma déclaration"));
-    for (const erreur of [
-      "Indiquez votre nom.",
-      "Indiquez votre prénom.",
-      "Indiquez la référence de votre commande, ou collez son lien.",
-      "Indiquez une adresse e-mail valable",
-    ]) {
-      expect(texte()).toContain(erreur);
-    }
+    await cliquer(bouton("Confirmer la rétractation"));
+  }
+
+  it("refuse chaque entrée douteuse sous son champ, l'annonce, et met le focus sur le premier champ en erreur", async () => {
+    await rendre(<FormulaireRetractation referenceInitiale="" sessionId={null} vendeur={VENDEUR_AFFICHE} />);
+    await remplir({ nom: "Martin", prenom: "Cam1lle", reference: "A".repeat(21), email: "pas-une-adresse" });
+    await cliquer(bouton("Vérifier ma déclaration"));
+    const alertes = [...conteneur.querySelectorAll('[role="alert"]')].map((alerte) => alerte.id);
+    expect(alertes).toEqual(["erreur-prenom", "erreur-reference", "erreur-email"]);
+    expect(espaces(texte())).toContain("Indiquez votre prénom : des lettres, et au besoin des espaces, des apostrophes ou des traits d'union, 60 caractères au plus.");
+    expect(espaces(texte())).toContain("Indiquez la référence de votre commande (22 caractères), ou collez le lien de sa page.");
+    expect(champ<HTMLInputElement>("#prenom").getAttribute("aria-invalid")).toBe("true");
+    expect(champ<HTMLInputElement>("#prenom").getAttribute("aria-describedby")).toBe("erreur-prenom");
+    expect(champ<HTMLInputElement>("#reference").getAttribute("aria-describedby")).toBe("aide-reference erreur-reference");
+    expect(document.activeElement).toBe(champ<HTMLInputElement>("#prenom"));
     expect(appels).toHaveLength(0);
 
-    await remplir({ nom: "Martin", prenom: "Camille", reference: "https://site/commande/AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
+    for (const [cle, douteux] of [
+      ["nom", "Mar@tin"],
+      ["nom", "Martin:"],
+      ["nom", "Martin/Durand"],
+      ["nom", "Mar‮tin"],
+      ["nom", "Mar\u0007tin"],
+      ["reference", "A".repeat(23)],
+    ] as const) {
+      await remplir({ ...VALABLE, [cle]: douteux });
+      await cliquer(bouton("Vérifier ma déclaration"));
+      expect(conteneur.querySelector(`#erreur-${cle}`), `${cle} : ${douteux}`).not.toBeNull();
+      expect(document.activeElement).toBe(champ<HTMLInputElement>(`#${cle}`));
+    }
+    expect(appels).toHaveLength(0);
+  });
+
+  it("montre la déclaration normalisée et la référence extraite, met le focus sur chaque nouveau titre, puis l'envoie", async () => {
+    reseau({ "/api/renoncer": () => Response.json(ACCUSE) });
+    await rendre(<FormulaireRetractation referenceInitiale={REFERENCE} sessionId={SESSION} vendeur={VENDEUR_AFFICHE} />);
+    expect(champ<HTMLInputElement>("#reference").value).toBe(REFERENCE);
+    await remplir({ nom: " Martin ", prenom: "Hélène", reference: `https://www.missiongateau.com/commande/${REFERENCE}?session_id=${SESSION}`, email: " camille@exemple.fr " });
     await cliquer(bouton("Vérifier ma déclaration"));
     expect(texte()).toContain("Je renonce au contrat portant sur la commande indiquée ci-dessous.");
+    expect(document.activeElement?.textContent).toBe("Votre déclaration");
+    expect(document.activeElement?.tagName).toBe("H2");
+    // Le récapitulatif ne montre que la référence extraite, jamais le lien saisi.
+    expect(texte()).toContain(REFERENCE);
+    expect(texte()).not.toContain("missiongateau.com");
+    expect(texte()).toContain("Hélène");
     expect(appels).toHaveLength(0);
     const confirmer = bouton("Confirmer la rétractation");
     expect(confirmer.textContent).toBe("Confirmer la rétractation");
@@ -450,65 +504,114 @@ describe("formulaire de rétractation", () => {
     expect(appels).toEqual([
       {
         url: "/api/renoncer",
-        corps: {
-          nom: "Martin",
-          prenom: "Camille",
-          reference: "https://site/commande/AbCdEfGhIjKlMnOpQrStUv",
-          email: "camille@exemple.fr",
-          champ_libre: "",
-        },
+        corps: { nom: "Martin", prenom: "Hélène", reference: REFERENCE, email: "camille@exemple.fr", session_id: SESSION, champ_libre: "" },
       },
     ]);
     expect(texte()).toContain("Votre déclaration est reçue");
+    expect(document.activeElement?.textContent).toBe("Votre déclaration est reçue");
     expect(texte()).toContain("Un accusé de réception vous a été envoyé par e-mail à delivered@resend.dev.");
-    expect(texte()).toContain("Une copie est aussi partie à l'adresse e-mail donnée lors du paiement.");
+    expect(texte()).toContain("Si l'adresse e-mail utilisée lors du paiement est différente, une copie y part aussi.");
     expect(texte()).toContain("l'accusé est parti à delivered@resend.dev au lieu de camille@exemple.fr");
-    // Le contenu de l'accusé de réception, tel qu'il est parti.
     expect(texte()).toContain("Accusé de réception de votre rétractation — Mission Gâteau");
-    expect(texte()).toContain("Votre déclaration");
+
+    // « Faire une autre déclaration » ramène au formulaire, focus sur son titre.
+    await cliquer(bouton("Faire une autre déclaration"));
+    expect(document.activeElement?.textContent).toBe("Vos coordonnées et votre commande");
   });
 
-  it("si l'accusé n'a pas pu partir, propose de le renvoyer", async () => {
-    let essais = 0;
-    reseau({
-      "/api/renoncer": () => {
-        essais += 1;
-        return Response.json(essais === 1 ? { ...ACCUSE, envoi: { etat: "echec" } } : ACCUSE);
-      },
-    });
-    await rendre(<FormulaireRetractation referenceInitiale="" email={EMAIL} />);
-    await remplir({ nom: "Martin", prenom: "Camille", reference: "AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
+  it("ne transmet la session que pour la commande dont la page l'a donnée", async () => {
+    reseau({ "/api/renoncer": () => Response.json(ACCUSE) });
+    await rendre(<FormulaireRetractation referenceInitiale={REFERENCE} sessionId={SESSION} vendeur={VENDEUR_AFFICHE} />);
+    await remplir({ ...VALABLE, reference: "ZyXwVuTsRqPoNmLkJiHgFe" });
     await cliquer(bouton("Vérifier ma déclaration"));
     await cliquer(bouton("Confirmer la rétractation"));
+    expect(appels[0]!.corps.session_id).toBeUndefined();
+    expect(appels[0]!.corps.reference).toBe("ZyXwVuTsRqPoNmLkJiHgFe");
+  });
+
+  it("si l'accusé n'a pas pu partir, le dit et propose de renvoyer exactement la même déclaration", async () => {
+    let essais = 0;
+    await envoyerUneDeclaration(() => {
+      essais += 1;
+      return Response.json(essais === 1 ? { ...ACCUSE, envoi: { etat: "echec" } } : ACCUSE);
+    });
     expect(texte()).toContain("L'accusé de réception n'a pas pu partir pour le moment.");
-    expect(texte()).toContain(`écrivez-nous à ${EMAIL}`);
+    expect(texte()).not.toContain("Votre déclaration est reçue");
+    expect(texte()).toContain(`écrivez-nous à ${VENDEUR_AFFICHE.email}`);
     await cliquer(bouton("Renvoyer l'accusé de réception"));
     expect(appels).toHaveLength(2);
     expect(appels[1]!.corps).toEqual(appels[0]!.corps);
     expect(texte()).toContain("Un accusé de réception vous a été envoyé par e-mail");
   });
 
-  it("rappelle une rétractation déjà enregistrée, sans nouvel e-mail", async () => {
-    reseau({
-      "/api/renoncer": () =>
-        Response.json({ issue: "deja_enregistree", date: "24 septembre 2026", heure: "10\u00a0h\u00a030", remboursement: "effectue" }),
+  it("au-delà de trois accusés : affiche l'accusé et dit pourquoi il n'est pas renvoyé par e-mail", async () => {
+    await envoyerUneDeclaration(() => Response.json({ ...ACCUSE, envoi: { etat: "plafond" } }));
+    expect(espaces(texte())).toContain(
+      `Cet accusé de réception s'affiche ici sans être renvoyé par e-mail : trois accusés sont déjà partis pour cette commande. Pour toute question, écrivez au vendeur à ${VENDEUR_AFFICHE.email}.`,
+    );
+    expect(texte()).not.toContain("vous a été envoyé par e-mail");
+    expect(texte()).toContain("Accusé de réception de votre rétractation — Mission Gâteau");
+  });
+
+  it("aucune commande payée : rien n'est transmis, la page dit quoi faire et propose l'e-mail prérempli", async () => {
+    const mailto = "mailto:service@exemple.fr?subject=R%C3%A9tractation&body=Je%20renonce";
+    await envoyerUneDeclaration(() =>
+      Response.json({ issue: "non_transmise", cause: "introuvable", date: "26 septembre 2026", heure: "10 h 30", mailto }, { status: 404 }),
+    );
+    expect(texte()).toContain("Votre déclaration n'a pas été transmise");
+    expect(document.activeElement?.textContent).toBe("Votre déclaration n'a pas été transmise");
+    expect(espaces(texte())).toContain(
+      "Nous ne trouvons aucune commande payée sous cette référence : votre déclaration n'a pas été transmise et aucun accusé de réception ne partira.",
+    );
+    expect(espaces(texte())).toContain("le lien « Renoncer au contrat ici » de cet e-mail la remplit tout seul");
+    expect(texte()).toContain("Si votre paiement vient d'avoir lieu, réessayez dans quelques minutes.");
+    expect(texte()).toContain(`par e-mail à ${VENDEUR_AFFICHE.email} ou par courrier à ${VENDEUR_AFFICHE.adresse}`);
+    const lien = [...conteneur.querySelectorAll("a")].find((a) => a.textContent === "Envoyer ma déclaration par e-mail")!;
+    expect(lien.getAttribute("href")).toBe(mailto);
+    expect(texte()).not.toContain("accusé de réception vous a été envoyé");
+    // « Corriger ma déclaration » ramène au formulaire, avec ce qui a été saisi.
+    await cliquer(bouton("Corriger ma déclaration"));
+    expect(champ<HTMLInputElement>("#nom").value).toBe("Martin");
+    expect(document.activeElement?.textContent).toBe("Vos coordonnées et votre commande");
+  });
+
+  it("Stripe injoignable : rien n'est transmis, et le bouton d'e-mail préserve le droit", async () => {
+    const mailto = "mailto:service@exemple.fr?subject=R%C3%A9tractation&body=Je%20renonce";
+    let essais = 0;
+    await envoyerUneDeclaration(() => {
+      essais += 1;
+      return Response.json({ issue: "non_transmise", cause: "indisponible", date: "26 septembre 2026", heure: "10 h 30", mailto }, { status: 503 });
     });
-    await rendre(<FormulaireRetractation referenceInitiale="AbCdEfGhIjKlMnOpQrStUv" email={EMAIL} />);
-    await remplir({ nom: "Martin", prenom: "Camille", reference: "AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
-    await cliquer(bouton("Vérifier ma déclaration"));
-    await cliquer(bouton("Confirmer la rétractation"));
-    expect(texte()).toContain("Votre rétractation est déjà enregistrée");
-    expect(texte().replace(/\u00a0/g, " ")).toContain("enregistrée le 24 septembre 2026 à 10 h 30");
-    expect(texte()).toContain("Remboursement : effectué par Stripe".replace(" :", "\u00a0:"));
+    expect(espaces(texte())).toContain(
+      "Nous ne pouvons pas vérifier votre commande pour le moment : votre déclaration n'a pas été transmise. Réessayez dans quelques minutes, ou envoyez-la dès maintenant par e-mail : une déclaration envoyée avant la fin du délai de rétractation préserve votre droit.",
+    );
+    expect([...conteneur.querySelectorAll("a")].find((a) => a.textContent === "Envoyer ma déclaration par e-mail")!.getAttribute("href")).toBe(mailto);
+    expect(texte()).toContain("aucun e-mail ne part de notre site, et vous gardez la preuve de votre envoi");
+    await cliquer(bouton("Réessayer"));
+    expect(essais).toBe(2);
+    expect(appels[1]!.corps).toEqual(appels[0]!.corps);
+  });
+
+  it("déclaration en cours de traitement : le dit, sans prétendre qu'un accusé est parti", async () => {
+    await envoyerUneDeclaration(() => Response.json({ issue: "en_cours", message: "x" }, { status: 202 }));
+    expect(espaces(texte())).toContain("Votre déclaration est en cours de traitement : rechargez la page dans quelques instants.");
+    expect(texte()).not.toContain("vous a été envoyé");
+  });
+
+  it("déclaration déjà enregistrée et accusée : le rappelle", async () => {
+    await envoyerUneDeclaration(() => Response.json({ issue: "deja_accusee", date: "24 septembre 2026", heure: "10 h 30" }));
+    expect(texte()).toContain("Votre déclaration est déjà enregistrée");
+    expect(espaces(texte())).toContain(
+      "Votre déclaration du 24 septembre 2026 à 10 h 30 est déjà enregistrée, et son accusé de réception vous a été envoyé par e-mail.",
+    );
   });
 
   it("dit quand la déclaration n'a pas pu partir", async () => {
-    reseau({ "/api/renoncer": () => Response.json({ erreur: "x" }, { status: 400 }) });
-    await rendre(<FormulaireRetractation referenceInitiale="" email={EMAIL} />);
-    await remplir({ nom: "Martin", prenom: "Camille", reference: "AbCdEfGhIjKlMnOpQrStUv", email: "camille@exemple.fr" });
-    await cliquer(bouton("Vérifier ma déclaration"));
-    await cliquer(bouton("Confirmer la rétractation"));
+    await envoyerUneDeclaration(() => Response.json({ erreur: "x" }, { status: 400 }));
     expect(texte()).toContain("Votre déclaration n'a pas pu être envoyée.");
-    expect(texte()).toContain(EMAIL);
+    expect(texte()).toContain(VENDEUR_AFFICHE.email);
+    reseau({ "/api/renoncer": () => Response.json({ erreur: "Cette adresse n'accepte que des données envoyées au format JSON." }, { status: 415 }) });
+    await cliquer(bouton("Confirmer la rétractation"));
+    expect(texte()).toContain("Vérifiez votre connexion et réessayez");
   });
 });

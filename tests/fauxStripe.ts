@@ -14,7 +14,8 @@ import { configuration } from "./aide";
  * paiement reçoit exactement les métadonnées que le site a confiées à la
  * session, comme chez Stripe. `rembourser()` suit les règles de Stripe : une
  * même clé d'idempotence rend le même remboursement, et un paiement n'est
- * jamais remboursé au-delà de son montant.
+ * jamais remboursé au-delà de son montant. `modifierMetadonnees()` rend,
+ * comme Stripe, le paiement à jour, écritures précédentes comprises.
  */
 export class FauxStripe implements ClientStripe {
   readonly sessionsCreees: { parametres: ParametresSession; cleIdempotence: string }[] = [];
@@ -51,12 +52,20 @@ export class FauxStripe implements ClientStripe {
    */
   rechercheIgnoreLaDate = false;
   rechercheIgnoreLEtat = false;
+  rechercheIgnoreLaBoutique = false;
   /** Quand c'est vrai, chaque appel échoue comme une panne réseau. */
   enPanne = false;
+  /** Quand c'est vrai, chaque appel est refusé comme par la limitation de débit de Stripe (429). */
+  debitLimite = false;
+  /** Écritures qui échouent quand elles portent l'une de ces clés (par exemple `course`). */
+  readonly clesEnPanne = new Set<string>();
   private compteur = 0;
 
   private panne(): void {
     if (this.enPanne) throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
+    if (this.debitLimite) {
+      throw Object.assign(new Error("trop de requêtes"), { type: "StripeRateLimitError", code: "rate_limit", statusCode: 429 });
+    }
   }
 
   async creerSession(parametres: ParametresSession, cleIdempotence: string): Promise<{ url: string }> {
@@ -112,8 +121,13 @@ export class FauxStripe implements ClientStripe {
   ): Promise<{ paiements: PaiementLu[]; pageSuivante: string | null }> {
     this.panne();
     this.recherchesAbouties.push({ depuis, page });
+    // Comme la requête du site : aboutis, assez récents, et de cette boutique.
     const trouves = [...this.paiements.values()].filter(
-      (paiement) => !this.nonIndexes.has(paiement.id) && paiement.statut === "succeeded" && paiement.cree > depuis,
+      (paiement) =>
+        !this.nonIndexes.has(paiement.id) &&
+        paiement.statut === "succeeded" &&
+        paiement.cree > depuis &&
+        (this.rechercheIgnoreLaBoutique || paiement.metadonnees.boutique === "mission-gateau"),
     );
     const debut = page ? Number(page) : 0;
     const suite = debut + this.taillePage;
@@ -161,14 +175,18 @@ export class FauxStripe implements ClientStripe {
     };
   }
 
-  async modifierMetadonnees(id: string, metadonnees: Record<string, string>): Promise<void> {
+  async modifierMetadonnees(id: string, metadonnees: Record<string, string>): Promise<PaiementLu> {
     this.panne();
-    if (this.metadonneesEnPanne) throw Object.assign(new Error("panne simulée"), { type: "StripeAPIError" });
+    if (this.metadonneesEnPanne || Object.keys(metadonnees).some((cle) => this.clesEnPanne.has(cle))) {
+      throw Object.assign(new Error("panne simulée"), { type: "StripeAPIError" });
+    }
     this.modifications.push({ id, metadonnees: { ...metadonnees } });
     const paiement = this.paiements.get(id);
     if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing" });
     appliquer(paiement.metadonnees, metadonnees);
-    // Comme chez Stripe : la mise à jour du paiement ne touche pas ses débits.
+    // Comme chez Stripe : la mise à jour du paiement ne touche pas ses débits,
+    // et la réponse est le paiement à jour.
+    return structuredClone(paiement);
   }
 
   async modifierMetadonneesDuDebit(id: string, metadonnees: Record<string, string>): Promise<void> {
@@ -308,10 +326,13 @@ export function environnement(partiel: Partial<Environnement> = {}): Environneme
   };
 }
 
-/** La fiche réelle, convention signée : la seule chose qui manque aujourd'hui. */
-export const FICHE_COMPLETE: FicheVendeur = {
+/** La fiche réelle : complète, convention avec le médiateur signée le 25 septembre 2026. */
+export const FICHE_COMPLETE: FicheVendeur = VENDEUR;
+
+/** La fiche telle qu'elle était avant la signature de la convention : le médiateur n'y est nommé nulle part. */
+export const FICHE_SANS_CONVENTION: FicheVendeur = {
   ...VENDEUR,
-  mediateur: { ...VENDEUR.mediateur, conventionSignee: true },
+  mediateur: { ...VENDEUR.mediateur, conventionSignee: false },
 };
 
 export function dependances(client: ClientStripe | null, partiel: Partial<Dependances> = {}): Dependances {

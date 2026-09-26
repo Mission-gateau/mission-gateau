@@ -49,9 +49,12 @@ import Creer from "@/app/creer/page";
 import Credits from "@/app/credits/page";
 import MentionsLegales from "@/app/mentions-legales/page";
 import Renoncer from "@/app/renoncer/page";
+import PageIntrouvable from "@/app/not-found";
 import { POST as commanderRoute } from "@/app/api/commande/route";
 import { BlocAchat } from "@/composants/BlocAchat";
 import { PiedDeSite } from "@/composants/Chrome";
+import { PageLegale } from "@/composants/PageLegale";
+import { conditionsGenerales, mentionsLegales } from "@/contenu/legal";
 import { VENDEUR } from "@/contenu/vendeur";
 import { piedDeFacture } from "@/vente/session";
 import { PRIX_AFFICHE } from "@/vente/prix";
@@ -59,6 +62,7 @@ import { CLES } from "@/vente/metadonnees";
 import {
   CLE_REELLE,
   EMAIL_ACHETEUR,
+  FICHE_SANS_CONVENTION,
   FauxStripe,
   configurationMarquee,
   corpsDeCommande,
@@ -74,6 +78,7 @@ const PAGES_FIXES: [string, () => React.ReactElement][] = [
   ["/mentions-legales", () => <MentionsLegales />],
   ["/cgv", () => <Cgv />],
   ["/confidentialite", () => <Confidentialite />],
+  ["/une-adresse-inconnue (404)", () => <PageIntrouvable />],
 ];
 
 async function pageDeRetractation(ref?: string): Promise<string> {
@@ -100,6 +105,11 @@ async function toutLeSite(): Promise<[string, string][]> {
 /** Un prix, sous quelque forme que ce soit, ou le bouton d'achat. Les CGV peuvent nommer le bouton, pas l'afficher. */
 const MARQUES_DE_PRIX = /€|12,90|1290|<button[^>]*>[^<]*Commander et payer/;
 const MEDIATEUR = /Médiation Professionnelle|Alteritae|Salvaing|mediateur-consommation-smp/;
+const OFFRE = {
+  prix: PRIX_AFFICHE,
+  tva: VENDEUR.tva,
+  mediateur: { nom: VENDEUR.mediateur.nom, site: VENDEUR.mediateur.site },
+};
 
 beforeEach(() => {
   etat.ouverte = false;
@@ -151,13 +161,7 @@ describe("vente ouverte", () => {
 
   it("le bloc d'achat présente le kit, le format, le prix, la livraison, le pays et les deux accords", () => {
     const html = renderToStaticMarkup(
-      <BlocAchat
-        configuration={configurationMarquee()}
-        graine="k7m2p9q4rs"
-        brouillon={{}}
-        paysInitial={null}
-        offre={{ prix: PRIX_AFFICHE, tva: VENDEUR.tva }}
-      />,
+      <BlocAchat configuration={configurationMarquee()} graine="k7m2p9q4rs" brouillon={{}} paysInitial={null} offre={OFFRE} />,
     );
     for (const attendu of [
       "Le guide de l&#x27;organisateur",
@@ -173,6 +177,8 @@ describe("vente ouverte", () => {
       'href="/cgv"',
       'href="/mentions-legales"',
       'href="/confidentialite"',
+      "Médiateur de la consommation\u00a0: Société Médiation Professionnelle, site ",
+      'href="https://www.mediateur-consommation-smp.fr"',
     ]) {
       expect(html, attendu).toContain(attendu);
     }
@@ -204,13 +210,51 @@ describe("pages légales et pied de page", () => {
     }
   });
 
-  it("tant que la convention n'est pas signée, le médiateur n'est nommé nulle part", async () => {
+  it("la convention signée, le médiateur est cité partout où la fiche le prévoit, avec son lien", async () => {
     for (const ouverte of [false, true]) {
       etat.ouverte = ouverte;
-      for (const [chemin, html] of await toutLeSite()) expect(html, chemin).not.toMatch(MEDIATEUR);
+      const pages = Object.fromEntries(await toutLeSite());
+      for (const chemin of ["/mentions-legales", "/cgv"]) {
+        expect(pages[chemin], chemin).toMatch(MEDIATEUR);
+        expect(pages[chemin], chemin).toContain('href="https://www.mediateur-consommation-smp.fr/demander-une-mediation/"');
+      }
+      // Ailleurs, rien ne le prévoit : ni l'accueil, ni la page de rétractation, ni la page d'une commande.
+      for (const chemin of ["/", "/credits", "/renoncer", "/commande/…"]) expect(pages[chemin], chemin).not.toMatch(MEDIATEUR);
     }
-    expect(piedDeFacture(VENDEUR)).not.toMatch(MEDIATEUR);
+    expect(piedDeFacture(VENDEUR)).toMatch(MEDIATEUR);
+    // Le bloc d'achat, qui tient lieu de bon de commande : nom du médiateur et adresse de son site.
+    const bloc = renderToStaticMarkup(
+      <BlocAchat configuration={configurationMarquee()} graine="k7m2p9q4rs" brouillon={{}} paysInitial={null} offre={OFFRE} />,
+    );
+    expect(bloc).toMatch(MEDIATEUR);
+    expect(bloc).toContain('href="https://www.mediateur-consommation-smp.fr"');
+  });
+
+  it("sans convention signée, le médiateur ne serait nommé nulle part", () => {
+    for (const document of [mentionsLegales(FICHE_SANS_CONVENTION), conditionsGenerales(FICHE_SANS_CONVENTION, { prix: null })]) {
+      expect(renderToStaticMarkup(<PageLegale document={document} venteOuverte={false} />)).not.toMatch(MEDIATEUR);
+    }
+    expect(piedDeFacture(FICHE_SANS_CONVENTION)).not.toMatch(MEDIATEUR);
+    const bloc = renderToStaticMarkup(
+      <BlocAchat
+        configuration={configurationMarquee()}
+        graine="k7m2p9q4rs"
+        brouillon={{}}
+        paysInitial={null}
+        offre={{ ...OFFRE, mediateur: null }}
+      />,
+    );
+    expect(bloc).not.toMatch(MEDIATEUR);
     expect(renderToStaticMarkup(<PiedDeSite venteOuverte />)).not.toMatch(MEDIATEUR);
+  });
+
+  it("une adresse inconnue donne une page 404 en français, avec l'en-tête et le pied du site", async () => {
+    const html = (await toutLeSite()).find(([chemin]) => chemin.includes("404"))![1];
+    expect(html).toContain("Page introuvable</h1>");
+    expect(html).toContain("Cette adresse ne mène à aucune page de Mission Gâteau");
+    expect(html).toContain('href="/">Revenir à l&#x27;accueil</a>');
+    expect(html).toMatch(/<header[\s\S]*Mission Gâteau[\s\S]*<\/header>/);
+    expect(/<footer[\s\S]*<\/footer>/.exec(html)?.[0]).toContain('href="/renoncer">Renoncer au contrat ici</a>');
   });
 });
 
@@ -252,13 +296,15 @@ describe("page d'une commande", () => {
     const droit = html.indexOf(
       "Le téléchargement commence l&#x27;exécution de votre commande : comme vous l&#x27;avez demandé, votre droit de rétractation prend fin au début du premier téléchargement. D&#x27;ici là, vous pouvez renoncer au contrat :",
     );
-    const lien = html.indexOf(`href="/renoncer?ref=${reference}">Renoncer au contrat ici</a>`);
+    // Le lien transmet la référence et la session : la fonction de rétractation retrouve ainsi un paiement tout neuf.
+    const lien = html.indexOf(`href="/renoncer?ref=${reference}&amp;session_id=${sessionId}">Renoncer au contrat ici</a>`);
     const bouton = html.indexOf("Télécharger mon jeu (PDF)");
     expect(confirmation).toBeGreaterThan(-1);
     expect(droit).toBeGreaterThan(confirmation);
     expect(lien).toBeGreaterThan(droit);
     expect(bouton).toBeGreaterThan(lien);
-    expect(html).toContain("jusqu&#x27;au 23 octobre 2026");
+    // La validité du lien, datée à la minute, heure de Paris.
+    expect(html).toContain("Ce lien reste valable jusqu&#x27;au 23 octobre 2026 à 14 h 00 (heure de Paris), soit 30 jours après le paiement");
     expect(html).toContain("Le lien de cette page figure dans votre e-mail de confirmation.");
     expect(html).toContain(VENDEUR.email);
     // Plus aucune mention de l'e-mail de Stripe comme confirmation ; aucune adresse en clair ; aucun kit produit.
@@ -281,11 +327,12 @@ describe("page d'une commande", () => {
     );
   });
 
-  it("depuis le lien de l'e-mail, sans session, retrouve l'adresse de l'acheteur par le paiement", async () => {
+  it("depuis le lien de l'e-mail, sans session, retrouve l'adresse de l'acheteur par le paiement, et le lien pour renoncer porte la référence seule", async () => {
     const { reference, stripe } = await commandePayee({ env: environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }) });
     const html = await pageDeCommande(reference);
     expect(html).toContain("p•••@exemple.fr");
     expect(stripe.sessionsCherchees.length).toBeGreaterThan(0);
+    expect(html).toContain(`href="/renoncer?ref=${reference}">Renoncer au contrat ici</a>`);
   });
 
   it("délai expiré sans téléchargement : la date de fin du délai, sans le lien pour renoncer", async () => {
@@ -319,6 +366,37 @@ describe("page d'une commande", () => {
     stripe.rembourserHorsSite(paiement.id);
     html = (await pageDeCommande(reference)).replace(/\u00a0/g, " ");
     expect(html).toContain("Remboursement : 12,90 € remboursés par Stripe sur la carte utilisée pour le paiement.");
+  });
+
+  it("rétractée puis contestée auprès de la banque : plus aucune promesse de remboursement sous 14 jours", async () => {
+    const { reference, paiement, stripe } = await commandePayee();
+    stripe.paiements.get(paiement.id)!.metadonnees[CLES.retractation] = "2026-09-24T08:30:00.000Z";
+    stripe.contester(paiement.id);
+    const html = (await pageDeCommande(reference)).replace(/\u00a0/g, " ");
+    expect(html).toContain("Commande rétractée");
+    expect(html).toContain(
+      "Le paiement de cette commande fait l&#x27;objet d&#x27;une contestation auprès de votre banque : le vendeur vous répond sous 7 jours au plus.",
+    );
+    expect(html).not.toContain("14 jours");
+    expect(html).not.toContain("Télécharger mon jeu");
+  });
+
+  it("premier téléchargement et rétractation croisés, sans course écrite : « à examiner », sans bouton", async () => {
+    const { reference, paiement, stripe } = await commandePayee();
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    meta[CLES.retractation] = "2026-09-24T08:30:00.000Z";
+    meta[CLES.telechargement] = "2026-09-24T08:30:00.200Z";
+    let html = (await pageDeCommande(reference)).replace(/\u00a0/g, " ");
+    expect(html).toContain("Commande à examiner");
+    expect(html).toContain("le vendeur examine votre commande et vous répond sous 7 jours au plus");
+    expect(html).not.toContain("Télécharger mon jeu");
+    // Une fois la course écrite, la page suit la marque gagnante.
+    meta[CLES.course] = "retractation";
+    html = await pageDeCommande(reference);
+    expect(html).toContain("Commande rétractée");
+    meta[CLES.course] = "telechargement";
+    html = await pageDeCommande(reference);
+    expect(html).toContain("Télécharger mon jeu (PDF)");
   });
 
   it("litige : aucune livraison, et une invitation à écrire au service client", async () => {
@@ -357,7 +435,7 @@ describe("page d'une commande", () => {
 });
 
 describe("page de rétractation", () => {
-  it("dit en deux phrases ce qu'est le droit, puis présente le formulaire et son premier bouton", async () => {
+  it("dit en deux phrases ce qu'est le droit, ce qu'il faut pour s'en servir, puis présente le formulaire et son premier bouton", async () => {
     const html = (await pageDeRetractation()).replace(/\u00a0/g, " ");
     expect(html).toContain("<h1");
     expect(html).toContain("Renoncer au contrat</h1>");
@@ -367,6 +445,11 @@ describe("page de rétractation", () => {
     expect(html).toContain(
       "Nous vous remboursons alors la totalité du prix, sur la carte utilisée pour le paiement, sous 14 jours au plus.",
     );
+    // En plus des deux phrases : la référence est nécessaire, où la trouver, et à défaut l'e-mail ou le courrier.
+    expect(html).toContain(
+      `Il vous faut la référence de votre commande : elle figure dans l&#x27;e-mail de confirmation de votre commande. À défaut, vous pouvez vous rétracter par e-mail à ${VENDEUR.email} ou par courrier à 7 impasse des Bosquets, 34670 Baillargues, France.`,
+    );
+    expect(html).toContain("Vos coordonnées et votre commande</h2>");
     for (const champ of ['id="nom"', 'id="prenom"', 'id="reference"', 'id="email"', 'id="champ_libre"']) {
       expect(html, champ).toContain(champ);
     }

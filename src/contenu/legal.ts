@@ -1,5 +1,5 @@
 import { typographier } from "../engine/texte";
-import { adresseSurUneLigne, denomination, mediateurCite, siRempli } from "../vente/fiche";
+import { adresseSurUneLigne, denomination, mediateurCite, pageDeDemande, siRempli } from "../vente/fiche";
 import { coordonnees, lien, lienSite, liste, p, type DocumentLegal, type Section } from "./document";
 import type { FicheVendeur } from "./vendeur";
 
@@ -9,9 +9,8 @@ import type { FicheVendeur } from "./vendeur";
  * fichier.
  *
  * Chaque page est construite à partir de la fiche du vendeur : rien n'y est
- * recopié à la main, et un champ vide n'y apparaît jamais. Tant que la
- * convention avec le médiateur n'est pas signée, le médiateur n'est nommé
- * nulle part.
+ * recopié à la main, et un champ vide n'y apparaît jamais. Le médiateur n'est
+ * nommé qu'une fois la convention signée (signée le 25 septembre 2026).
  */
 
 export type { Bloc, DocumentLegal, Morceau, Section } from "./document";
@@ -19,8 +18,8 @@ export { ENCADRE_GARANTIE } from "./garantie";
 export { VERSION_CGV, conditionsGenerales } from "./cgv";
 
 /** Date de mise à jour de chaque page. */
-export const MISE_A_JOUR_MENTIONS = "24 septembre 2026";
-export const MISE_A_JOUR_CONFIDENTIALITE = "25 septembre 2026";
+export const MISE_A_JOUR_MENTIONS = "26 septembre 2026";
+export const MISE_A_JOUR_CONFIDENTIALITE = "26 septembre 2026";
 
 // ---------------------------------------------------------------------------
 // Mentions légales
@@ -81,7 +80,12 @@ export function mentionsLegales(fiche: FicheVendeur): DocumentLegal {
         p(
           `Médiateur de la consommation dont relève le vendeur : ${mediateur.nom}, ${mediateur.adresse}, `,
           lienSite(mediateur.site),
-          ". Les conditions de la médiation figurent dans les ",
+          ".",
+        ),
+        p(
+          "La médiation est gratuite pour le consommateur. Elle suppose une réclamation écrite adressée d'abord au vendeur et restée sans solution, puis une saisine du médiateur dans l'année qui suit cette réclamation (article L612-2 du Code de la consommation). Le médiateur se saisit en ligne, sur ",
+          lien("sa page de demande de médiation", pageDeDemande(mediateur)),
+          ", ou par courrier à l'adresse ci-dessus. Les conditions de la médiation figurent aussi dans les ",
           lien("conditions générales de vente", "/cgv"),
           ".",
         ),
@@ -158,10 +162,10 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
             "Vos coordonnées de facturation. Votre adresse e-mail, votre nom et votre adresse de facturation, que vous saisissez sur la page de paiement de Stripe, ainsi que la facture, restent chez Stripe au titre de nos obligations comptables : dix ans (article L123-22 du Code de commerce).",
           ],
           [
-            "Nos e-mails. L'e-mail de confirmation de votre commande et, si vous vous rétractez, l'accusé de réception de votre déclaration vous sont envoyés par Resend, notre prestataire d'envoi d'e-mails. Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie comme preuve de leur envoi pendant cinq ans, le délai pendant lequel une action en justice sur la commande reste possible (article 2224 du Code civil).",
+            "Nos e-mails. L'e-mail de confirmation de votre commande et, si vous vous rétractez, l'accusé de réception de votre déclaration vous sont envoyés par Resend, notre prestataire d'envoi d'e-mails. Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie, hébergée par Google (voir « Destinataires »), comme preuve de leur envoi pendant cinq ans, le délai pendant lequel une action en justice sur la commande reste possible (article 2224 du Code civil). Les messages que vous nous écrivez y arrivent aussi.",
           ],
           [
-            "Votre déclaration de rétractation. Si vous utilisez la fonction « Renoncer au contrat ici », vos nom et prénom, la référence de votre commande et l'adresse e-mail que vous indiquez servent à traiter votre déclaration et à vous en accuser réception : ils ne sont gardés que dans cet accusé de réception et dans sa copie. Seule l'heure de votre rétractation s'ajoute à la trace de la commande chez Stripe.",
+            "Votre déclaration de rétractation. Si vous utilisez la fonction « Renoncer au contrat ici », vos nom et prénom, la référence de votre commande et l'adresse e-mail que vous indiquez servent à retrouver votre commande, à traiter votre déclaration et à vous en accuser réception : ils ne sont gardés que dans cet accusé de réception et dans sa copie. À la trace de la commande chez Stripe s'ajoutent seulement l'heure de votre rétractation, une empreinte de la déclaration qui l'a enregistrée (un code calculé à partir de ces quatre champs, qui sert à reconnaître une déclaration identique sans les garder en clair) et le nombre d'accusés de réception envoyés pour la commande. Si aucune commande payée ne correspond à la référence indiquée, ou si votre commande ne peut pas être vérifiée, votre déclaration n'est ni transmise ni gardée : seules la référence et l'heure de votre demande restent dans le journal du serveur, que notre hébergeur garde une heure.",
           ],
           [
             "Vos données de carte. Elles sont traitées par Stripe seul ; le vendeur n'y a jamais accès.",
@@ -197,9 +201,16 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
           [
             "Plus Five Five, Inc. (Resend), prestataire d'envoi d'e-mails, à San Francisco, aux États-Unis : il reçoit, pour les acheminer, l'e-mail de confirmation de votre commande et, si vous vous rétractez, l'accusé de réception de votre déclaration — votre adresse e-mail, leur contenu et les conditions générales de vente jointes à la confirmation. Resend déclare stocker ces e-mails et leurs journaux d'envoi aux États-Unis, et les garder 30 jours. Pour les transferts de données hors de l'Union européenne, Resend déclare s'appuyer sur les clauses contractuelles types de la Commission européenne et sur son adhésion au cadre de protection des données UE–États-Unis (",
             lien("page de Resend sur le RGPD", "https://resend.com/security/gdpr"),
-            ", mise à jour le 21 septembre 2026, et ",
+            ", consultée le 26 septembre 2026, et ",
             lien("accord de traitement des données de Resend", "https://resend.com/legal/dpa"),
-            ", mis à jour le 27 août 2026).",
+            ", mis à jour le 31 décembre 2025).",
+          ],
+          [
+            "Google (Gmail), qui héberge la messagerie du vendeur, un compte Gmail personnel : il reçoit et conserve les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez. Google n'est lié au vendeur par aucun accord de traitement des données : il traite ces messages selon ses propres règles de confidentialité, qui désignent Google Ireland Limited comme responsable du traitement pour les utilisateurs établis dans l'Espace économique européen, comme le vendeur. Google déclare disposer de serveurs dans le monde entier, si bien que ces données peuvent être traitées hors de l'Union européenne, et encadrer ces transferts par les décisions d'adéquation de la Commission européenne, par le cadre de protection des données UE–États-Unis, auquel Google LLC déclare adhérer, et par les clauses contractuelles types lorsqu'aucune décision d'adéquation ne s'applique (",
+            lien("règles de confidentialité de Google", "https://policies.google.com/privacy?hl=fr"),
+            ", en vigueur depuis le 2 avril 2026, et ",
+            lien("cadres légaux de Google pour les transferts de données", "https://policies.google.com/privacy/frameworks?hl=fr"),
+            ", en vigueur depuis le 23 août 2025).",
           ],
           [
             `${fiche.hebergeur.nom}, hébergeur du site, aux États-Unis : chaque requête passe par ses serveurs. Vercel déclare se conformer au cadre de protection des données UE–États-Unis, à son extension au Royaume-Uni et au cadre Suisse–États-Unis, et recourir aux clauses contractuelles types ou à d'autres mécanismes appropriés pour ses transferts (`,

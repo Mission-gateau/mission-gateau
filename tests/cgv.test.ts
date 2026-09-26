@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { describe, expect, it } from "vitest";
 import { VERSIONS_CGV, VERSION_CGV, VERSION_EN_VIGUEUR, conditionsGenerales, versionCgv } from "@/contenu/cgv";
@@ -30,18 +32,30 @@ import { FORMULAIRE_OFFICIEL } from "./officiels";
 const EMPREINTES: Record<string, string> = {
   "2026-09-24": "290562b5e237af72e0e276cd1390ba1c4184f9dd64a90f2d1169704f9c8cf9d1",
   "2026-09-25": "cce01811edbe4be5ea9f823f9b0508fb8c8d51f53df160dddf01fb8dba6cb307",
+  "2026-09-26": "46d850a4d8db1cf594bcdd9e91f439002253e8dba7b46f8988494676c46ce3d8",
+};
+
+/**
+ * Empreinte du fichier source de chaque version publiée avant la dernière,
+ * octet pour octet : un fichier publié ne se retouche pas, pas même un
+ * commentaire.
+ */
+const FICHIERS_PUBLIES: Record<string, string> = {
+  "2026-09-24": "e47d13e4d018405f04fae6116860cc40824a64deb879ef668a9fa91db296d665",
+  "2026-09-25": "298b8cc9a4e0465647975ab3b67d84a60a7b7ab4db82d000fd7a88f6eb68c2fa",
 };
 
 describe("versions des CGV", () => {
   it("gardent chaque version publiée, dans l'ordre, la dernière en vigueur", () => {
-    expect(VERSIONS_CGV.map((v) => v.identifiant)).toEqual(["2026-09-24", "2026-09-25"]);
-    expect(VERSION_EN_VIGUEUR.identifiant).toBe("2026-09-25");
-    expect(VERSION_CGV).toEqual({ identifiant: "2026-09-25", libelle: "25 septembre 2026" });
+    expect(VERSIONS_CGV.map((v) => v.identifiant)).toEqual(["2026-09-24", "2026-09-25", "2026-09-26"]);
+    expect(VERSION_EN_VIGUEUR.identifiant).toBe("2026-09-26");
+    expect(VERSION_CGV).toEqual({ identifiant: "2026-09-26", libelle: "26 septembre 2026" });
     expect(versionCgv("2026-09-24")?.libelle).toBe("24 septembre 2026");
+    expect(versionCgv("2026-09-25")?.libelle).toBe("25 septembre 2026");
     expect(versionCgv("2026-09-23")).toBeNull();
     expect(versionCgv("")).toBeNull();
     // La page /cgv affiche la version en vigueur.
-    expect(conditionsGenerales(VENDEUR, { prix: null }).date).toBe("Version du 25 septembre 2026");
+    expect(conditionsGenerales(VENDEUR, { prix: null }).date).toBe("Version du 26 septembre 2026");
   });
 
   it("ne modifient jamais une version publiée", () => {
@@ -50,6 +64,19 @@ describe("versions des CGV", () => {
         .update(JSON.stringify(version.conditions(FICHE_NEUTRE, { prix: "{prix}" })))
         .digest("hex");
       expect(empreinte, version.identifiant).toBe(EMPREINTES[version.identifiant]);
+    }
+    for (const [identifiant, attendue] of Object.entries(FICHIERS_PUBLIES)) {
+      const source = readFileSync(path.join(process.cwd(), "src", "contenu", "cgv", `${identifiant}.ts`));
+      expect(createHash("sha256").update(source).digest("hex"), identifiant).toBe(attendue);
+    }
+  });
+
+  it("rendues avec la fiche réelle, toutes les versions citent désormais le médiateur, comme leur code le prévoit", () => {
+    for (const version of VERSIONS_CGV) {
+      const texte = JSON.stringify(version.conditions(VENDEUR, { prix: null })).replace(/[\u00a0\u202f]/g, " ");
+      expect(texte, version.identifiant).toContain("11. Médiation de la consommation");
+      expect(texte, version.identifiant).toContain("Société Médiation Professionnelle, Alteritae, 5 rue Salvaing, 12000 Rodez");
+      expect(texte, version.identifiant).toContain("www.mediateur-consommation-smp.fr");
     }
   });
 
@@ -92,7 +119,7 @@ describe("PDF des CGV", () => {
   }
 
   it("est identique octet pour octet d'un rendu à l'autre, même après des kits aux capitales accentuées", async () => {
-    const avant = await rendu("2026-09-25");
+    const avant = await rendu("2026-09-26");
     const autre = await rendu("2026-09-24");
     enregistrerPolices();
     // Des kits dont le texte fait créer à fontkit des glyphes « composants » (É, À, Ç…).
@@ -101,14 +128,14 @@ describe("PDF des CGV", () => {
         documentKit(construireKit(configuration({ age, prenom: "Élodie", fete: { invites: ["Àlan", "Çali", "Ève"] } }), "cgvdeterm")),
       );
     }
-    expect(Buffer.compare(await rendu("2026-09-25"), avant)).toBe(0);
+    expect(Buffer.compare(await rendu("2026-09-26"), avant)).toBe(0);
     expect(Buffer.compare(await rendu("2026-09-24"), autre)).toBe(0);
     // Le producteur du PDF joint : même mécanisme, mis en cache.
-    expect(Buffer.compare(await pdfDesCgv(versionCgv("2026-09-25")!, VENDEUR, "12,90 €"), avant)).toBe(0);
+    expect(Buffer.compare(await pdfDesCgv(versionCgv("2026-09-26")!, VENDEUR, "12,90 €"), avant)).toBe(0);
   });
 
   it("n'emploie que les polices du dépôt, incorporées, sans glyphe privé de caractère", async () => {
-    const pdf = await rendu("2026-09-25");
+    const pdf = await rendu("2026-09-26");
     const polices = policesDuPdf(pdf);
     expect(polices.length).toBeGreaterThan(0);
     for (const police of polices) {
@@ -119,15 +146,19 @@ describe("PDF des CGV", () => {
     expect(glyphesInconnus(pdf)).toEqual([]);
   });
 
-  it("porte la date de création de sa version, le prix, l'article 8 et le formulaire type en annexe", async () => {
-    const pdf = await rendu("2026-09-25");
-    // La date de création est écrite dans son propre objet : « (D:20260925000000Z) ».
+  it("porte la date de création de sa version, le prix, l'article 8, le médiateur et le formulaire type en annexe", async () => {
+    const pdf = await rendu("2026-09-26");
+    // La date de création est écrite dans son propre objet : « (D:20260926000000Z) ».
     expect(pdf.toString("latin1")).toMatch(/\/CreationDate \d+ 0 R/);
-    expect(pdf.toString("latin1")).toContain("(D:20260925000000Z)");
+    expect(pdf.toString("latin1")).toContain("(D:20260926000000Z)");
     const texte = texteDuPdf(pdf).replace(/[  ]/g, " ");
     for (const attendu of [
       "Conditions générales de vente",
-      "Version du 25 septembre 2026",
+      "Version du 26 septembre 2026",
+      "https://www.missiongateau.com",
+      "https://www.missiongateau.com/renoncer",
+      "11. Médiation de la consommation",
+      "www.mediateur-consommation-smp.fr/demander-une-mediation/",
       "Le jeu complet coûte 12,90 €",
       "8. Droit de rétractation",
       "Annexe : formulaire type de rétractation",

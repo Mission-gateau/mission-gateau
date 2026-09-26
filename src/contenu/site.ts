@@ -95,6 +95,13 @@ export const SITE = typographier({
   /** Libellé imposé de la fonction de rétractation (article D221-5 du Code de la consommation). */
   lienRenoncer: "Renoncer au contrat ici",
   navigationLegale: "Informations légales",
+
+  /** La page 404, pour toute adresse qui ne mène à rien. */
+  introuvable: {
+    titre: "Page introuvable",
+    texte: "Cette adresse ne mène à aucune page de Mission Gâteau : elle a pu être mal recopiée, ou la page n'existe plus.",
+    accueil: "Revenir à l'accueil",
+  },
 } as const);
 
 export const CREDITS = typographier({

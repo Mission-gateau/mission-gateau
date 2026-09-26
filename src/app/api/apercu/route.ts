@@ -5,6 +5,7 @@ import { verifierKit } from "@/engine/validation";
 import { creerGraine, graineValide } from "@/engine/alea";
 import { documentApercu } from "@/pdf/documents/apercu";
 import { enregistrerPolices } from "@/pdf/ressources";
+import { refusDeRequete } from "@/vente/garde";
 
 /** Le rendu PDF lit des fichiers et utilise fontkit : runtime Node, jamais Edge. */
 export const runtime = "nodejs";
@@ -26,9 +27,12 @@ function erreur(message: string, statut: number, details?: unknown): Response {
  * Les données arrivent en POST, jamais dans l'adresse : le prénom de l'enfant
  * n'apparaît ainsi dans aucun journal de serveur. Rien n'est enregistré, rien
  * n'est journalisé, rien n'est transmis ailleurs : la configuration sert à
- * produire le PDF, puis disparaît avec la requête.
+ * produire le PDF, puis disparaît avec la requête. Comme toutes les routes
+ * POST, elle n'accepte que du JSON venu d'une page du site (src/vente/garde.ts).
  */
 export async function POST(requete: Request): Promise<Response> {
+  const refus = refusDeRequete(requete);
+  if (refus) return refus;
   const annonce = requete.headers.get("content-length");
   if (annonce && Number(annonce) > TAILLE_MAX) {
     return erreur("Requête trop volumineuse.", 413);

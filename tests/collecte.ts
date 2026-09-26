@@ -53,7 +53,7 @@ export const FICHE_NEUTRE: FicheVendeur = {
   telephone: "{telephone}",
   email: "{email}",
   tva: "{tva}",
-  mediateur: { nom: "{nom}", adresse: "{adresse}", site: "https://{site}", conventionSignee: true },
+  mediateur: { nom: "{nom}", adresse: "{adresse}", site: "https://{site}", demande: "https://{demande}", conventionSignee: true },
   hebergeur: { nom: "{nom}", adresse: "{adresse}", telephone: "{telephone}", site: "https://{site}" },
   paiement: { nom: "{nom}", adresse: "{adresse}" },
 };

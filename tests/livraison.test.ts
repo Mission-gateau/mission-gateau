@@ -403,18 +403,79 @@ describe("route du kit", () => {
     expect(corps.erreur).toMatch(/contestation/);
   });
 
-  it("refuse aussi un téléchargement qui croise une rétractation enregistrée pendant la préparation du PDF", async () => {
+  it("refuse un premier téléchargement qu'une rétractation a précédé chez Stripe : elle l'emporte, et la course est écrite", async () => {
     const { reference, paiement } = await commandeConfirmee();
-    const lirePaiement = stripe.lirePaiement.bind(stripe);
-    // La rétractation arrive entre la vérification de la commande et l'envoi du PDF.
-    stripe.lirePaiement = async (id: string) => {
-      stripe.paiements.get(paiement.id)!.metadonnees[CLES.retractation] = MAINTENANT.toISOString();
-      return lirePaiement(id);
+    const modifier = stripe.modifierMetadonnees.bind(stripe);
+    // La rétractation est écrite entre la vérification de la commande et l'écriture du premier téléchargement.
+    stripe.modifierMetadonnees = async (id: string, metadonnees: Record<string, string>) => {
+      if (CLES.telechargement in metadonnees) {
+        stripe.paiements.get(paiement.id)!.metadonnees[CLES.retractation] = MAINTENANT.toISOString();
+      }
+      return modifier(id, metadonnees);
     };
     const reponse = await telecharger(reference);
     expect(reponse.status).toBe(410);
     expect(await estUnPdf(reponse)).toBe(false);
-    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).telechargement).toBeNull();
+    expect(((await reponse.json()) as { etat: string }).etat).toBe("retractee");
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    expect(meta[CLES.course]).toBe("retractation");
+    // Les deux marques existent ; la page dit « rétractée ».
+    expect((await etat(reference)).etat).toBe("retractee");
+  });
+
+  it("si la course ne peut pas être écrite, la commande est « à examiner » : ni PDF, ni remboursement automatique", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    const modifier = stripe.modifierMetadonnees.bind(stripe);
+    stripe.modifierMetadonnees = async (id: string, metadonnees: Record<string, string>) => {
+      if (CLES.telechargement in metadonnees) {
+        stripe.paiements.get(paiement.id)!.metadonnees[CLES.retractation] = MAINTENANT.toISOString();
+      }
+      return modifier(id, metadonnees);
+    };
+    stripe.clesEnPanne.add(CLES.course);
+    const reponse = await telecharger(reference);
+    expect(reponse.status).toBe(410);
+    expect(await estUnPdf(reponse)).toBe(false);
+    expect(journaux.map((ligne) => JSON.parse(ligne) as Record<string, string>)).toContainEqual({
+      route: "kit",
+      evenement: "course_non_enregistree",
+      reference,
+    });
+    expect((await etat(reference)).etat).toBe("a_examiner");
+    const ensuite = await telecharger(reference);
+    expect(ensuite.status).toBe(409);
+    expect(((await ensuite.json()) as { etat: string; erreur: string }).erreur).toContain("le vendeur examine votre commande");
+  });
+
+  it("un téléchargement qui a gagné la course continue d'être livré, même avec une rétractation battue", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    expect((await telecharger(reference)).status).toBe(200);
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    meta[CLES.retractation] = new Date(MAINTENANT.getTime() + 1000).toISOString();
+    meta[CLES.course] = "telechargement";
+    expect((await telecharger(reference)).status).toBe(200);
+  });
+
+  it("en production avec une clé de test : aucun client Stripe, rien n'est livré ni envoyé", async () => {
+    const { reference } = await commandeConfirmee();
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("STRIPE_SECRET_KEY", CLE_TEST);
+    vi.stubEnv("RESEND_API_KEY", "re_fauxfauxfauxfauxfauxfaux");
+    try {
+      const { dependancesReelles } = await vi.importActual<typeof import("@/vente/dependances")>("@/vente/dependances");
+      const reelles = dependancesReelles();
+      expect(reelles.client).toBeNull();
+      injection.deps = { ...reelles, email: emails };
+      const appels = emails.appels.length;
+      const kit = await telecharger(reference);
+      expect(kit.status).toBe(404);
+      expect(await estUnPdf(kit)).toBe(false);
+      const confirmation = await confirmer(reference);
+      expect(confirmation.status).toBe(404);
+      expect(emails.appels).toHaveLength(appels);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("porte le filigrane d'essai sur chaque page hors production, et jamais en production", async () => {

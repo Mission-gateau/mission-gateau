@@ -152,6 +152,8 @@ describe("gabarits", () => {
       "pays", "telephone", "tva",
       // Confirmation, rétractation et e-mails.
       "heure", "montant", "produit", "test", "article", "version", "fichier",
+      // Médiation, et accusé d'une rétractation déjà enregistrée.
+      "demande", "dateDeclaration", "heureDeclaration",
     ]);
     const inconnues = new Set<string>();
     for (const { texte } of textesDeProse()) {

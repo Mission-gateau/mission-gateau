@@ -46,8 +46,12 @@ export interface FicheVendeur {
   tva: string;
   mediateur: {
     nom: string;
+    /** Adresse postale, où le consommateur peut aussi saisir le médiateur par courrier. */
     adresse: string;
+    /** Adresse du site du médiateur (article R616-1 du Code de la consommation). */
     site: string;
+    /** Page du site du médiateur où déposer une demande de médiation. Facultative : à défaut, le site. */
+    demande: string;
     /** Tant que c'est faux, le médiateur n'est nommé nulle part. */
     conventionSignee: boolean;
   };
@@ -85,7 +89,9 @@ export const VENDEUR: FicheVendeur = {
     nom: "Société Médiation Professionnelle",
     adresse: "Alteritae, 5 rue Salvaing, 12000 Rodez",
     site: "https://www.mediateur-consommation-smp.fr",
-    conventionSignee: false,
+    demande: "https://www.mediateur-consommation-smp.fr/demander-une-mediation/",
+    // Convention signée le 25 septembre 2026.
+    conventionSignee: true,
   },
   hebergeur: {
     nom: "Vercel Inc.",
