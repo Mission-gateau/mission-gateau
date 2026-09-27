@@ -20,6 +20,7 @@ import { GET as effacer } from "@/app/api/effacement/route";
 import { CLES, configurationPresente, lireCommande } from "@/vente/metadonnees";
 import type { PaiementLu } from "@/vente/stripe";
 import {
+  CLE_TEST,
   FauxStripe,
   SECRET_TACHE,
   corpsDeCommande,
@@ -64,7 +65,8 @@ async function payeeIlYa(jours: number, secondes = 0, premiereTentative?: Date):
 
 /**
  * Lance la tâche comme Vercel : GET avec le secret. Ses compteurs ne sont
- * plus dans la réponse, seulement dans le journal : on les y relit.
+ * plus dans la réponse, seulement dans le journal, une ligne par phase : on
+ * relit ici celle de l'effacement (ou celle qui dit qu'il n'y a pas de clé).
  */
 async function lancer(): Promise<{ statut: number; corps: unknown; bilan: Record<string, number | string> }> {
   const avant = journaux.length;
@@ -72,7 +74,8 @@ async function lancer(): Promise<{ statut: number; corps: unknown; bilan: Record
     new Request("http://localhost/api/effacement", { headers: { Authorization: `Bearer ${SECRET_TACHE}` } }),
   );
   const entrees = journaux.slice(avant).map((ligne) => JSON.parse(ligne) as Record<string, number | string>);
-  const bilan = entrees.find((entree) => entree.tache === "quotidienne") ?? {};
+  const bilan =
+    entrees.find((entree) => entree.tache === "quotidienne" && (entree.phase === "effacement" || entree.sansCle === 1)) ?? {};
   return { statut: reponse.status, corps: await reponse.json(), bilan };
 }
 
@@ -192,11 +195,14 @@ describe("effacement à 30 jours", () => {
     const { corps } = await lancer();
     expect(corps).toEqual({ ok: true });
     const lignes = journaux.map((ligne) => JSON.parse(ligne) as Record<string, unknown>);
-    const entree = lignes.find((ligne) => ligne.tache === "quotidienne")!;
-    expect(entree.tache).toBe("quotidienne");
-    const autres = Object.entries(entree).filter(([cle]) => cle !== "tache");
-    expect(autres.length).toBeGreaterThan(0);
-    expect(autres.every(([, valeur]) => typeof valeur === "number")).toBe(true);
+    // Une ligne par phase, dans l'ordre, faite de compteurs.
+    const phases = lignes.filter((ligne) => ligne.tache === "quotidienne");
+    expect(phases.map((ligne) => ligne.phase)).toEqual(["effacement", "confirmations", "remboursements"]);
+    for (const entree of phases) {
+      const autres = Object.entries(entree).filter(([cle]) => cle !== "tache" && cle !== "phase");
+      expect(autres.length).toBeGreaterThan(0);
+      expect(autres.every(([, valeur]) => typeof valeur === "number")).toBe(true);
+    }
     expect(marquesDans(journaux.join("\n"))).toEqual([]);
   });
 
@@ -224,11 +230,28 @@ describe("effacement à 30 jours", () => {
     expect(journaux).toHaveLength(0);
   });
 
-  it("autorisée mais sans clé Stripe, elle ne fait rien", async () => {
+  it("autorisée mais sans clé Stripe, elle ne fait rien, et le dit dans le journal", async () => {
     injection.deps = dependances(null, { env: environnement({ cleStripe: undefined, secretTache: SECRET_TACHE }) });
+    journaux.length = 0;
     const { statut, bilan } = await lancer();
     expect(statut).toBe(200);
-    expect(bilan).toMatchObject({ paiementsEffaces: 0, debitsEffaces: 0, sansCle: 1 });
+    expect(bilan).toEqual({ tache: "quotidienne", sansCle: 1 });
+    expect(journaux).toHaveLength(1);
+  });
+
+  it("en production avec une clé de test, les vraies dépendances ne créent aucun client : la tâche ne touche à rien", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("STRIPE_SECRET_KEY", CLE_TEST);
+    vi.stubEnv("CRON_SECRET", SECRET_TACHE);
+    try {
+      injection.deps = null;
+      journaux.length = 0;
+      const { statut, bilan } = await lancer();
+      expect(statut).toBe(200);
+      expect(bilan).toEqual({ tache: "quotidienne", sansCle: 1 });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("n'efface que la configuration : aucune session créée, aucune commande cherchée par sa référence", async () => {

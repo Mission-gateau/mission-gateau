@@ -2,6 +2,7 @@ import { graineValide } from "../engine/alea";
 import { schemaConfiguration } from "../engine/configuration";
 import { VERSION_KIT } from "../engine/kit";
 import type { Configuration } from "../engine/types";
+import { marqueGagnante } from "./course";
 import { delaiExpire, dernierJourDuDelai, finDuDelai, type Jour } from "./delai";
 import { CLES, lireCommande, lireConfiguration, lireSuivi, type Commande, type Suivi } from "./metadonnees";
 import { referenceValide, sessionValide } from "./reference";
@@ -41,8 +42,12 @@ export type EtatCommande =
       retracteeLe: Date;
       /** Vrai une fois le paiement remboursé en totalité chez Stripe. */
       rembourse: boolean;
+      /** Vrai si le paiement fait l'objet d'une contestation auprès de la banque. */
+      litige: boolean;
       montant: number;
     }
+  /** Premier téléchargement et rétractation croisés, sans `course` : le vendeur tranche. */
+  | { etat: "a_examiner" }
   | { etat: "litige" }
   | { etat: "non_aboutie" }
   | { etat: "introuvable" }
@@ -105,7 +110,9 @@ export async function etatDeLaCommande(entree: {
  * L'état d'une commande, lu sur son paiement. L'ordre compte : un paiement
  * rétracté l'est avant tout le reste, un litige bloque la livraison avant
  * même le remboursement, et seul un paiement abouti, confirmé ou non, peut
- * mener au jeu.
+ * mener au jeu. Quand premier téléchargement et rétractation se sont croisés,
+ * la marque gagnante décide (voir src/vente/course.ts) : une rétractation qui
+ * a perdu ne bloque rien, un croisement sans `course` est « à examiner ».
  */
 export function etatDuPaiement(
   paiement: PaiementLu,
@@ -116,11 +123,14 @@ export function etatDuPaiement(
 ): EtatCommande {
   if (paiement.statut !== "succeeded") return { etat: "non_aboutie" };
   const suivi = lireSuivi(paiement.metadonnees);
-  if (suivi.retractation) {
+  const gagnante = marqueGagnante(paiement.metadonnees);
+  if (gagnante === "a_examiner") return { etat: "a_examiner" };
+  if (gagnante === "retractation" && suivi.retractation) {
     return {
       etat: "retractee",
       retracteeLe: suivi.retractation,
       rembourse: paiement.rembourseEnTotalite,
+      litige: paiement.litige,
       montant: paiement.montant,
     };
   }
@@ -165,18 +175,14 @@ export function etatDuPaiement(
 }
 
 /**
- * L'adresse e-mail de l'acheteur : celle qu'il a saisie sur la page de
- * paiement (customer_details.email de la session Checkout, retrouvée par son
- * identifiant, sinon par le paiement), à défaut l'e-mail de facturation du
- * dernier débit. Null si Stripe n'en connaît aucune.
+ * L'adresse e-mail de l'acheteur, par un seul chemin, le même pour la page,
+ * la tâche quotidienne et la fonction de rétractation : celle qu'il a saisie
+ * sur la page de paiement (customer_details.email de la session Checkout,
+ * retrouvée par le paiement), à défaut l'e-mail de facturation du dernier
+ * débit. Une nouvelle tentative envoie ainsi exactement la même requête à
+ * Resend. Null si Stripe n'en connaît aucune.
  */
-export async function emailDeLAcheteur(
-  client: ClientStripe,
-  paiement: PaiementLu,
-  session: SessionLue | null = null,
-): Promise<string | null> {
-  if (session?.email && session.paiement?.id === paiement.id) return session.email;
-  const retrouvee = await client.sessionDuPaiement(paiement.id);
-  if (retrouvee?.email) return retrouvee.email;
-  return paiement.emailDuDebit;
+export async function emailDeLAcheteur(client: ClientStripe, paiement: PaiementLu): Promise<string | null> {
+  const session = await client.sessionDuPaiement(paiement.id);
+  return session?.email || paiement.emailDuDebit;
 }

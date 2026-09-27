@@ -7,8 +7,9 @@ import { formulaireRempli } from "../contenu/formulaireRetractation";
 import type { FicheVendeur } from "../contenu/vendeur";
 import { TEXTES_STRIPE } from "../contenu/vente";
 import { dateAParis, heureAParis, jourEnLettres } from "./dates";
+import type { Declaration } from "./declaration";
 import type { Jour } from "./delai";
-import { adresseSurUneLigne, denomination, mediateurCite, siRempli } from "./fiche";
+import { adresseSurUneLigne, denomination, mediateurCite, pageDeDemande, siRempli } from "./fiche";
 import { formaterPrix } from "./prix";
 
 /**
@@ -187,7 +188,7 @@ export function courrielDeConfirmation(donnees: DonneesConfirmation): DocumentCo
       titre(CONFIRMATION.titreJeu),
       paragraphe(CONFIRMATION.telechargement),
       paragraphe({ texte: donnees.lienCommande, lien: donnees.lienCommande }),
-      paragraphe(remplir(CONFIRMATION.validite, { date: dateAParis(donnees.expireLe) })),
+      paragraphe(remplir(CONFIRMATION.validite, { date: dateAParis(donnees.expireLe), heure: heureAParis(donnees.expireLe) })),
 
       titre(CONFIRMATION.titreAccord),
       paragraphe(
@@ -227,6 +228,7 @@ export function courrielDeConfirmation(donnees: DonneesConfirmation): DocumentCo
             paragraphe(
               remplir(CONFIRMATION.mediateur, { nom: mediateur.nom, adresse: mediateur.adresse, site: mediateur.site }),
             ),
+            paragraphe(remplir(CONFIRMATION.mediation, { demande: pageDeDemande(mediateur) })),
           ]
         : []),
       paragraphe(remplir(CONFIRMATION.pieceJointe, { version: donnees.version.libelle, fichier: donnees.nomPdf })),
@@ -238,40 +240,63 @@ export function courrielDeConfirmation(donnees: DonneesConfirmation): DocumentCo
 // L'accusé de réception d'une rétractation
 // ---------------------------------------------------------------------------
 
-export interface Declaration {
-  nom: string;
-  prenom: string;
-  /** La référence telle qu'elle a été saisie (ou le lien de la commande). */
-  reference: string;
-  email: string;
-}
+export type { Declaration } from "./declaration";
 
-/** La suite donnée à une déclaration de rétractation. */
+/** Où en est le remboursement d'une commande rétractée, lu sur le paiement. */
+export type Remboursement = "effectue" | "a_venir" | "litige";
+
+/**
+ * La suite donnée à une déclaration de rétractation :
+ * - `retractee` : cette déclaration a enregistré la rétractation ;
+ * - `deja_retractee` : une autre déclaration l'avait enregistrée le `le` ;
+ * - `telechargee` : le premier téléchargement, le `le`, a éteint le droit ;
+ * - `simultanee` : la déclaration, reçue avant le début du premier
+ *   téléchargement, a perdu la course contre lui (voir src/vente/course.ts) ;
+ * - `expiree` : le délai a pris fin le `dernierJour` ;
+ * - `manuelle` : la commande est retrouvée, mais une écriture ou une relecture
+ *   chez Stripe a échoué, ou la course est à examiner : le vendeur traite la
+ *   déclaration à la main.
+ */
 export type SuiteDonnee =
   | {
       type: "retractee";
-      remboursement: "effectue" | "a_venir" | "deja_rembourse" | "litige";
+      remboursement: Remboursement;
       /** Montant payé, en centimes. */
       montant: number;
     }
+  | { type: "deja_retractee"; le: Date; recueLe: Date; remboursement: Remboursement; montant: number }
   | { type: "telechargee"; le: Date }
+  | { type: "simultanee"; le: Date }
   | { type: "expiree"; dernierJour: Jour }
-  | { type: "non_reliee" };
+  | { type: "manuelle" };
+
+function detailDuRemboursement(remboursement: Remboursement): { statut: string; texte: string } {
+  return { effectue: ACCUSE.rembourse, a_venir: ACCUSE.aRembourser, litige: ACCUSE.litige }[remboursement];
+}
 
 function suiteEnBlocs(suite: SuiteDonnee): BlocCourriel[] {
   switch (suite.type) {
     case "retractee": {
-      const detail = {
-        effectue: ACCUSE.rembourse,
-        a_venir: ACCUSE.aRembourser,
-        deja_rembourse: ACCUSE.dejaRembourse,
-        litige: ACCUSE.litige,
-      }[suite.remboursement];
-      const montant = formaterPrix(suite.montant);
+      const detail = detailDuRemboursement(suite.remboursement);
       return [
         lignes([ACCUSE.libelleStatut, `${ACCUSE.retractee.statut} — ${detail.statut}`]),
         paragraphe(ACCUSE.retractee.texte),
-        paragraphe(remplir(detail.texte, { montant })),
+        paragraphe(remplir(detail.texte, { montant: formaterPrix(suite.montant) })),
+      ];
+    }
+    case "deja_retractee": {
+      const detail = detailDuRemboursement(suite.remboursement);
+      return [
+        lignes([ACCUSE.libelleStatut, `${ACCUSE.dejaRetractee.statut} — ${detail.statut}`]),
+        paragraphe(
+          remplir(ACCUSE.dejaRetractee.texte, {
+            date: dateAParis(suite.le),
+            heure: heureAParis(suite.le),
+            dateDeclaration: dateAParis(suite.recueLe),
+            heureDeclaration: heureAParis(suite.recueLe),
+          }),
+        ),
+        paragraphe(remplir(detail.texte, { montant: formaterPrix(suite.montant) })),
       ];
     }
     case "telechargee":
@@ -280,21 +305,28 @@ function suiteEnBlocs(suite: SuiteDonnee): BlocCourriel[] {
         paragraphe(remplir(ACCUSE.telechargee.texte, { date: dateAParis(suite.le), heure: heureAParis(suite.le) })),
         paragraphe(ACCUSE.erreur),
       ];
+    case "simultanee":
+      return [
+        lignes([ACCUSE.libelleStatut, ACCUSE.simultanee.statut]),
+        paragraphe(remplir(ACCUSE.simultanee.texte, { date: dateAParis(suite.le), heure: heureAParis(suite.le) })),
+      ];
     case "expiree":
       return [
         lignes([ACCUSE.libelleStatut, ACCUSE.expiree.statut]),
         paragraphe(remplir(ACCUSE.expiree.texte, { date: jourEnLettres(suite.dernierJour) })),
         paragraphe(ACCUSE.erreur),
       ];
-    case "non_reliee":
-      return [lignes([ACCUSE.libelleStatut, ACCUSE.nonReliee.statut]), paragraphe(ACCUSE.nonReliee.texte)];
+    case "manuelle":
+      return [lignes([ACCUSE.libelleStatut, ACCUSE.manuelle.statut]), paragraphe(ACCUSE.manuelle.texte)];
   }
 }
 
 /**
  * L'accusé de réception (article L221-21 du Code de la consommation) : le
- * contenu de la déclaration, la date et l'heure de son envoi, et la suite
- * donnée. La page de rétractation affiche exactement ces blocs.
+ * contenu de la déclaration (champs normalisés, référence extraite), la date
+ * et l'heure de son envoi, et la suite donnée. La page de rétractation affiche
+ * exactement ces blocs. Il ne dépend que de ce qui lui est donné : la même
+ * déclaration, à la même heure, avec la même suite, donne le même e-mail.
  */
 export function accuseDeReception(entree: {
   declaration: Declaration;

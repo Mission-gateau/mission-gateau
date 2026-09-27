@@ -69,17 +69,20 @@ async function payee(ilYa: number) {
   return reglee;
 }
 
-async function lancer(): Promise<{ statut: number; bilan: Record<string, number | string> }> {
+type Compteurs = Record<string, number | string>;
+
+/** Lance la tâche comme Vercel, et relit dans le journal la ligne de chaque phase. */
+async function lancer(): Promise<{ statut: number; phases: Record<string, Compteurs>; lignes: Compteurs[] }> {
   const avant = journaux.length;
   const reponse = await tache(
     new Request("http://localhost/api/effacement", { headers: { Authorization: `Bearer ${SECRET_TACHE}` } }),
   );
-  const bilan =
-    journaux
-      .slice(avant)
-      .map((ligne) => JSON.parse(ligne) as Record<string, number | string>)
-      .find((entree) => entree.tache === "quotidienne") ?? {};
-  return { statut: reponse.status, bilan };
+  const lignes = journaux
+    .slice(avant)
+    .map((ligne) => JSON.parse(ligne) as Compteurs)
+    .filter((entree) => entree.tache === "quotidienne");
+  const phases = Object.fromEntries(lignes.map((ligne) => [String(ligne.phase), ligne]));
+  return { statut: reponse.status, phases, lignes };
 }
 
 function confirmationsA(): number {
@@ -90,9 +93,9 @@ describe("confirmations manquantes", () => {
   it("envoie la confirmation des commandes payées depuis plus d'une heure qui n'en ont pas", async () => {
     const oubliee = await payee(2 * HEURE);
     const recente = await payee(20 * 60 * 1000);
-    const { statut, bilan } = await lancer();
+    const { statut, phases } = await lancer();
     expect(statut).toBe(200);
-    expect(bilan).toMatchObject({ confirmationsEnvoyees: 1, confirmationsTropRecentes: 1, erreurs: 0 });
+    expect(phases.confirmations).toMatchObject({ confirmationsEnvoyees: 1, confirmationsTropRecentes: 1, erreurs: 0 });
     expect(lireSuivi(stripe.paiements.get(oubliee.paiement.id)!.metadonnees).confirmation).toEqual(MAINTENANT);
     expect(lireSuivi(stripe.paiements.get(recente.paiement.id)!.metadonnees).confirmation).toBeNull();
     expect(emails.envoyes[0]!.cle).toBe(`confirmation-${oubliee.reference}`);
@@ -110,11 +113,11 @@ describe("confirmations manquantes", () => {
     expect(confirmationsA()).toBe(1);
 
     const premier = await lancer();
-    expect(premier.bilan).toMatchObject({ confirmationsEnvoyees: 1, confirmationsDejaFaites: 1 });
+    expect(premier.phases.confirmations).toMatchObject({ confirmationsEnvoyees: 1, confirmationsDejaFaites: 1 });
     expect(confirmationsA()).toBe(2);
     horloge = new Date(MAINTENANT.getTime() + 12 * HEURE);
     const second = await lancer();
-    expect(second.bilan).toMatchObject({ confirmationsEnvoyees: 0, confirmationsDejaFaites: 2 });
+    expect(second.phases.confirmations).toMatchObject({ confirmationsEnvoyees: 0, confirmationsDejaFaites: 2 });
     expect(confirmationsA()).toBe(2);
     expect(emails.envoyes.map((e) => e.cle).sort()).toEqual(
       [`confirmation-${venue.reference}`, `confirmation-${oubliee.reference}`].sort(),
@@ -129,8 +132,8 @@ describe("confirmations manquantes", () => {
     stripe.rembourserHorsSite(remboursee.paiement.id);
     const contestee = await payee(3 * HEURE);
     stripe.contester(contestee.paiement.id);
-    const { bilan } = await lancer();
-    expect(bilan).toMatchObject({ confirmationsEnvoyees: 0, confirmationsExclues: 2 });
+    const { phases } = await lancer();
+    expect(phases.confirmations).toMatchObject({ confirmationsEnvoyees: 0, confirmationsExclues: 3 });
     expect(emails.appels).toHaveLength(0);
   });
 
@@ -143,8 +146,8 @@ describe("confirmations manquantes", () => {
       stripe.paiements.get(oubliee.paiement.id)!.metadonnees[CLES.confirmation] = MAINTENANT.toISOString();
       return resultat;
     };
-    const { bilan } = await lancer();
-    expect(bilan).toMatchObject({ confirmationsEnvoyees: 0, confirmationsDejaFaites: 1 });
+    const { phases } = await lancer();
+    expect(phases.confirmations).toMatchObject({ confirmationsEnvoyees: 0, confirmationsDejaFaites: 1 });
     expect(stripe.paiementsRelus).toContain(oubliee.paiement.id);
     expect(emails.appels).toHaveLength(0);
   });
@@ -153,16 +156,28 @@ describe("confirmations manquantes", () => {
     const oubliee = await payee(3 * HEURE);
     emails.refuse = true;
     const premier = await lancer();
-    expect(premier.bilan).toMatchObject({ confirmationsEchouees: 1, confirmationsEnvoyees: 0 });
+    expect(premier.phases.confirmations).toMatchObject({ confirmationsEchouees: 1, confirmationsEnvoyees: 0 });
     expect(lireSuivi(stripe.paiements.get(oubliee.paiement.id)!.metadonnees).confirmation).toBeNull();
     emails.refuse = false;
     const second = await lancer();
-    expect(second.bilan).toMatchObject({ confirmationsEnvoyees: 1 });
+    expect(second.phases.confirmations).toMatchObject({ confirmationsEnvoyees: 1 });
   });
 
   it("cherche les paiements aboutis des 45 derniers jours", async () => {
     await lancer();
     expect(stripe.recherchesAbouties[0]!.depuis).toBe(Math.floor((MAINTENANT.getTime() - 45 * JOUR) / 1000));
+  });
+
+  it("ne touche qu'aux paiements de cette boutique, même si la recherche en rendait d'autres", async () => {
+    const oubliee = await payee(3 * HEURE);
+    // Un paiement d'un autre produit du même compte Stripe : pas de `boutique`.
+    const autre = await payee(3 * HEURE);
+    delete stripe.paiements.get(autre.paiement.id)!.metadonnees[CLES.boutique];
+    stripe.rechercheIgnoreLaBoutique = true;
+    const { phases } = await lancer();
+    expect(phases.confirmations).toMatchObject({ paiementsAboutisExamines: 1, confirmationsEnvoyees: 1 });
+    expect(emails.envoyes.map((e) => e.cle)).toEqual([`confirmation-${oubliee.reference}`]);
+    expect(stripe.paiementsRelus).not.toContain(autre.paiement.id);
   });
 });
 
@@ -186,14 +201,15 @@ describe("remboursements à retenter", () => {
     );
     stripe.remboursementEnPanne = false;
     horloge = MAINTENANT;
+    expect(lireSuivi(stripe.paiements.get(reglee.paiement.id)!.metadonnees).retractation).not.toBeNull();
     expect(stripe.paiements.get(reglee.paiement.id)!.rembourseEnTotalite).toBe(false);
     return reglee;
   }
 
   it("retente le remboursement d'une rétractation enregistrée, une fois par jour, jamais deux fois", async () => {
     const { paiement, reference } = await retracteeSansRemboursement();
-    const { bilan } = await lancer();
-    expect(bilan).toMatchObject({ remboursementsRetentes: 1, remboursementsReussis: 1, remboursementsEchoues: 0 });
+    const { phases } = await lancer();
+    expect(phases.remboursements).toMatchObject({ remboursementsRetentes: 1, remboursementsReussis: 1, remboursementsEchoues: 0 });
     expect(stripe.paiements.get(paiement.id)!.rembourseEnTotalite).toBe(true);
     const tentatives = stripe.demandesDeRemboursement.map((d) => d.cle);
     expect(tentatives).toEqual([`retractation-${reference}`, `retractation-${reference}-2026-09-24`]);
@@ -201,17 +217,17 @@ describe("remboursements à retenter", () => {
     expect(stripe.remboursements).toHaveLength(1);
     // Remboursée : plus rien à retenter.
     const second = await lancer();
-    expect(second.bilan).toMatchObject({ remboursementsRetentes: 0 });
+    expect(second.phases.remboursements).toMatchObject({ remboursementsRetentes: 0 });
     expect(stripe.remboursements).toHaveLength(1);
   });
 
   it("compte un nouvel échec, et retente le lendemain avec une nouvelle clé", async () => {
     const { reference } = await retracteeSansRemboursement();
     stripe.remboursementEnPanne = true;
-    expect((await lancer()).bilan).toMatchObject({ remboursementsRetentes: 1, remboursementsEchoues: 1 });
+    expect((await lancer()).phases.remboursements).toMatchObject({ remboursementsRetentes: 1, remboursementsEchoues: 1 });
     stripe.remboursementEnPanne = false;
     horloge = new Date(MAINTENANT.getTime() + JOUR);
-    expect((await lancer()).bilan).toMatchObject({ remboursementsReussis: 1 });
+    expect((await lancer()).phases.remboursements).toMatchObject({ remboursementsReussis: 1 });
     expect(stripe.demandesDeRemboursement.at(-1)!.cle).toBe(`retractation-${reference}-2026-09-25`);
   });
 
@@ -219,20 +235,92 @@ describe("remboursements à retenter", () => {
     const { paiement } = await retracteeSansRemboursement();
     stripe.contester(paiement.id);
     const avant = stripe.demandesDeRemboursement.length;
-    expect((await lancer()).bilan).toMatchObject({ remboursementsRetentes: 0 });
+    expect((await lancer()).phases.remboursements).toMatchObject({ remboursementsRetentes: 0 });
+    expect(stripe.demandesDeRemboursement).toHaveLength(avant);
+  });
+
+  it("suit la règle de la course : jamais une rétractation battue par le premier téléchargement, ni un croisement à examiner", async () => {
+    const battue = await retracteeSansRemboursement();
+    const meta = stripe.paiements.get(battue.paiement.id)!.metadonnees;
+    meta[CLES.telechargement] = new Date(MAINTENANT.getTime() - JOUR - 1000).toISOString();
+    meta[CLES.course] = "telechargement";
+    const aExaminer = await retracteeSansRemboursement();
+    stripe.paiements.get(aExaminer.paiement.id)!.metadonnees[CLES.telechargement] = MAINTENANT.toISOString();
+    const avant = stripe.demandesDeRemboursement.length;
+    const { phases } = await lancer();
+    expect(phases.remboursements).toMatchObject({ remboursementsRetentes: 0, remboursementsExclus: 2 });
+    expect(stripe.demandesDeRemboursement).toHaveLength(avant);
+    // La rétractation qui l'a emporté, elle, se rembourse.
+    meta[CLES.course] = "retractation";
+    expect((await lancer()).phases.remboursements).toMatchObject({ remboursementsRetentes: 1, remboursementsReussis: 1 });
+  });
+
+  it("relit le paiement avant de rembourser : la recherche peut rendre des métadonnées périmées", async () => {
+    const { paiement } = await retracteeSansRemboursement();
+    // La recherche montre la rétractation seule ; le paiement à jour dit que le téléchargement l'a emporté.
+    const recherche = stripe.paiementsAboutisDepuis.bind(stripe);
+    stripe.paiementsAboutisDepuis = async (depuis, page) => {
+      const resultat = await recherche(depuis, page);
+      const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+      meta[CLES.telechargement] = new Date(MAINTENANT.getTime() - 2 * JOUR).toISOString();
+      meta[CLES.course] = "telechargement";
+      return resultat;
+    };
+    const avant = stripe.demandesDeRemboursement.length;
+    const { phases } = await lancer();
+    expect(phases.remboursements).toMatchObject({ remboursementsRetentes: 0, remboursementsExclus: 1 });
+    expect(stripe.paiementsRelus).toContain(paiement.id);
     expect(stripe.demandesDeRemboursement).toHaveLength(avant);
   });
 });
 
 describe("la tâche entière", () => {
+  it("écrit une ligne de journal par phase, dans l'ordre : effacement, confirmations, remboursements", async () => {
+    await payee(3 * HEURE);
+    const { lignes } = await lancer();
+    expect(lignes.map((ligne) => ligne.phase)).toEqual(["effacement", "confirmations", "remboursements"]);
+  });
+
   it("garde les compteurs déjà faits quand une étape tombe en panne", async () => {
     await payee(40 * JOUR);
     stripe.paiementsAboutisDepuis = async () => {
       throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
     };
-    const { statut, bilan } = await lancer();
+    const { statut, phases } = await lancer();
     expect(statut).toBe(500);
-    expect(bilan).toMatchObject({ paiementsEffaces: 1, debitsEffaces: 1, erreurs: 1 });
+    expect(phases.effacement).toMatchObject({ paiementsEffaces: 1, debitsEffaces: 1, erreurs: 0 });
+    expect(phases.confirmations).toMatchObject({ paiementsAboutisExamines: 0, erreurs: 1 });
+    expect(phases.remboursements).toMatchObject({ retractationsExaminees: 0, erreurs: 0 });
+  });
+
+  it("les lignes des phases déjà faites sont écrites avant la fin : un dépassement de durée ne les perd pas", async () => {
+    const { paiement } = await (async () => {
+      const reglee = await payee(2 * JOUR);
+      stripe.paiements.get(reglee.paiement.id)!.metadonnees[CLES.retractation] = new Date(MAINTENANT.getTime() - JOUR).toISOString();
+      return reglee;
+    })();
+    // Le remboursement ne répond jamais tant que le test ne le libère pas : la fonction serait arrêtée par Vercel.
+    let liberer: () => void = () => {};
+    let atteint: () => void = () => {};
+    const remboursementAtteint = new Promise<void>((resoudre) => (atteint = resoudre));
+    const lire = stripe.lirePaiement.bind(stripe);
+    stripe.lirePaiement = async (id: string) => {
+      atteint();
+      await new Promise<void>((resoudre) => (liberer = resoudre));
+      return lire(id);
+    };
+    const avant = journaux.length;
+    const enCours = tache(new Request("http://localhost/api/effacement", { headers: { Authorization: `Bearer ${SECRET_TACHE}` } }));
+    await remboursementAtteint;
+    const dejaEcrites = journaux
+      .slice(avant)
+      .map((ligne) => JSON.parse(ligne) as Compteurs)
+      .filter((entree) => entree.tache === "quotidienne")
+      .map((entree) => entree.phase);
+    expect(dejaEcrites).toEqual(["effacement", "confirmations"]);
+    liberer();
+    expect((await enCours).status).toBe(200);
+    expect(stripe.paiements.get(paiement.id)!.rembourseEnTotalite).toBe(true);
   });
 
   it("peut tourner deux fois de suite sans rien faire deux fois", async () => {
@@ -241,8 +329,9 @@ describe("la tâche entière", () => {
     await lancer();
     const etat = JSON.stringify([...stripe.paiements.values()]);
     const envois = emails.envoyes.length;
-    const { bilan } = await lancer();
-    expect(bilan).toMatchObject({ confirmationsEnvoyees: 0, paiementsEffaces: 0, erreurs: 0 });
+    const { phases } = await lancer();
+    expect(phases.confirmations).toMatchObject({ confirmationsEnvoyees: 0, erreurs: 0 });
+    expect(phases.effacement).toMatchObject({ paiementsEffaces: 0, erreurs: 0 });
     expect(JSON.stringify([...stripe.paiements.values()])).toBe(etat);
     expect(emails.envoyes).toHaveLength(envois);
   });
@@ -250,10 +339,11 @@ describe("la tâche entière", () => {
   it("n'écrit dans les journaux que des compteurs, sans donnée personnelle", async () => {
     await payee(3 * HEURE);
     journaux.length = 0;
-    await lancer();
-    const entree = journaux.map((ligne) => JSON.parse(ligne) as Record<string, unknown>).find((e) => e.tache === "quotidienne")!;
-    const autres = Object.entries(entree).filter(([cle]) => cle !== "tache");
-    expect(autres.every(([, valeur]) => typeof valeur === "number")).toBe(true);
+    const { lignes } = await lancer();
+    for (const entree of lignes) {
+      const autres = Object.entries(entree).filter(([cle]) => cle !== "tache" && cle !== "phase");
+      expect(autres.every(([, valeur]) => typeof valeur === "number")).toBe(true);
+    }
     expect(marquesDans(journaux.join("\n"))).toEqual([]);
     expect(journaux.join("\n")).not.toContain("@");
   });

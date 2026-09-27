@@ -87,6 +87,11 @@ export function mediateurCite(fiche: FicheVendeur): FicheVendeur["mediateur"] | 
   return m;
 }
 
+/** La page où déposer une demande de médiation : celle de la fiche, à défaut le site du médiateur. */
+export function pageDeDemande(mediateur: FicheVendeur["mediateur"]): string {
+  return siRempli(mediateur.demande) ?? mediateur.site.trim();
+}
+
 /** Un champ facultatif, ou null s'il est vide : jamais de texte provisoire. */
 export function siRempli(texte: string): string | null {
   return texte.trim() === "" ? null : texte.trim();

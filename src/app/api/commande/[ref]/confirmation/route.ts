@@ -1,4 +1,5 @@
 import { dependancesReelles } from "@/vente/dependances";
+import { refusDeRequete } from "@/vente/garde";
 import { confirmerCommande, methodeRefusee } from "@/vente/serveur";
 
 /** Stripe, Resend et le rendu du PDF des CGV demandent Node : jamais Edge. */
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic";
  * simultanés.
  */
 export async function POST(requete: Request, contexte: { params: Promise<{ ref: string }> }): Promise<Response> {
+  const refus = refusDeRequete(requete);
+  if (refus) return refus;
   const { ref } = await contexte.params;
   return confirmerCommande(requete, ref, dependancesReelles());
 }

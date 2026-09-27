@@ -13,6 +13,8 @@ import { sauvegarder } from "./sauvegarde";
 export interface OffreEnVente {
   prix: string;
   tva: string;
+  /** Le médiateur de la consommation, lu dans la fiche du vendeur ; null tant que la convention n'est pas signée. */
+  mediateur: { nom: string; site: string } | null;
 }
 
 const CLASSE_LIEN = "underline underline-offset-4 hover:text-accent";
@@ -32,7 +34,9 @@ const LIENS_LEGAUX = [
  * obligatoires ; la route de commande les revérifie, avec le pays. La
  * seconde recueille la demande de recevoir le jeu avant la fin du délai de
  * rétractation et la reconnaissance de sa perte au premier téléchargement
- * (article L221-28, 13° du Code de la consommation).
+ * (article L221-28, 13° du Code de la consommation). Le bloc tient lieu de
+ * bon de commande : il nomme le médiateur de la consommation et donne
+ * l'adresse de son site (article R616-1).
  */
 export function BlocAchat({
   configuration,
@@ -127,6 +131,16 @@ export function BlocAchat({
         <dd>{ACHAT.livraison}</dd>
       </dl>
       <p className="mt-3 text-sm leading-relaxed">{ACHAT.retractation}</p>
+      {offre.mediateur ? (
+        <p className="mt-2 text-sm leading-relaxed">
+          {remplir(ACHAT.mediateur, { nom: offre.mediateur.nom })}
+          <a href={offre.mediateur.site} target="_blank" rel="noopener noreferrer" className={CLASSE_LIEN}>
+            {offre.mediateur.site.replace(/^https:\/\//, "")}
+            <span className="sr-only"> {ACHAT.nouvelOnglet}</span>
+          </a>
+          .
+        </p>
+      ) : null}
 
       <form
         className="mt-6"

@@ -6,8 +6,10 @@ import { verifierKit } from "../engine/validation";
 import { VERSION_CGV } from "../contenu/cgv";
 import { REPONSES_RETRACTATION } from "../contenu/retractation";
 import { ACHAT, REPONSES_COMMANDE } from "../contenu/vente";
-import { etatDeLaCommande, etatDuPaiement, type EtatCommande } from "./commande";
+import { etatDeLaCommande, etatDuPaiement } from "./commande";
 import { envoyerLaConfirmation, type IssueConfirmation } from "./confirmation";
+import { ecrireLaMarque, issueDeLEcriture, type EcritureDeMarque } from "./course";
+import { schemaDeclaration } from "./declaration";
 import type { Dependances } from "./dependances";
 import { adresseDuSite } from "./environnement";
 import { texteDeLEtat, type Refus } from "./etats";
@@ -17,17 +19,19 @@ import { CLES, depassementsDeMetadonnees, metadonneesDuPaiement } from "./metado
 import { exemplaireDEssai, livraisonPossible, venteOuverte } from "./ouverture";
 import { paysAccepte } from "./pays";
 import { creerReference } from "./reference";
-import { schemaDeclaration, traiterDeclaration } from "./retractation";
+import { traiterDeclaration, type ReponseRetractation } from "./retractation";
 import { LONGUEUR_CHAMP_FACTURE, lienDeCommande, parametresDeSession } from "./session";
-import { bilanTacheVide, tacheAutorisee, tacheQuotidienne, type BilanTache } from "./tache";
+import { erreursDeLaTache, tacheAutorisee, tacheQuotidienne } from "./tache";
 
 export { journal } from "./journal";
 
 /**
  * Les routes de la vente, écrites une fois pour toutes ici et appelées par
- * les fichiers de src/app avec les vraies dépendances. Aucune ne journalise
- * de prénom, de donnée de la fête, d'adresse e-mail ni de contenu chiffré :
- * les seuls journaux sont des noms d'événements et des compteurs.
+ * les fichiers de src/app avec les vraies dépendances, après le contrôle
+ * commun des requêtes POST (src/vente/garde.ts). Aucune ne journalise de
+ * prénom, de donnée de la fête, d'adresse e-mail ni de contenu chiffré : les
+ * seuls journaux sont des noms d'événements, des compteurs et, quand le
+ * vendeur peut avoir à agir, la référence d'une commande.
  */
 
 /** Même borne que la route de l'aperçu : une commande tient largement dans 8 ko. */
@@ -180,6 +184,7 @@ const STATUTS: Record<Refus, number> = {
   expiree: 410,
   remboursee: 410,
   retractee: 410,
+  a_examiner: 409,
   litige: 409,
   non_confirmee: 409,
   autre_version: 409,
@@ -197,9 +202,13 @@ function refus(etat: Refus, statut = STATUTS[etat]): Response {
  * refuse tant que la confirmation n'est pas partie, après une rétractation
  * et pendant un litige. Déchiffre ensuite la configuration, construit le kit
  * avec la graine, le fait passer par verifierKit et le rend ; juste avant de
- * renvoyer le PDF pour la première fois, relit le paiement et enregistre le
- * premier téléchargement, qui commence l'exécution du contrat. Si cet
- * enregistrement échoue, aucun PDF ne part.
+ * renvoyer le PDF pour la première fois, enregistre le premier
+ * téléchargement, qui commence l'exécution du contrat, une seule fois (clé
+ * d'idempotence), et décide sur le paiement que Stripe renvoie en réponse :
+ * si une rétractation y est déjà écrite, elle l'emporte (410, aucun PDF ;
+ * voir src/vente/course.ts). Un premier téléchargement déjà écrit par un
+ * autre onglet se juge sur le paiement relu. Si l'enregistrement échoue,
+ * aucun PDF ne part.
  */
 export async function livrerKit(requete: Request, reference: string, deps: Dependances): Promise<Response> {
   const corps = await lireCorps(requete, TAILLE_MAX_KIT, true);
@@ -221,19 +230,34 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
     return refus("illisible", 500);
   }
 
-  try {
-    const frais = await client.lirePaiement(etat.paiement.id);
-    const encore: EtatCommande = frais
-      ? etatDuPaiement(frais, reference, cleStripe, deps.maintenant())
-      : { etat: "introuvable" };
-    if (encore.etat !== "payee") return refus(encore.etat);
-    if (!encore.suivi.telechargement) {
-      await client.modifierMetadonnees(encore.paiement.id, { [CLES.telechargement]: deps.maintenant().toISOString() });
-      journal({ route: "kit", evenement: "premier_telechargement" });
+  if (!etat.suivi.telechargement) {
+    let ecriture: EcritureDeMarque;
+    try {
+      ecriture = await ecrireLaMarque(client, etat.paiement, reference, "telechargement", {
+        [CLES.telechargement]: deps.maintenant().toISOString(),
+      });
+    } catch {
+      journal({ route: "kit", evenement: "enregistrement_impossible" });
+      return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
     }
-  } catch {
-    journal({ route: "kit", evenement: "enregistrement_impossible" });
-    return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
+    // Un autre onglet écrit le premier téléchargement en ce moment : réessayer.
+    if (ecriture.issue === "en_cours") return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
+    if (ecriture.issue === "ecrite" && issueDeLEcriture("telechargement", ecriture.apres.metadonnees) === "perd") {
+      // Une rétractation a été écrite avant : elle l'emporte, aucun PDF ne part.
+      try {
+        await client.modifierMetadonnees(etat.paiement.id, { [CLES.course]: "retractation" });
+        journal({ route: "kit", evenement: "course_perdue", reference });
+      } catch {
+        journal({ route: "kit", evenement: "course_non_enregistree", reference });
+      }
+      return refus("retractee");
+    }
+    // Premier téléchargement écrit par cette requête, ou par un autre onglet juste avant : le paiement à jour décide.
+    const encore = etatDuPaiement(ecriture.apres, reference, cleStripe, deps.maintenant());
+    // Croisement dont la course n'est pas encore écrite : réessayer dans un instant.
+    if (encore.etat === "a_examiner") return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
+    if (encore.etat !== "payee") return refus(encore.etat);
+    if (ecriture.issue === "ecrite") journal({ route: "kit", evenement: "premier_telechargement" });
   }
 
   return new Response(new Uint8Array(rendu.pdf), {
@@ -255,6 +279,7 @@ const STATUTS_CONFIRMATION: Record<IssueConfirmation, number> = {
   confirmee: 200,
   en_cours: 202,
   echec: 503,
+  non_enregistree: 503,
   impossible: 500,
 };
 
@@ -285,10 +310,22 @@ export async function confirmerCommande(requete: Request, reference: string, dep
 // POST /api/renoncer
 // ---------------------------------------------------------------------------
 
+function statutDeRetractation(reponse: ReponseRetractation): number {
+  switch (reponse.issue) {
+    case "non_transmise":
+      return reponse.cause === "introuvable" ? 404 : 503;
+    case "en_cours":
+      return 202;
+    default:
+      return 200;
+  }
+}
+
 /**
  * Reçoit une déclaration de rétractation (voir src/vente/retractation.ts).
- * Taille bornée, entrées validées par zod, et un champ piège qu'un humain ne
- * voit pas : rempli, la déclaration est refusée sans rien faire.
+ * Taille bornée, entrées strictes validées par zod (src/vente/declaration.ts),
+ * et un champ piège qu'un humain ne voit pas : rempli, la déclaration est
+ * refusée sans rien faire.
  */
 export async function renoncer(requete: Request, deps: Dependances): Promise<Response> {
   const corps = await lireCorps(requete, TAILLE_MAX_RETRACTATION);
@@ -298,15 +335,16 @@ export async function renoncer(requete: Request, deps: Dependances): Promise<Res
     return erreur(
       REPONSES_RETRACTATION.invalide,
       422,
-      analyse.error.issues.map((souci) => ({ champ: souci.path.join(".") })),
+      [...new Set(analyse.error.issues.map((souci) => souci.path.join(".")))].map((champ) => ({ champ })),
     );
   }
   if (analyse.data.champ_libre) {
     journal({ route: "retractation", evenement: "piege" });
     return erreur(REPONSES_RETRACTATION.refusee, 400);
   }
-  const { nom, prenom, reference, email } = analyse.data;
-  return json(await traiterDeclaration({ nom, prenom, reference, email }, deps), 200);
+  const { nom, prenom, reference, email, session_id } = analyse.data;
+  const reponse = await traiterDeclaration({ declaration: { nom, prenom, reference, email }, sessionId: session_id ?? null }, deps);
+  return json(reponse, statutDeRetractation(reponse));
 }
 
 // ---------------------------------------------------------------------------
@@ -322,14 +360,15 @@ export async function lancerTacheQuotidienne(requete: Request, deps: Dependances
   if (!tacheAutorisee(requete, deps.env)) {
     return new Response(null, { status: 401, headers: { "Cache-Control": "no-store", "WWW-Authenticate": "Bearer" } });
   }
-  let bilan: BilanTache;
+  let erreurs: number;
   try {
-    bilan = await tacheQuotidienne(deps);
+    // Chaque phase écrit sa ligne de journal dès qu'elle finit.
+    erreurs = erreursDeLaTache(await tacheQuotidienne(deps));
   } catch {
-    bilan = { ...bilanTacheVide(), erreurs: 1 };
+    journal({ tache: "quotidienne", phase: "interrompue", erreurs: 1 });
+    erreurs = 1;
   }
-  journal({ tache: "quotidienne", ...bilan, ...(deps.client ? {} : { sansCle: 1 }) });
-  return json({ ok: bilan.erreurs === 0 }, bilan.erreurs > 0 ? 500 : 200);
+  return json({ ok: erreurs === 0 }, erreurs > 0 ? 500 : 200);
 }
 
 export function methodeRefusee(): Response {

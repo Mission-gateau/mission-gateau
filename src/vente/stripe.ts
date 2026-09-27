@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { natureCle, type Environnement } from "./environnement";
-import { CLES, CONFIGURATION_CHIFFREE } from "./metadonnees";
+import { BOUTIQUE, CLES, CONFIGURATION_CHIFFREE } from "./metadonnees";
 
 /**
  * Tout ce que le site demande à Stripe passe par cette petite interface.
@@ -80,7 +80,7 @@ export interface ClientStripe {
   lirePaiement(id: string): Promise<PaiementLu | null>;
   /** La session Checkout d'un paiement, pour y lire l'e-mail de l'acheteur. */
   sessionDuPaiement(idPaiement: string): Promise<SessionLue | null>;
-  /** Paiements aboutis créés après `depuis` (secondes Unix), page après page. */
+  /** Paiements aboutis de cette boutique créés après `depuis` (secondes Unix), page après page. */
   paiementsAboutisDepuis(
     depuis: number,
     page: string | null,
@@ -95,7 +95,17 @@ export interface ClientStripe {
     avant: number,
     page: string | null,
   ): Promise<{ debits: DebitLu[]; pageSuivante: string | null }>;
-  modifierMetadonnees(idPaiement: string, metadonnees: Record<string, string>): Promise<void>;
+  /**
+   * Met à jour des métadonnées du paiement et le rend tel que Stripe le
+   * renvoie en réponse à cette écriture : à jour, écritures précédentes
+   * comprises. C'est sur lui que se décide qui, du premier téléchargement ou
+   * de la rétractation, l'emporte (voir src/vente/course.ts).
+   *
+   * Avec une clé d'idempotence, Stripe n'exécute que la première requête
+   * portant cette clé (24 heures durant) : la même requête est rejouée à
+   * l'identique, une requête différente est refusée (voir erreurDIdempotence).
+   */
+  modifierMetadonnees(idPaiement: string, metadonnees: Record<string, string>, cleIdempotence?: string): Promise<PaiementLu>;
   modifierMetadonneesDuDebit(idDebit: string, metadonnees: Record<string, string>): Promise<void>;
   /**
    * Rembourse la totalité d'un paiement, motif « requested_by_customer ».
@@ -124,7 +134,7 @@ export function requeteConfigurationsAvant(avant: number): string {
 }
 
 export function requetePaiementsAboutisDepuis(depuis: number): string {
-  return `status:"succeeded" AND created>${Math.floor(depuis)}`;
+  return `status:"succeeded" AND created>${Math.floor(depuis)} AND metadata["${CLES.boutique}"]:"${BOUTIQUE}"`;
 }
 
 function lirePaiement(paiement: Stripe.PaymentIntent): PaiementLu {
@@ -162,6 +172,27 @@ function codeErreur(erreur: unknown): string | null {
   if (typeof erreur !== "object" || erreur === null) return null;
   const code = (erreur as { code?: unknown }).code;
   return typeof code === "string" ? code : null;
+}
+
+/**
+ * Ce que dit une erreur de Stripe d'une clé d'idempotence déjà prise :
+ * « en_cours » quand une autre requête de même clé s'exécute encore (409),
+ * « deja_utilisee » quand la clé a servi à une requête aux paramètres
+ * différents, null pour toute autre erreur.
+ */
+export function erreurDIdempotence(erreur: unknown): "en_cours" | "deja_utilisee" | null {
+  if (typeof erreur !== "object" || erreur === null) return null;
+  const { type, statusCode, rawType } = erreur as { type?: unknown; statusCode?: unknown; rawType?: unknown };
+  if (statusCode === 409) return "en_cours";
+  if (type === "StripeIdempotencyError" || rawType === "idempotency_error") return "deja_utilisee";
+  return null;
+}
+
+/** Stripe limite le débit (429, « rate_limit ») : une panne passagère d'un genre particulier. */
+export function limiteDeDebit(erreur: unknown): boolean {
+  if (typeof erreur !== "object" || erreur === null) return false;
+  const { type, statusCode } = erreur as { type?: unknown; statusCode?: unknown };
+  return type === "StripeRateLimitError" || codeErreur(erreur) === "rate_limit" || statusCode === 429;
 }
 
 /**
@@ -267,8 +298,14 @@ export function creerClientStripe(
       };
     },
 
-    async modifierMetadonnees(idPaiement, metadonnees) {
-      await stripe.paymentIntents.update(idPaiement, { metadata: metadonnees });
+    async modifierMetadonnees(idPaiement, metadonnees, cleIdempotence) {
+      return lirePaiement(
+        await stripe.paymentIntents.update(
+          idPaiement,
+          { metadata: metadonnees, expand: ["latest_charge"] },
+          cleIdempotence ? { idempotencyKey: cleIdempotence } : undefined,
+        ),
+      );
     },
 
     async modifierMetadonneesDuDebit(idDebit, metadonnees) {

@@ -11,7 +11,7 @@ import {
 import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import { piedDeFacture } from "@/vente/session";
 import { PRIX_AFFICHE } from "@/vente/prix";
-import { FICHE_COMPLETE } from "./fauxStripe";
+import { FICHE_COMPLETE, FICHE_SANS_CONVENTION } from "./fauxStripe";
 import { FORMULAIRE_OFFICIEL } from "./officiels";
 
 /**
@@ -62,6 +62,7 @@ function ficheAvecRcs(rcs: string): FicheVendeur {
 }
 
 const MEDIATEUR = ["Société Médiation Professionnelle", "Alteritae, 5 rue Salvaing, 12000 Rodez", "mediateur-consommation-smp.fr"];
+const PAGE_DE_DEMANDE = "https://www.mediateur-consommation-smp.fr/demander-une-mediation/";
 
 describe("mentions légales", () => {
   const texte = espacesOrdinaires(texteVisible(rendre(mentionsLegales(VENDEUR))));
@@ -82,7 +83,7 @@ describe("mentions légales", () => {
       "+1 951 383 6898",
       "vercel.com",
       "Stripe Payments Europe, Limited, 1 Grand Canal Street Lower, Grand Canal Dock, Dublin, D02 H210, Irlande",
-      "Mise à jour le 24 septembre 2026",
+      "Mise à jour le 27 septembre 2026",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
@@ -100,10 +101,25 @@ describe("mentions légales", () => {
     expect(avecRcs).toContain("RCS Montpellier 992 667 006");
   });
 
-  it("ne nomment le médiateur qu'une fois la convention signée", () => {
-    for (const morceau of MEDIATEUR) expect(texte).not.toContain(morceau);
-    const signee = espacesOrdinaires(texteVisible(rendre(mentionsLegales(FICHE_COMPLETE))));
-    for (const morceau of MEDIATEUR) expect(signee, morceau).toContain(morceau);
+  it("nomment le médiateur, la convention étant signée, et disent comment le saisir, gratuitement", () => {
+    for (const morceau of MEDIATEUR) expect(texte, morceau).toContain(morceau);
+    for (const attendu of [
+      "Médiateur de la consommation dont relève le vendeur : Société Médiation Professionnelle, Alteritae, 5 rue Salvaing, 12000 Rodez, www.mediateur-consommation-smp.fr .",
+      "La médiation est gratuite pour le consommateur.",
+      "une réclamation écrite adressée d'abord au vendeur et restée sans solution",
+      "dans l'année qui suit cette réclamation (article L612-2 du Code de la consommation)",
+      "en ligne, sur sa page de demande de médiation , ou par courrier à l'adresse ci-dessus",
+    ]) {
+      expect(texte, attendu).toContain(attendu);
+    }
+    const html = rendre(mentionsLegales(VENDEUR));
+    expect(html).toContain(`href="${PAGE_DE_DEMANDE}"`);
+    expect(html).toContain('href="https://www.mediateur-consommation-smp.fr"');
+  });
+
+  it("ne nomment pas le médiateur sans convention signée", () => {
+    const sans = espacesOrdinaires(texteVisible(rendre(mentionsLegales(FICHE_SANS_CONVENTION))));
+    for (const morceau of MEDIATEUR) expect(sans, morceau).not.toContain(morceau);
   });
 });
 
@@ -148,7 +164,8 @@ describe("conditions générales de vente", () => {
       "vous cochez la case par laquelle vous demandez à recevoir votre jeu dès le paiement, avant la fin du délai de rétractation de 14 jours, et reconnaissez que vous perdrez votre droit de rétractation dès le début de son premier téléchargement",
       "par carte bancaire",
       "page de paiement sécurisée de Stripe",
-      "nous vous envoyons la confirmation de votre commande par e-mail",
+      // La confirmation part « après le paiement » : aussitôt, ou plus tard par la tâche quotidienne.
+      "Après le paiement, nous vous envoyons la confirmation de votre commande par e-mail",
       "les présentes conditions y sont jointes en PDF, dans la version que vous avez acceptée",
       // Article 7 : l'e-mail d'abord, puis le téléchargement sur la page de la commande.
       "nous vous envoyons d'abord l'e-mail de confirmation de votre commande",
@@ -163,11 +180,12 @@ describe("conditions générales de vente", () => {
       "vous avez trois possibilités",
       // Le nom de la fonction est un lien : le texte visible y est coupé par la balise.
       "la fonction « Renoncer au contrat ici »",
-      "dont le lien figure en bas de chaque page du site, sur la page de votre commande et dans l'e-mail de confirmation",
+      "(voir ci-dessous) : vous y indiquez vos nom et prénom, la référence de votre commande et l'adresse e-mail où recevoir l'accusé de réception",
       "le formulaire type de rétractation reproduit en annexe",
       "toute autre déclaration dénuée d'ambiguïté",
       "par courrier à 7 impasse des Bosquets, 34670 Baillargues, France",
-      "un accusé de réception de votre rétractation, qui reprend le contenu de votre déclaration ainsi que la date et l'heure de son envoi",
+      // Le fonctionnement de la fonction et de ses accusés de réception, mot pour mot (le lien coupe le texte visible).
+      "La fonction « Renoncer au contrat ici » se trouve à l'adresse https://www.missiongateau.com/renoncer ; son lien figure en bas de chaque page du site, sur la page de votre commande et dans l'e-mail de confirmation. Elle retrouve votre commande par sa référence, qui figure dans l'e-mail de confirmation (le lien de cet e-mail la remplit pour vous). Si aucune commande payée ne correspond à la référence indiquée, la page vous le dit aussitôt et votre déclaration n'est pas transmise : corrigez la référence, ou rétractez-vous par e-mail ou par courrier. Lorsque votre commande est retrouvée, nous vous adressons sans délai, par e-mail, un accusé de réception qui reprend le contenu de votre déclaration ainsi que la date et l'heure de son envoi ; pour une commande déjà rétractée, déjà téléchargée ou dont le délai a expiré, au-delà de trois accusés, les suivants s'affichent à l'écran sans être renvoyés par e-mail. Lorsque vous nous écrivez par e-mail ou par courrier, nous vous accusons réception de votre rétractation par e-mail, à l'adresse que vous nous indiquez ou, à défaut, à celle de votre commande.",
       "Nous vous remboursons la totalité du prix payé, sans frais, sans retard injustifié et au plus tard 14 jours",
       "par le même moyen de paiement que celui utilisé pour la commande",
       "le jeu n'est plus livré",
@@ -176,11 +194,16 @@ describe("conditions générales de vente", () => {
       "usage familial",
       "revente",
       "interdites",
-      "Version du 25 septembre 2026",
+      "Version du 27 septembre 2026",
       "La version que vous avez acceptée vous est envoyée en PDF avec l'e-mail de confirmation de votre commande",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
+    // Article 1 : l'adresse du site.
+    expect(texte).toContain("sous le nom commercial Mission Gâteau, sur le site https://www.missiongateau.com . Ces conditions");
+    expect(html).toContain('href="https://www.missiongateau.com"');
+    expect(html).toContain('href="https://www.missiongateau.com/renoncer"');
+    expect(texte).not.toContain("Dès que le paiement est confirmé");
     expect(html).toContain('href="/confidentialite"');
     expect(html).toContain('href="/renoncer"');
     // Plus aucune renonciation au moment du paiement.
@@ -229,12 +252,18 @@ describe("conditions générales de vente", () => {
     );
   });
 
-  it("décrivent la médiation, gratuite, avec ses conditions, une fois la convention signée", () => {
-    for (const morceau of MEDIATEUR) expect(texte).not.toContain(morceau);
-    const signee = espacesOrdinaires(texteVisible(rendre(conditionsGenerales(FICHE_COMPLETE, { prix: null }))));
-    for (const attendu of [...MEDIATEUR, "gratuitement", "réclamation écrite", "un an"]) {
-      expect(signee, attendu).toContain(attendu);
+  it("décrivent la médiation, gratuite, avec ses conditions et ses deux voies de saisine, la convention étant signée", () => {
+    for (const attendu of [
+      ...MEDIATEUR,
+      "La médiation est gratuite pour vous.",
+      "qu'après une réclamation écrite adressée au vendeur et restée sans solution, et au plus tard un an après cette réclamation (article L612-2 du Code de la consommation)",
+      "Vous pouvez saisir le médiateur en ligne, sur sa page de demande de médiation, www.mediateur-consommation-smp.fr/demander-une-mediation/ , ou par courrier à l'adresse ci-dessus.",
+    ]) {
+      expect(texte, attendu).toContain(attendu);
     }
+    expect(html).toContain(`href="${PAGE_DE_DEMANDE}"`);
+    const sans = espacesOrdinaires(texteVisible(rendre(conditionsGenerales(FICHE_SANS_CONVENTION, { prix: null }))));
+    for (const morceau of MEDIATEUR) expect(sans, morceau).not.toContain(morceau);
   });
 
   it("ne renvoient pas vers l'ancienne plateforme européenne de règlement en ligne des litiges", () => {
@@ -243,7 +272,7 @@ describe("conditions générales de vente", () => {
   });
 
   it("portent la version que Stripe garde avec chaque commande", () => {
-    expect(VERSION_CGV.identifiant).toBe("2026-09-25");
+    expect(VERSION_CGV.identifiant).toBe("2026-09-27");
     expect(texte).toContain(`version du ${VERSION_CGV.libelle}`);
   });
 });
@@ -264,12 +293,16 @@ describe("politique de confidentialité", () => {
       "Votre adresse e-mail, votre nom et votre adresse de facturation",
       "dix ans (article L123-22 du Code de commerce)",
       // Les copies des e-mails gardées par le vendeur.
-      "Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie comme preuve de leur envoi pendant cinq ans",
+      "Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie, hébergée par Google (voir « Destinataires »), comme preuve de leur envoi pendant cinq ans",
       "Votre déclaration de rétractation",
       "L'exécution du contrat (article 6, paragraphe 1, b du RGPD)",
       "L'obligation légale (article 6, paragraphe 1, c du RGPD)",
       "L'intérêt légitime du vendeur (article 6, paragraphe 1, f du RGPD)",
-      "Mise à jour le 25 septembre 2026",
+      "Mise à jour le 27 septembre 2026",
+      // La déclaration de rétractation : ce qui s'ajoute à la trace de la commande, et ce qui reste d'une déclaration non transmise.
+      "une empreinte de la déclaration qui l'a enregistrée",
+      "le nombre d'accusés de réception envoyés pour la commande",
+      "seules la référence et l'heure de votre demande restent dans le journal du serveur, que notre hébergeur garde une heure",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
@@ -288,8 +321,17 @@ describe("politique de confidentialité", () => {
       "votre adresse e-mail, leur contenu et les conditions générales de vente jointes à la confirmation",
       "Resend déclare stocker ces e-mails et leurs journaux d'envoi aux États-Unis, et les garder 30 jours",
       "Resend déclare s'appuyer sur les clauses contractuelles types de la Commission européenne et sur son adhésion au cadre de protection des données UE–États-Unis",
-      "mise à jour le 21 septembre 2026",
-      "mis à jour le 27 août 2026",
+      "page de Resend sur le RGPD , consultée le 26 septembre 2026",
+      "accord de traitement des données de Resend , mis à jour le 31 décembre 2025",
+      // Google, qui héberge la messagerie du vendeur, tel qu'il se déclare lui-même, sans accord de traitement avec le vendeur.
+      "Google (Gmail), qui héberge la messagerie du vendeur, un compte Gmail personnel : il reçoit et conserve les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez.",
+      "Google n'est lié au vendeur par aucun accord de traitement des données",
+      "Google Ireland Limited comme responsable du traitement pour les utilisateurs établis dans l'Espace économique européen",
+      "Google déclare disposer de serveurs dans le monde entier",
+      "par les décisions d'adéquation de la Commission européenne, par le cadre de protection des données UE–États-Unis, auquel Google LLC déclare adhérer, et par les clauses contractuelles types",
+      "en vigueur depuis le 2 avril 2026",
+      "en vigueur depuis le 23 août 2025",
+      "Aucune donnée n'est vendue, ni transmise à qui que ce soit d'autre.",
       "Vercel Inc.",
       "avis de confidentialité de Vercel",
       "en vigueur depuis le 1er juin 2026",
@@ -300,6 +342,9 @@ describe("politique de confidentialité", () => {
     expect(html).toContain('href="https://resend.com/security/gdpr"');
     expect(html).toContain('href="https://resend.com/legal/dpa"');
     expect(html).toContain('href="https://vercel.com/legal/privacy-notice"');
+    expect(html).toContain('href="https://policies.google.com/privacy?hl=fr"');
+    expect(html).toContain('href="https://policies.google.com/privacy/frameworks?hl=fr"');
+    expect(texte).not.toMatch(/21 septembre 2026|27 août 2026/);
     expect(html).not.toContain("vercel.com/legal/privacy-policy");
   });
 

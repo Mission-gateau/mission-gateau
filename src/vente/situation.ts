@@ -20,11 +20,19 @@ export type SituationCommande =
       destinataire: string | null;
       /** Hors production : l'adresse de test qui a reçu l'e-mail à la place de l'acheteur. */
       remplacement: { test: string; adresse: string } | null;
-      validite: string;
+      /** Fin de validité du lien de téléchargement, à Paris. */
+      validite: { date: string; heure: string };
       telechargement: { date: string; heure: string } | null;
       delai: { dernierJour: string; expire: boolean };
     }
-  | { type: "retractee"; date: string; heure: string; rembourse: boolean; montant: string }
+  | {
+      type: "retractee";
+      date: string;
+      heure: string;
+      /** Remboursé chez Stripe, pas encore, ou paiement contesté auprès de la banque. */
+      remboursement: "effectue" | "a_venir" | "litige";
+      montant: string;
+    }
   | { type: "refus"; etat: Refus };
 
 async function destinataireDeLaConfirmation(
@@ -33,7 +41,7 @@ async function destinataireDeLaConfirmation(
 ): Promise<string | null> {
   if (!deps.client) return etat.paiement.emailDuDebit;
   try {
-    return await emailDeLAcheteur(deps.client, etat.paiement, etat.session);
+    return await emailDeLAcheteur(deps.client, etat.paiement);
   } catch {
     return etat.paiement.emailDuDebit;
   }
@@ -55,7 +63,7 @@ export async function situationDeLaCommande(etat: EtatCommande, deps: Dependance
         type: "confirmee",
         destinataire: envoi ? adresseMasquee(envoi.adresse) : null,
         remplacement: acheteur ? remplacement(acheteur, deps.env, deps.fiche) : null,
-        validite: dateAParis(etat.expireLe),
+        validite: { date: dateAParis(etat.expireLe), heure: heureAParis(etat.expireLe) },
         telechargement: telechargement ? { date: dateAParis(telechargement), heure: heureAParis(telechargement) } : null,
         delai: { dernierJour: jourEnLettres(etat.delai.dernierJour), expire: etat.delai.expire },
       };
@@ -65,7 +73,7 @@ export async function situationDeLaCommande(etat: EtatCommande, deps: Dependance
         type: "retractee",
         date: dateAParis(etat.retracteeLe),
         heure: heureAParis(etat.retracteeLe),
-        rembourse: etat.rembourse,
+        remboursement: etat.rembourse ? "effectue" : etat.litige ? "litige" : "a_venir",
         montant: formaterPrix(etat.montant),
       };
     default:

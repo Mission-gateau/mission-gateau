@@ -2,6 +2,7 @@ import type { DocumentLegal } from "../document";
 import type { FicheVendeur } from "../vendeur";
 import * as du20260924 from "./2026-09-24";
 import * as du20260925 from "./2026-09-25";
+import * as du20260927 from "./2026-09-27";
 
 /**
  * Les versions publiées des conditions générales de vente.
@@ -51,7 +52,7 @@ function version(module: FichierDeVersion): VersionCgv {
   };
 }
 
-export const VERSIONS_CGV: readonly VersionCgv[] = [version(du20260924), version(du20260925)];
+export const VERSIONS_CGV: readonly VersionCgv[] = [version(du20260924), version(du20260925), version(du20260927)];
 
 /** La version en vigueur : celle que /cgv affiche et que les nouvelles commandes acceptent. */
 export const VERSION_EN_VIGUEUR: VersionCgv = VERSIONS_CGV.at(-1)!;

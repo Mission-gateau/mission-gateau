@@ -1,4 +1,5 @@
 import { dependancesReelles } from "@/vente/dependances";
+import { refusDeRequete } from "@/vente/garde";
 import { creerCommande, methodeRefusee } from "@/vente/serveur";
 
 /** Stripe et le chiffrement demandent Node : jamais Edge. */
@@ -10,8 +11,8 @@ export const dynamic = "force-dynamic";
  * l'adresse ; la route revérifie tout, puis renvoie l'adresse de la page de
  * paiement hébergée par Stripe. Tant que la vente est fermée : 503.
  */
-export function POST(requete: Request): Promise<Response> {
-  return creerCommande(requete, dependancesReelles());
+export async function POST(requete: Request): Promise<Response> {
+  return refusDeRequete(requete) ?? creerCommande(requete, dependancesReelles());
 }
 
 export function GET(): Response {

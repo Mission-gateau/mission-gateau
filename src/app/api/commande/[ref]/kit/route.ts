@@ -1,4 +1,5 @@
 import { dependancesReelles } from "@/vente/dependances";
+import { refusDeRequete } from "@/vente/garde";
 import { livrerKit, methodeRefusee } from "@/vente/serveur";
 
 /** Le rendu PDF lit des fichiers et utilise fontkit : runtime Node, jamais Edge. */
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
  * n'arrive que sur la page, qui ne génère rien.
  */
 export async function POST(requete: Request, contexte: { params: Promise<{ ref: string }> }): Promise<Response> {
+  const refus = refusDeRequete(requete);
+  if (refus) return refus;
   const { ref } = await contexte.params;
   return livrerKit(requete, ref, dependancesReelles());
 }

@@ -39,17 +39,21 @@ export const ACHAT = typographier({
     "Vous payez par carte bancaire, ou avec Apple Pay ou Google Pay si votre appareil le propose, sur la page sécurisée de Stripe, notre prestataire de paiement. Nous vous envoyons ensuite par e-mail la confirmation de votre commande, avec le lien de votre jeu et nos conditions générales de vente ; Stripe vous envoie de son côté votre facture et votre reçu.",
   nouvelOnglet: "(s'ouvre dans un nouvel onglet)",
 
+  /** Le bloc d'achat tient lieu de bon de commande : il nomme le médiateur et donne l'adresse de son site (article R616-1 du Code de la consommation). */
+  mediateur: "Médiateur de la consommation : {nom}, site ",
+
   erreurAccordCgv: "Merci d'accepter les conditions générales de vente.",
-  erreurAccordAcces:
-    "Merci de cocher la seconde case : sans votre demande de recevoir votre jeu dès le paiement, il ne peut pas vous être livré avant la fin du délai de rétractation.",
+  erreurAccordAcces: "Merci de cocher la seconde case : elle est nécessaire pour recevoir votre jeu dès le paiement.",
   erreurReseau: "La commande n'a pas pu être préparée. Vérifiez votre connexion et réessayez.",
 
   revoirApercu: "Revoir l'aperçu",
   apercuEnCours: "Préparation de l'aperçu…",
 } as const);
 
-/** Réponses de la route de commande, en cas de refus. */
+/** Réponses des routes de la vente et de l'aperçu, en cas de refus. */
 export const REPONSES_COMMANDE = typographier({
+  formatRefuse: "Cette adresse n'accepte que des données envoyées au format JSON.",
+  origineRefusee: "Cette demande ne peut venir que d'une page de Mission Gâteau : elle a été refusée.",
   venteFermee: "La vente du jeu complet n'est pas encore ouverte.",
   tropVolumineuse: "Requête trop volumineuse.",
   illisible: "Requête illisible.",
@@ -59,7 +63,7 @@ export const REPONSES_COMMANDE = typographier({
   kitImpossible: "Ce jeu n'a pas pu être préparé. Composez un nouvel aperçu, ou réessayez dans quelques minutes.",
   indisponible: "La commande est momentanément impossible. Réessayez dans quelques minutes.",
   stripe: "Le paiement n'a pas pu être préparé. Réessayez dans quelques minutes.",
-  methode: "Cette adresse attend un envoi de formulaire.",
+  methode: "Cette adresse attend une demande envoyée par une page du site.",
   enregistrementImpossible:
     "Votre téléchargement n'a pas pu être enregistré : le jeu ne vous est pas envoyé pour le moment. Réessayez dans quelques minutes.",
 } as const);
@@ -85,7 +89,8 @@ export const COMMANDE = typographier({
     apresTelechargement: "Premier téléchargement le {date} à {heure} : votre droit de rétractation a pris fin à ce moment.",
     bouton: "Télécharger mon jeu (PDF)",
     enCours: "Préparation de votre jeu…",
-    validite: "Ce lien reste valable jusqu'au {date}, soit 30 jours après le paiement : pensez à enregistrer le fichier.",
+    validite:
+      "Ce lien reste valable jusqu'au {date} à {heure} (heure de Paris), soit 30 jours après le paiement : pensez à enregistrer le fichier.",
     email: "Le lien de cette page figure dans votre e-mail de confirmation.",
     erreurReseau: "Le téléchargement n'a pas abouti. Vérifiez votre connexion et réessayez.",
   },
@@ -97,6 +102,8 @@ export const COMMANDE = typographier({
     enAttente: "Votre confirmation de commande est en cours d'envoi. Cette page se met à jour dans quelques instants.",
     echec:
       "Votre confirmation de commande n'a pas pu vous être envoyée par e-mail pour le moment : votre jeu vous sera proposé dès qu'elle sera partie. Réessayez plus tard en rechargeant cette page, ou écrivez-nous à {email}.",
+    /** L'e-mail est parti, mais sa marque n'a pas pu être posée chez Stripe. */
+    nonEnregistree: "Votre confirmation de commande est partie, mais n'a pas pu être enregistrée : rechargez cette page dans quelques minutes.",
     impossible:
       "Votre confirmation de commande ne peut pas être préparée. Écrivez-nous à {email} en indiquant la référence de la commande : nous vous répondons sous 7 jours au plus.",
     reessayer: "Réessayer",
@@ -124,6 +131,13 @@ export const COMMANDE = typographier({
     rembourse: "Remboursement : {montant} remboursés par Stripe sur la carte utilisée pour le paiement.",
     aRembourser:
       "Remboursement : pas encore effectué ; il vous sera versé sous 14 jours au plus après votre rétractation, sur la carte utilisée pour le paiement.",
+    litige:
+      "Le paiement de cette commande fait l'objet d'une contestation auprès de votre banque : le vendeur vous répond sous 7 jours au plus.",
+  },
+  aExaminer: {
+    titre: "Commande à examiner",
+    texte:
+      "Le premier téléchargement de votre jeu et une rétractation sont arrivés presque en même temps : le vendeur examine votre commande et vous répond sous 7 jours au plus. Pour toute question, écrivez-nous en indiquant la référence de la commande.",
   },
   litige: {
     titre: "Paiement contesté",

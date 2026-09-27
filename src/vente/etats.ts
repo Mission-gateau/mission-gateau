@@ -17,6 +17,7 @@ const TEXTES_REFUS: Record<Refus, { titre: string; texte: string }> = {
   expiree: COMMANDE.expiree,
   remboursee: COMMANDE.remboursee,
   retractee: COMMANDE.retractee,
+  a_examiner: COMMANDE.aExaminer,
   litige: COMMANDE.litige,
   non_confirmee: COMMANDE.nonConfirmee,
   autre_version: COMMANDE.autreVersion,

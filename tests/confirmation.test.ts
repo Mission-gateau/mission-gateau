@@ -14,6 +14,7 @@ vi.mock("@/vente/dependances", async (importOriginal) => {
 
 import { POST as commanderRoute } from "@/app/api/commande/route";
 import { GET as confirmationGet, POST as confirmationPost } from "@/app/api/commande/[ref]/confirmation/route";
+import { GET as tache } from "@/app/api/effacement/route";
 import { VERSION_EN_VIGUEUR, versionCgv } from "@/contenu/cgv";
 import { VENDEUR } from "@/contenu/vendeur";
 import { cleDeConfirmation } from "@/vente/confirmation";
@@ -24,8 +25,9 @@ import { FauxEmail, empreinteDe } from "./fauxEmail";
 import {
   CLE_REELLE,
   EMAIL_ACHETEUR,
-  FICHE_COMPLETE,
+  FICHE_SANS_CONVENTION,
   FauxStripe,
+  SECRET_TACHE,
   corpsDeCommande,
   dependances,
   environnement,
@@ -154,9 +156,9 @@ describe("envoi de la confirmation", () => {
 
   it("une nouvelle tentative envoie exactement la même requête, que Resend ne renvoie pas", async () => {
     const { reference, paiement } = await commandePayee();
-    // Le premier envoi part, mais son enregistrement chez Stripe échoue.
+    // Le premier envoi part, mais son enregistrement chez Stripe échoue : la page le dit à part.
     stripe.metadonneesEnPanne = true;
-    expect(await confirmer(reference)).toEqual({ statut: 503, etat: "echec" });
+    expect(await confirmer(reference)).toEqual({ statut: 503, etat: "non_enregistree" });
     expect(emails.envoyes).toHaveLength(1);
     expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).confirmation).toBeNull();
     // La tentative suivante : même requête, octet pour octet, même identifiant, aucun second e-mail.
@@ -223,10 +225,12 @@ describe("envoi de la confirmation", () => {
     expect(confirmationGet().status).toBe(405);
   });
 
-  it("trouve l'adresse de l'acheteur : session, sinon session retrouvée par le paiement, sinon débit", async () => {
+  it("trouve l'adresse de l'acheteur par un seul chemin : la session retrouvée par le paiement, sinon le débit", async () => {
+    // Même au retour de Stripe, avec la session en main, l'adresse vient de la session retrouvée par le paiement.
     const avecSession = await commandePayee({ email: "session@exemple.fr", emailDuDebit: "debit@exemple.fr" });
     await confirmer(avecSession.reference, { session_id: avecSession.sessionId });
     expect(emails.envoyes.at(-1)!.message.a).toEqual(["session@exemple.fr"]);
+    expect(stripe.sessionsCherchees).toContain(avecSession.paiement.id);
 
     const sansSession = await commandePayee({ email: "retrouvee@exemple.fr", emailDuDebit: "debit@exemple.fr" });
     await confirmer(sansSession.reference);
@@ -239,6 +243,24 @@ describe("envoi de la confirmation", () => {
 
     const aucune = await commandePayee({ email: null, emailDuDebit: null });
     expect(await confirmer(aucune.reference)).toEqual({ statut: 500, etat: "impossible" });
+  });
+
+  it("la page et la tâche quotidienne envoient exactement la même requête : Resend ne renvoie pas l'e-mail", async () => {
+    const { reference, sessionId, paiement } = await commandePayee();
+    // La page, au retour de Stripe : l'e-mail part, mais sa marque n'est pas posée.
+    stripe.metadonneesEnPanne = true;
+    expect(await confirmer(reference, { session_id: sessionId })).toEqual({ statut: 503, etat: "non_enregistree" });
+    stripe.metadonneesEnPanne = false;
+    // Deux heures plus tard, la tâche quotidienne reprend la même commande.
+    horloge = new Date(PAYEE_LE.getTime() + 2 * 3600_000);
+    injection.deps = deps({ env: { ...PRODUCTION, secretTache: SECRET_TACHE } });
+    const reponse = await tache(new Request("http://localhost/api/effacement", { headers: { Authorization: `Bearer ${SECRET_TACHE}` } }));
+    expect(reponse.status).toBe(200);
+    expect(emails.appels).toHaveLength(2);
+    expect(empreinteDe(emails.appels[1]!.message)).toBe(empreinteDe(emails.appels[0]!.message));
+    expect(emails.appels[1]!.cle).toBe(emails.appels[0]!.cle);
+    expect(emails.envoyes).toHaveLength(1);
+    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).confirmation).not.toBeNull();
   });
 
   it("hors production, n'écrit qu'aux adresses de test de Resend et au vendeur", async () => {
@@ -269,7 +291,7 @@ describe("contenu de la confirmation", () => {
   async function confirmation(options: { fiche?: typeof VENDEUR } = {}) {
     // Convention non signée : la vente n'est ouverte qu'à l'essai, hors production.
     if (options.fiche) {
-      injection.deps = deps({ fiche: options.fiche, ...(options.fiche === VENDEUR ? { env: environnement() } : {}) });
+      injection.deps = deps({ fiche: options.fiche, ...(options.fiche === FICHE_SANS_CONVENTION ? { env: environnement() } : {}) });
     }
     const reglee = await commandePayee();
     await confirmer(reglee.reference, { session_id: reglee.sessionId });
@@ -310,7 +332,9 @@ describe("contenu de la confirmation", () => {
     expect(texte).toContain(
       `Votre jeu se télécharge sur la page de votre commande, par son bouton « Télécharger mon jeu (PDF) » :\n\nhttps://mission-gateau.vercel.app/commande/${reference}\n`,
     );
-    expect(texte).toContain("Ce lien reste valable 30 jours après le paiement, jusqu'au 24 octobre 2026 : pensez à enregistrer le fichier.");
+    expect(texte).toContain(
+      "Ce lien reste valable 30 jours après le paiement, jusqu'au 24 octobre 2026 à 12 h 17 (heure de Paris) : pensez à enregistrer le fichier.",
+    );
   });
 
   it("3. l'accord, mot pour mot, avec la date et l'heure lues dans les métadonnées", async () => {
@@ -349,7 +373,7 @@ describe("contenu de la confirmation", () => {
   });
 
   it("6. le vendeur, le service client, la garantie légale avec renvoi à l'article des CGV, et le médiateur seulement une fois la convention signée", async () => {
-    const sansConvention = texteDe((await confirmation({ fiche: VENDEUR })).message);
+    const sansConvention = texteDe((await confirmation({ fiche: FICHE_SANS_CONVENTION })).message);
     for (const attendu of [
       "Vendeur : Quentin Courtois EI, entrepreneur individuel",
       "Nom commercial : Mission Gâteau",
@@ -363,9 +387,13 @@ describe("contenu de la confirmation", () => {
       expect(sansConvention, attendu).toContain(attendu);
     }
     expect(sansConvention).not.toMatch(/Médiat|Alteritae|mediateur-consommation-smp/);
-    const avecConvention = texteDe((await confirmation({ fiche: FICHE_COMPLETE })).message);
+    // La convention signée le 25 septembre 2026 : la fiche réelle cite le médiateur, et comment le saisir.
+    const avecConvention = texteDe((await confirmation({ fiche: VENDEUR })).message);
     expect(avecConvention).toContain(
       "Médiateur de la consommation dont relève le vendeur : Société Médiation Professionnelle, Alteritae, 5 rue Salvaing, 12000 Rodez, https://www.mediateur-consommation-smp.fr.",
+    );
+    expect(avecConvention).toContain(
+      "La médiation est gratuite pour vous. Elle suppose une réclamation écrite adressée d'abord au vendeur et restée sans solution, puis une saisine du médiateur dans l'année qui suit cette réclamation (article L612-2 du Code de la consommation) : en ligne, sur https://www.mediateur-consommation-smp.fr/demander-une-mediation/, ou par courrier à l'adresse ci-dessus.",
     );
   });
 
@@ -377,14 +405,15 @@ describe("contenu de la confirmation", () => {
       expect(message.piecesJointes).toHaveLength(1);
       expect(message.piecesJointes[0]!.nom).toBe(nom);
       expect(message.piecesJointes[0]!.type).toBe("application/pdf");
-      expect(texteDe(message)).toContain(`Pièce jointe : nos conditions générales de vente, version du 25 septembre 2026 (fichier ${nom}).`);
+      expect(texteDe(message)).toContain(`Pièce jointe : nos conditions générales de vente, version du 27 septembre 2026 (fichier ${nom}).`);
       expect(texteDe(message)).toContain("Nos conditions générales de vente, dans la version que vous avez acceptée, y sont jointes en PDF.");
     }
     const [a, b] = [premiere, seconde].map(({ message }) => message.piecesJointes[0]!.contenu);
     expect(Buffer.compare(a!, b!)).toBe(0);
     const pdf = texteDuPdf(a!).replace(/[  ]/g, " ");
-    expect(pdf).toContain("Version du 25 septembre 2026");
+    expect(pdf).toContain("Version du 27 septembre 2026");
     expect(pdf).toContain("Le jeu complet coûte 12,90 €");
+    expect(pdf).toContain("11. Médiation de la consommation");
     expect(pdf).toContain("8. Droit de rétractation");
     expect(pdf).toContain("MODÈLE DE FORMULAIRE DE RÉTRACTATION");
     expect(a!.toString("latin1")).not.toMatch(/Helvetica/);

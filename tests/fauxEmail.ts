@@ -48,6 +48,11 @@ export class FauxEmail implements ClientEmail {
     }
   }
 
+  /** Resend oublie les clés d'idempotence au bout de 24 heures. */
+  oublierLesCles(): void {
+    this.parCle.clear();
+  }
+
   /** Les e-mails partis vers une adresse (destinataire ou copie cachée). */
   envoyesA(adresse: string): { message: MessageEmail; cle: string; id: string }[] {
     const forme = adresse.toLowerCase();

@@ -10,6 +10,17 @@ import { OublierSauvegarde, Telechargement } from "./Telechargement";
 const CLASSE_LIEN = "font-bold underline underline-offset-4 hover:text-accent";
 
 /**
+ * Le lien « Renoncer au contrat ici » d'une commande : la référence et, quand
+ * la page l'a (retour de Stripe), la session, qui retrouve un paiement que la
+ * recherche de Stripe ne connaît pas encore.
+ */
+export function lienDeRetractation(reference: string, sessionId: string | null): string {
+  const parametres = new URLSearchParams({ ref: reference });
+  if (sessionId) parametres.set("session_id", sessionId);
+  return `/renoncer?${parametres.toString()}`;
+}
+
+/**
  * La page d'une commande, un message par cas. Elle ne reçoit que ce qu'il
  * faut afficher, préparé côté serveur (voir src/vente/situation.ts) : jamais
  * la configuration déchiffrée, qui ne doit pas quitter le serveur.
@@ -49,9 +60,11 @@ export function VueCommande({
           <ul className="mt-4 space-y-2 leading-relaxed">
             <li>{remplir(COMMANDE.retractee.le, { date: situation.date, heure: situation.heure })}</li>
             <li>
-              {situation.rembourse
+              {situation.remboursement === "effectue"
                 ? remplir(COMMANDE.retractee.rembourse, { montant: situation.montant })
-                : COMMANDE.retractee.aRembourser}
+                : situation.remboursement === "litige"
+                  ? COMMANDE.retractee.litige
+                  : COMMANDE.retractee.aRembourser}
             </li>
           </ul>
           <p className="mt-6 text-sm leading-relaxed">{serviceClient}</p>
@@ -106,7 +119,7 @@ function JeuPret({
         ) : (
           <>
             {COMMANDE.payee.avantTelechargement}{" "}
-            <Link href={`/renoncer?ref=${encodeURIComponent(reference)}`} className={CLASSE_LIEN}>
+            <Link href={lienDeRetractation(reference, sessionId)} className={CLASSE_LIEN}>
               {COMMANDE.lienRenoncer}
             </Link>
           </>
@@ -114,7 +127,7 @@ function JeuPret({
       </p>
       <Telechargement reference={reference} sessionId={sessionId} />
       <ul className="mt-8 space-y-2 text-sm leading-relaxed">
-        <li>{remplir(COMMANDE.payee.validite, { date: situation.validite })}</li>
+        <li>{remplir(COMMANDE.payee.validite, situation.validite)}</li>
         <li>{COMMANDE.payee.email}</li>
         <li>{serviceClient}</li>
       </ul>

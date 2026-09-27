@@ -30,11 +30,14 @@ import { lienDeCommande, lienDeRenonciation } from "./session";
 /**
  * `confirmee` : l'e-mail est parti et la marque est enregistrée ;
  * `en_cours` : un autre envoi de la même confirmation est en cours ;
- * `echec` : l'envoi a échoué, ou n'a pas pu être enregistré — à réessayer ;
+ * `echec` : l'envoi a échoué — à réessayer ;
+ * `non_enregistree` : l'e-mail est parti, mais sa marque n'a pas pu être
+ * posée chez Stripe — une nouvelle tentative renvoie la même requête, que
+ * Resend ne renvoie pas, puis pose la marque ;
  * `impossible` : la confirmation ne peut pas être préparée (version des CGV
  * inconnue, e-mail de l'acheteur introuvable).
  */
-export type IssueConfirmation = "confirmee" | "en_cours" | "echec" | "impossible";
+export type IssueConfirmation = "confirmee" | "en_cours" | "echec" | "non_enregistree" | "impossible";
 
 export function cleDeConfirmation(reference: string): string {
   return `confirmation-${reference}`;
@@ -72,7 +75,7 @@ export async function envoyerLaConfirmation(
 
   let acheteur: string | null;
   try {
-    acheteur = await emailDeLAcheteur(client, commande.paiement, commande.session);
+    acheteur = await emailDeLAcheteur(client, commande.paiement);
   } catch {
     evenement("stripe_indisponible");
     return "echec";
@@ -140,7 +143,7 @@ export async function envoyerLaConfirmation(
     });
   } catch {
     evenement("enregistrement_impossible");
-    return "echec";
+    return "non_enregistree";
   }
   evenement("confirmation_envoyee");
   return "confirmee";

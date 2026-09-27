@@ -40,6 +40,10 @@ export const LISTE_BLANCHE = new Set(
     // Le prestataire d'envoi des e-mails, Resend, et la société qui l'exploite
     // (Plus Five Five, Inc.), cités dans la politique de confidentialité.
     "Resend", "Five",
+    // La messagerie du vendeur, Gmail, et la société que Google désigne comme
+    // responsable du traitement dans l'Union (Google Ireland Limited), citées
+    // dans la politique de confidentialité.
+    "Gmail", "Ireland",
     // Sigles juridiques : entrepreneur individuel, Code général des impôts,
     // registre du commerce, règlement général sur la protection des données.
     "EI", "CGI", "RCS", "RGPD",

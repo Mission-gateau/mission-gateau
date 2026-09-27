@@ -5,6 +5,8 @@ import { metadonneesDuPaiement } from "@/vente/metadonnees";
 import { parametresDeSession } from "@/vente/session";
 import {
   creerClientStripe,
+  erreurDIdempotence,
+  limiteDeDebit,
   requeteConfigurationsAvant,
   requeteParReference,
   requetePaiementsAboutisDepuis,
@@ -22,7 +24,7 @@ interface RequeteVue {
   corps: string;
 }
 
-function reseau(repondre: (requete: RequeteVue) => { statut?: number; json: unknown }) {
+function reseau(repondre: (requete: RequeteVue) => { statut?: number; json: unknown; entetes?: Record<string, string> }) {
   const vues: RequeteVue[] = [];
   const faux = async (entree: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const requete: RequeteVue = {
@@ -32,10 +34,10 @@ function reseau(repondre: (requete: RequeteVue) => { statut?: number; json: unkn
       corps: typeof init?.body === "string" ? init.body : "",
     };
     vues.push(requete);
-    const { statut = 200, json } = repondre(requete);
+    const { statut = 200, json, entetes = {} } = repondre(requete);
     return new Response(JSON.stringify(json), {
       status: statut,
-      headers: { "Content-Type": "application/json", "Request-Id": "req_faux" },
+      headers: { "Content-Type": "application/json", "Request-Id": "req_faux", ...entetes },
     });
   };
   const client = creerClientStripe(environnement(), { httpClient: Stripe.createFetchHttpClient(faux as typeof fetch) });
@@ -247,7 +249,7 @@ describe("client Stripe réel", () => {
     expect(vues[0]!.url.searchParams.get("limit")).toBe("1");
   });
 
-  it("cherche les paiements aboutis depuis une date, page après page", async () => {
+  it("cherche les paiements aboutis de cette boutique depuis une date, page après page", async () => {
     const { client, vues } = reseau(() => ({
       json: { object: "search_result", data: [paiement("succeeded", REFERENCE)], has_more: false, next_page: null },
     }));
@@ -255,9 +257,13 @@ describe("client Stripe réel", () => {
     expect(paiements).toHaveLength(1);
     expect(pageSuivante).toBeNull();
     expect(vues[0]!.url.pathname).toBe("/v1/payment_intents/search");
-    expect(vues[0]!.url.searchParams.get("query")).toBe('status:"succeeded" AND created>1786000000');
+    expect(vues[0]!.url.searchParams.get("query")).toBe(
+      'status:"succeeded" AND created>1786000000 AND metadata["boutique"]:"mission-gateau"',
+    );
     expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge"]);
-    expect(requetePaiementsAboutisDepuis(1786000000.7)).toBe('status:"succeeded" AND created>1786000000');
+    expect(requetePaiementsAboutisDepuis(1786000000.7)).toBe(
+      'status:"succeeded" AND created>1786000000 AND metadata["boutique"]:"mission-gateau"',
+    );
   });
 
   it("rembourse la totalité du paiement, motif « requested_by_customer », avec sa clé d'idempotence", async () => {
@@ -347,6 +353,62 @@ describe("client Stripe réel", () => {
     expect(champs.get("metadata[config]")).toBe("effacee");
     expect(champs.get("metadata[config_0]")).toBe("");
     expect(champs.get("metadata[config_morceaux]")).toBe("");
+  });
+
+  it("rend le paiement tel que Stripe le renvoie en réponse à une écriture, débit compris", async () => {
+    const ecrit = { ...paiement("succeeded", REFERENCE), metadata: { ref: REFERENCE, retractation: "2026-09-26T08:30:00.000Z", telechargement: "2026-09-26T08:29:59.000Z" } };
+    const { client, vues } = reseau(() => ({ json: ecrit }));
+    const lu = await client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:00.000Z" });
+    // Le débit est développé dans la même requête : un seul aller-retour.
+    expect(vues).toHaveLength(1);
+    expect(new URLSearchParams(vues[0]!.corps).getAll("expand[0]")).toEqual(["latest_charge"]);
+    expect(lu).toMatchObject({
+      id: "pi_AbCdEf",
+      statut: "succeeded",
+      payeLe: 1790003600,
+      metadonnees: { ref: REFERENCE, retractation: "2026-09-26T08:30:00.000Z", telechargement: "2026-09-26T08:29:59.000Z" },
+    });
+  });
+
+  it("écrit une marque sous sa clé d'idempotence, et reconnaît les refus de Stripe pour une clé déjà prise", async () => {
+    const cle = `marque-retractation-${REFERENCE}-1`;
+    const { client, vues } = reseau(() => ({ json: paiement("succeeded", REFERENCE) }));
+    await client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:00.000Z" }, cle);
+    expect(vues[0]!.entetes.get("idempotency-key")).toBe(cle);
+
+    // Même clé, autres paramètres : Stripe refuse (400, « idempotency_error »).
+    const refus = reseau(() => ({
+      statut: 400,
+      json: { error: { type: "idempotency_error", message: "Keys for idempotent requests can only be used with the same parameters they were first used with." } },
+    }));
+    const dejaUtilisee = await refus.client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:01.000Z" }, cle).catch((e: unknown) => e);
+    expect(erreurDIdempotence(dejaUtilisee)).toBe("deja_utilisee");
+    expect(refus.vues).toHaveLength(1);
+
+    // Une autre requête de même clé s'exécute encore : 409 (sans nouvel essai ici, Stripe le déconseille par son en-tête).
+    const conflit = reseau(() => ({
+      statut: 409,
+      json: { error: { type: "idempotency_error", message: "There is currently another in-progress request using this idempotent key." } },
+      entetes: { "Stripe-Should-Retry": "false" },
+    }));
+    const enCours = await conflit.client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:01.000Z" }, cle).catch((e: unknown) => e);
+    expect(erreurDIdempotence(enCours)).toBe("en_cours");
+
+    // Toute autre erreur n'a rien à voir avec la clé.
+    expect(erreurDIdempotence(Object.assign(new Error("x"), { type: "StripeAPIError", statusCode: 500 }))).toBeNull();
+    expect(erreurDIdempotence(Object.assign(new Error("x"), { type: "StripeConnectionError" }))).toBeNull();
+    expect(erreurDIdempotence(null)).toBeNull();
+  });
+
+  it("reconnaît la limitation de débit de Stripe", async () => {
+    const { client } = reseau(() => ({
+      statut: 429,
+      json: { error: { type: "invalid_request_error", code: "rate_limit", message: "Too many requests" } },
+    }));
+    const erreur = await client.paiementParReference(REFERENCE).catch((e: unknown) => e);
+    expect(limiteDeDebit(erreur)).toBe(true);
+    expect(limiteDeDebit(Object.assign(new Error("x"), { type: "StripeConnectionError" }))).toBe(false);
+    expect(limiteDeDebit(null)).toBe(false);
   });
 
   it("forme des requêtes de recherche sans surprise", () => {
