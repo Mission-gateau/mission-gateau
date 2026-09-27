@@ -149,6 +149,7 @@ export function FormulaireRetractation({
 
   const recommencer = () => {
     setReponse(null);
+    setProbleme(null);
     setErreurs([]);
     setSaisie({ nom: "", prenom: "", reference: "", email: "" });
     setEtape("saisie");
@@ -156,6 +157,7 @@ export function FormulaireRetractation({
 
   const corriger = () => {
     setReponse(null);
+    setProbleme(null);
     setEtape("saisie");
   };
 
@@ -166,6 +168,7 @@ export function FormulaireRetractation({
           reponse={reponse}
           vendeur={vendeur}
           envoi={envoi}
+          probleme={probleme}
           titre={titre}
           renvoyer={() => void confirmer()}
           corriger={corriger}
@@ -305,11 +308,21 @@ function TitreDEtape({ cible, children }: { cible: React.Ref<HTMLHeadingElement>
   );
 }
 
+/** Un nouvel envoi (« Réessayer », « Renvoyer ») qui n'a pas abouti : dit sous son bouton, et annoncé. */
+function ProblemeDEnvoi({ probleme }: { probleme: string | null }) {
+  return probleme ? (
+    <p role="alert" className="mt-3 rounded-xl border-2 border-brique bg-white p-4 font-bold text-brique">
+      {probleme}
+    </p>
+  ) : null;
+}
+
 /** Ce que la page dit une fois la déclaration envoyée : elle ne dit jamais qu'un accusé est parti quand il n'est pas parti. */
 function Resultat({
   reponse,
   vendeur,
   envoi,
+  probleme,
   titre,
   renvoyer,
   corriger,
@@ -317,6 +330,8 @@ function Resultat({
   reponse: Reponse;
   vendeur: { email: string; adresse: string };
   envoi: boolean;
+  /** L'échec du dernier nouvel envoi, s'il y en a un. */
+  probleme: string | null;
   titre: React.RefObject<HTMLHeadingElement | null>;
   renvoyer: () => void;
   corriger: () => void;
@@ -354,6 +369,7 @@ function Resultat({
               </button>
             )}
           </p>
+          <ProblemeDEnvoi probleme={probleme} />
         </>
       );
     }
@@ -376,6 +392,7 @@ function Resultat({
               {RETRACTATION.reessayer}
             </button>
           </p>
+          <ProblemeDEnvoi probleme={probleme} />
         </>
       );
     case "accuse": {
@@ -388,12 +405,14 @@ function Resultat({
           {envoiAccuse.etat === "envoye" ? (
             <>
               <p className="mt-3 leading-relaxed">{remplir(RETRACTATION.accuseEnvoye, { adresse: envoiAccuse.adresse })}</p>
-              <p className="mt-2 leading-relaxed">{RETRACTATION.copie}</p>
+              {/* Hors production, la copie part elle aussi à l'adresse de test : la page ne l'annonce pas. */}
               {envoiAccuse.remplacee ? (
                 <p className="mt-2 rounded-xl border border-bordure bg-white px-4 py-2 text-sm leading-relaxed">
                   {remplir(RETRACTATION.essai, { test: envoiAccuse.adresse, adresse: envoiAccuse.saisie })}
                 </p>
-              ) : null}
+              ) : (
+                <p className="mt-2 leading-relaxed">{RETRACTATION.copie}</p>
+              )}
             </>
           ) : envoiAccuse.etat === "plafond" ? (
             <p className="mt-3 rounded-xl border border-bordure bg-white p-4 leading-relaxed">
@@ -405,6 +424,7 @@ function Resultat({
               <button type="button" disabled={envoi} onClick={renvoyer} className={`mt-3 ${CLASSE_BOUTON_SECONDAIRE}`}>
                 {envoi ? RETRACTATION.renvoiEnCours : RETRACTATION.renvoyer}
               </button>
+              <ProblemeDEnvoi probleme={probleme} />
               <p className="mt-3 text-sm leading-relaxed">{remplir(RETRACTATION.accuseEchecSuite, vendeur)}</p>
             </div>
           )}

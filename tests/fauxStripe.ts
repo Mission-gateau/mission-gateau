@@ -15,14 +15,22 @@ import { configuration } from "./aide";
  * session, comme chez Stripe. `rembourser()` suit les règles de Stripe : une
  * même clé d'idempotence rend le même remboursement, et un paiement n'est
  * jamais remboursé au-delà de son montant. `modifierMetadonnees()` rend,
- * comme Stripe, le paiement à jour, écritures précédentes comprises.
+ * comme Stripe, le paiement à jour, écritures précédentes comprises ; avec
+ * une clé d'idempotence, elle suit aussi les règles de Stripe : la première
+ * requête de chaque clé s'exécute et sa réponse est gardée, échec compris ;
+ * la même requête reçoit ensuite la même réponse, sans rien exécuter ; une
+ * requête aux paramètres différents est refusée (400, « idempotency_error ») ;
+ * une clé déclarée en cours répond 409.
  */
 export class FauxStripe implements ClientStripe {
   readonly sessionsCreees: { parametres: ParametresSession; cleIdempotence: string }[] = [];
   readonly sessionsLues: string[] = [];
   readonly recherchesParReference: string[] = [];
   readonly recherchesAEffacer: { avant: number; page: string | null }[] = [];
+  /** Les écritures de métadonnées réellement exécutées (une requête rejouée par sa clé n'y figure pas). */
   readonly modifications: { id: string; metadonnees: Record<string, string> }[] = [];
+  /** Chaque demande d'écriture de métadonnées, avec sa clé d'idempotence, telle que le site l'envoie. */
+  readonly demandesDeModification: { id: string; metadonnees: Record<string, string>; cle: string | null }[] = [];
   readonly modificationsDeDebits: { id: string; metadonnees: Record<string, string> }[] = [];
   readonly recherchesDeDebits: { avant: number; page: string | null }[] = [];
   readonly recherchesAbouties: { depuis: number; page: string | null }[] = [];
@@ -59,6 +67,10 @@ export class FauxStripe implements ClientStripe {
   debitLimite = false;
   /** Écritures qui échouent quand elles portent l'une de ces clés (par exemple `course`). */
   readonly clesEnPanne = new Set<string>();
+  /** Clés d'idempotence dont une requête s'exécute encore chez Stripe : toute autre requête de même clé reçoit 409. */
+  readonly clesDIdempotenceEnCours = new Set<string>();
+  /** Réponses gardées par clé d'idempotence : les paramètres de la première requête, et sa réponse ou son erreur. */
+  private readonly reponsesParCle = new Map<string, { parametres: string; reponse?: PaiementLu; erreur?: unknown }>();
   private compteur = 0;
 
   private panne(): void {
@@ -175,18 +187,57 @@ export class FauxStripe implements ClientStripe {
     };
   }
 
-  async modifierMetadonnees(id: string, metadonnees: Record<string, string>): Promise<PaiementLu> {
+  async modifierMetadonnees(id: string, metadonnees: Record<string, string>, cleIdempotence?: string): Promise<PaiementLu> {
     this.panne();
-    if (this.metadonneesEnPanne || Object.keys(metadonnees).some((cle) => this.clesEnPanne.has(cle))) {
-      throw Object.assign(new Error("panne simulée"), { type: "StripeAPIError" });
+    this.demandesDeModification.push({ id, metadonnees: { ...metadonnees }, cle: cleIdempotence ?? null });
+    if (!cleIdempotence) return this.executerModification(id, metadonnees);
+    if (this.clesDIdempotenceEnCours.has(cleIdempotence)) {
+      throw Object.assign(new Error("requête concurrente de même clé"), {
+        type: "StripeIdempotencyError",
+        rawType: "idempotency_error",
+        statusCode: 409,
+      });
     }
-    this.modifications.push({ id, metadonnees: { ...metadonnees } });
+    const parametres = JSON.stringify([id, metadonnees]);
+    const gardee = this.reponsesParCle.get(cleIdempotence);
+    if (gardee) {
+      if (gardee.parametres !== parametres) {
+        throw Object.assign(new Error("clé déjà utilisée avec d'autres paramètres"), {
+          type: "StripeIdempotencyError",
+          rawType: "idempotency_error",
+          statusCode: 400,
+        });
+      }
+      if (gardee.reponse) return structuredClone(gardee.reponse);
+      throw gardee.erreur;
+    }
+    try {
+      const reponse = this.executerModification(id, metadonnees);
+      this.reponsesParCle.set(cleIdempotence, { parametres, reponse: structuredClone(reponse) });
+      return reponse;
+    } catch (erreur) {
+      // Comme chez Stripe : l'échec d'une requête exécutée est gardé, lui aussi.
+      this.reponsesParCle.set(cleIdempotence, { parametres, erreur });
+      throw erreur;
+    }
+  }
+
+  private executerModification(id: string, metadonnees: Record<string, string>): PaiementLu {
+    if (this.metadonneesEnPanne || Object.keys(metadonnees).some((cle) => this.clesEnPanne.has(cle))) {
+      throw Object.assign(new Error("panne simulée"), { type: "StripeAPIError", statusCode: 500 });
+    }
     const paiement = this.paiements.get(id);
-    if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing" });
+    if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing", statusCode: 404 });
+    this.modifications.push({ id, metadonnees: { ...metadonnees } });
     appliquer(paiement.metadonnees, metadonnees);
     // Comme chez Stripe : la mise à jour du paiement ne touche pas ses débits,
     // et la réponse est le paiement à jour.
     return structuredClone(paiement);
+  }
+
+  /** Stripe oublie les clés d'idempotence au bout de 24 heures. */
+  oublierLesClesDIdempotence(): void {
+    this.reponsesParCle.clear();
   }
 
   async modifierMetadonneesDuDebit(id: string, metadonnees: Record<string, string>): Promise<void> {

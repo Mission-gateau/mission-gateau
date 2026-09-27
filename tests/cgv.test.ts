@@ -32,7 +32,7 @@ import { FORMULAIRE_OFFICIEL } from "./officiels";
 const EMPREINTES: Record<string, string> = {
   "2026-09-24": "290562b5e237af72e0e276cd1390ba1c4184f9dd64a90f2d1169704f9c8cf9d1",
   "2026-09-25": "cce01811edbe4be5ea9f823f9b0508fb8c8d51f53df160dddf01fb8dba6cb307",
-  "2026-09-26": "46d850a4d8db1cf594bcdd9e91f439002253e8dba7b46f8988494676c46ce3d8",
+  "2026-09-27": "c634d7ca4ee93008f724670f583bec80a40577914964b9151aa8d8b874348853",
 };
 
 /**
@@ -47,15 +47,15 @@ const FICHIERS_PUBLIES: Record<string, string> = {
 
 describe("versions des CGV", () => {
   it("gardent chaque version publiée, dans l'ordre, la dernière en vigueur", () => {
-    expect(VERSIONS_CGV.map((v) => v.identifiant)).toEqual(["2026-09-24", "2026-09-25", "2026-09-26"]);
-    expect(VERSION_EN_VIGUEUR.identifiant).toBe("2026-09-26");
-    expect(VERSION_CGV).toEqual({ identifiant: "2026-09-26", libelle: "26 septembre 2026" });
+    expect(VERSIONS_CGV.map((v) => v.identifiant)).toEqual(["2026-09-24", "2026-09-25", "2026-09-27"]);
+    expect(VERSION_EN_VIGUEUR.identifiant).toBe("2026-09-27");
+    expect(VERSION_CGV).toEqual({ identifiant: "2026-09-27", libelle: "27 septembre 2026" });
     expect(versionCgv("2026-09-24")?.libelle).toBe("24 septembre 2026");
     expect(versionCgv("2026-09-25")?.libelle).toBe("25 septembre 2026");
     expect(versionCgv("2026-09-23")).toBeNull();
     expect(versionCgv("")).toBeNull();
     // La page /cgv affiche la version en vigueur.
-    expect(conditionsGenerales(VENDEUR, { prix: null }).date).toBe("Version du 26 septembre 2026");
+    expect(conditionsGenerales(VENDEUR, { prix: null }).date).toBe("Version du 27 septembre 2026");
   });
 
   it("ne modifient jamais une version publiée", () => {
@@ -119,7 +119,7 @@ describe("PDF des CGV", () => {
   }
 
   it("est identique octet pour octet d'un rendu à l'autre, même après des kits aux capitales accentuées", async () => {
-    const avant = await rendu("2026-09-26");
+    const avant = await rendu("2026-09-27");
     const autre = await rendu("2026-09-24");
     enregistrerPolices();
     // Des kits dont le texte fait créer à fontkit des glyphes « composants » (É, À, Ç…).
@@ -128,14 +128,14 @@ describe("PDF des CGV", () => {
         documentKit(construireKit(configuration({ age, prenom: "Élodie", fete: { invites: ["Àlan", "Çali", "Ève"] } }), "cgvdeterm")),
       );
     }
-    expect(Buffer.compare(await rendu("2026-09-26"), avant)).toBe(0);
+    expect(Buffer.compare(await rendu("2026-09-27"), avant)).toBe(0);
     expect(Buffer.compare(await rendu("2026-09-24"), autre)).toBe(0);
     // Le producteur du PDF joint : même mécanisme, mis en cache.
-    expect(Buffer.compare(await pdfDesCgv(versionCgv("2026-09-26")!, VENDEUR, "12,90 €"), avant)).toBe(0);
+    expect(Buffer.compare(await pdfDesCgv(versionCgv("2026-09-27")!, VENDEUR, "12,90 €"), avant)).toBe(0);
   });
 
   it("n'emploie que les polices du dépôt, incorporées, sans glyphe privé de caractère", async () => {
-    const pdf = await rendu("2026-09-26");
+    const pdf = await rendu("2026-09-27");
     const polices = policesDuPdf(pdf);
     expect(polices.length).toBeGreaterThan(0);
     for (const police of polices) {
@@ -147,14 +147,14 @@ describe("PDF des CGV", () => {
   });
 
   it("porte la date de création de sa version, le prix, l'article 8, le médiateur et le formulaire type en annexe", async () => {
-    const pdf = await rendu("2026-09-26");
-    // La date de création est écrite dans son propre objet : « (D:20260926000000Z) ».
+    const pdf = await rendu("2026-09-27");
+    // La date de création est écrite dans son propre objet : « (D:20260927000000Z) ».
     expect(pdf.toString("latin1")).toMatch(/\/CreationDate \d+ 0 R/);
-    expect(pdf.toString("latin1")).toContain("(D:20260926000000Z)");
+    expect(pdf.toString("latin1")).toContain("(D:20260927000000Z)");
     const texte = texteDuPdf(pdf).replace(/[  ]/g, " ");
     for (const attendu of [
       "Conditions générales de vente",
-      "Version du 26 septembre 2026",
+      "Version du 27 septembre 2026",
       "https://www.missiongateau.com",
       "https://www.missiongateau.com/renoncer",
       "11. Médiation de la consommation",

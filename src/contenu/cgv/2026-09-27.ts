@@ -6,7 +6,7 @@ import { ENCADRE_GARANTIE } from "../garantie";
 import type { FicheVendeur } from "../vendeur";
 
 /**
- * Conditions générales de vente, version du 26 septembre 2026 (lot 6).
+ * Conditions générales de vente, version du 27 septembre 2026 (lot 6).
  *
  * Par rapport à la version du 25 septembre : l'adresse du site (article 1) ;
  * la confirmation envoyée « après le paiement », qu'elle parte aussitôt ou
@@ -25,8 +25,8 @@ import type { FicheVendeur } from "../vendeur";
  * vendeur.
  */
 
-export const IDENTIFIANT = "2026-09-26";
-export const LIBELLE = "26 septembre 2026";
+export const IDENTIFIANT = "2026-09-27";
+export const LIBELLE = "27 septembre 2026";
 /** Article des CGV qui traite de la garantie légale de conformité. */
 export const ARTICLE_GARANTIE = 10;
 
@@ -144,7 +144,7 @@ export function conditionsGenerales(fiche: FicheVendeur, options: { prix: string
           [
             "la fonction ",
             lien("« Renoncer au contrat ici »", "/renoncer"),
-            ", dont le lien figure en bas de chaque page du site, sur la page de votre commande et dans l'e-mail de confirmation : vous y indiquez vos nom et prénom, la référence de votre commande et l'adresse e-mail où recevoir l'accusé de réception, puis vous confirmez votre rétractation ;",
+            " (voir ci-dessous) : vous y indiquez vos nom et prénom, la référence de votre commande et l'adresse e-mail où recevoir l'accusé de réception, puis vous confirmez votre rétractation ;",
           ],
           [
             `le formulaire type de rétractation reproduit en annexe, rempli et envoyé par e-mail à ${fiche.email} ou par courrier à ${adresse} ;`,

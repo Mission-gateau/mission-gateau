@@ -23,7 +23,7 @@ export const RETRACTATION = typographier({
   libellePrenom: "Prénom",
   libelleReference: "Référence de la commande",
   aideReference:
-    "Elle figure dans votre e-mail de confirmation et sur la page de votre commande : 22 lettres, chiffres, tirets ou soulignés. Vous pouvez aussi coller le lien de la commande.",
+    "Elle figure dans votre e-mail de confirmation et sur la page de votre commande : 22 lettres, chiffres, tirets (-) ou tirets bas (_). Vous pouvez aussi coller le lien de la commande.",
   libelleEmail: "Adresse e-mail",
   aideEmail: "Nous y envoyons l'accusé de réception de votre déclaration.",
   libellePiege: "Laissez ce champ vide",

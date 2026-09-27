@@ -103,7 +103,7 @@ export const ACCUSE = typographier({
   dejaRetractee: {
     statut: "rétractation déjà enregistrée",
     texte:
-      "Votre rétractation de cette commande a déjà été enregistrée le {date} à {heure} (heure de Paris), à la réception d'une précédente déclaration. Cette nouvelle déclaration, envoyée le {dateDeclaration} à {heureDeclaration}, n'y change rien : votre jeu n'est plus disponible au téléchargement, et aucun second remboursement n'est fait.",
+      "Votre rétractation de cette commande a déjà été enregistrée le {date} à {heure} (heure de Paris), à la réception d'une précédente déclaration. Cette nouvelle déclaration, envoyée le {dateDeclaration} à {heureDeclaration}, n'y change rien : votre jeu n'est plus disponible au téléchargement, et la commande n'est remboursée qu'une fois.",
   },
   telechargee: {
     statut: "droit de rétractation éteint au premier téléchargement",

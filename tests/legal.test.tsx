@@ -83,7 +83,7 @@ describe("mentions légales", () => {
       "+1 951 383 6898",
       "vercel.com",
       "Stripe Payments Europe, Limited, 1 Grand Canal Street Lower, Grand Canal Dock, Dublin, D02 H210, Irlande",
-      "Mise à jour le 26 septembre 2026",
+      "Mise à jour le 27 septembre 2026",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
@@ -180,7 +180,7 @@ describe("conditions générales de vente", () => {
       "vous avez trois possibilités",
       // Le nom de la fonction est un lien : le texte visible y est coupé par la balise.
       "la fonction « Renoncer au contrat ici »",
-      "dont le lien figure en bas de chaque page du site, sur la page de votre commande et dans l'e-mail de confirmation",
+      "(voir ci-dessous) : vous y indiquez vos nom et prénom, la référence de votre commande et l'adresse e-mail où recevoir l'accusé de réception",
       "le formulaire type de rétractation reproduit en annexe",
       "toute autre déclaration dénuée d'ambiguïté",
       "par courrier à 7 impasse des Bosquets, 34670 Baillargues, France",
@@ -194,7 +194,7 @@ describe("conditions générales de vente", () => {
       "usage familial",
       "revente",
       "interdites",
-      "Version du 26 septembre 2026",
+      "Version du 27 septembre 2026",
       "La version que vous avez acceptée vous est envoyée en PDF avec l'e-mail de confirmation de votre commande",
     ]) {
       expect(texte, attendu).toContain(attendu);
@@ -272,7 +272,7 @@ describe("conditions générales de vente", () => {
   });
 
   it("portent la version que Stripe garde avec chaque commande", () => {
-    expect(VERSION_CGV.identifiant).toBe("2026-09-26");
+    expect(VERSION_CGV.identifiant).toBe("2026-09-27");
     expect(texte).toContain(`version du ${VERSION_CGV.libelle}`);
   });
 });
@@ -298,7 +298,7 @@ describe("politique de confidentialité", () => {
       "L'exécution du contrat (article 6, paragraphe 1, b du RGPD)",
       "L'obligation légale (article 6, paragraphe 1, c du RGPD)",
       "L'intérêt légitime du vendeur (article 6, paragraphe 1, f du RGPD)",
-      "Mise à jour le 26 septembre 2026",
+      "Mise à jour le 27 septembre 2026",
       // La déclaration de rétractation : ce qui s'ajoute à la trace de la commande, et ce qui reste d'une déclaration non transmise.
       "une empreinte de la déclaration qui l'a enregistrée",
       "le nombre d'accusés de réception envoyés pour la commande",

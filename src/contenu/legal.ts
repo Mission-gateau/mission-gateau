@@ -18,8 +18,8 @@ export { ENCADRE_GARANTIE } from "./garantie";
 export { VERSION_CGV, conditionsGenerales } from "./cgv";
 
 /** Date de mise à jour de chaque page. */
-export const MISE_A_JOUR_MENTIONS = "26 septembre 2026";
-export const MISE_A_JOUR_CONFIDENTIALITE = "26 septembre 2026";
+export const MISE_A_JOUR_MENTIONS = "27 septembre 2026";
+export const MISE_A_JOUR_CONFIDENTIALITE = "27 septembre 2026";
 
 // ---------------------------------------------------------------------------
 // Mentions légales
@@ -83,7 +83,7 @@ export function mentionsLegales(fiche: FicheVendeur): DocumentLegal {
           ".",
         ),
         p(
-          "La médiation est gratuite pour le consommateur. Elle suppose une réclamation écrite adressée d'abord au vendeur et restée sans solution, puis une saisine du médiateur dans l'année qui suit cette réclamation (article L612-2 du Code de la consommation). Le médiateur se saisit en ligne, sur ",
+          "La médiation est gratuite pour le consommateur. Elle suppose une réclamation écrite adressée d'abord au vendeur et restée sans solution, puis une saisine du médiateur dans l'année qui suit cette réclamation (article L612-2 du Code de la consommation). Le médiateur peut être saisi en ligne, sur ",
           lien("sa page de demande de médiation", pageDeDemande(mediateur)),
           ", ou par courrier à l'adresse ci-dessus. Les conditions de la médiation figurent aussi dans les ",
           lien("conditions générales de vente", "/cgv"),
@@ -165,7 +165,7 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
             "Nos e-mails. L'e-mail de confirmation de votre commande et, si vous vous rétractez, l'accusé de réception de votre déclaration vous sont envoyés par Resend, notre prestataire d'envoi d'e-mails. Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie, hébergée par Google (voir « Destinataires »), comme preuve de leur envoi pendant cinq ans, le délai pendant lequel une action en justice sur la commande reste possible (article 2224 du Code civil). Les messages que vous nous écrivez y arrivent aussi.",
           ],
           [
-            "Votre déclaration de rétractation. Si vous utilisez la fonction « Renoncer au contrat ici », vos nom et prénom, la référence de votre commande et l'adresse e-mail que vous indiquez servent à retrouver votre commande, à traiter votre déclaration et à vous en accuser réception : ils ne sont gardés que dans cet accusé de réception et dans sa copie. À la trace de la commande chez Stripe s'ajoutent seulement l'heure de votre rétractation, une empreinte de la déclaration qui l'a enregistrée (un code calculé à partir de ces quatre champs, qui sert à reconnaître une déclaration identique sans les garder en clair) et le nombre d'accusés de réception envoyés pour la commande. Si aucune commande payée ne correspond à la référence indiquée, ou si votre commande ne peut pas être vérifiée, votre déclaration n'est ni transmise ni gardée : seules la référence et l'heure de votre demande restent dans le journal du serveur, que notre hébergeur garde une heure.",
+            "Votre déclaration de rétractation. Si vous utilisez la fonction « Renoncer au contrat ici », seule la référence de votre commande sert à la retrouver (avec, si vous venez de la page de votre commande, l'identifiant de votre paiement chez Stripe que porte son lien) ; vos nom et prénom et l'adresse e-mail que vous indiquez servent à traiter votre déclaration et à vous en accuser réception : ils ne sont gardés que dans cet accusé de réception et dans sa copie. À la trace de la commande chez Stripe s'ajoutent seulement l'heure de votre rétractation, une empreinte de la déclaration qui l'a enregistrée (un code calculé à partir de ces quatre champs, qui sert à reconnaître une déclaration identique sans les garder en clair) et le nombre d'accusés de réception envoyés pour la commande. Si aucune commande payée ne correspond à la référence indiquée, ou si votre commande ne peut pas être vérifiée, votre déclaration n'est ni transmise ni gardée : seules la référence et l'heure de votre demande restent dans le journal du serveur, que notre hébergeur garde une heure.",
           ],
           [
             "Vos données de carte. Elles sont traitées par Stripe seul ; le vendeur n'y a jamais accès.",

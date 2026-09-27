@@ -481,6 +481,8 @@ describe("les autres déclarations : trois accusés par e-mail au plus", () => {
     });
     expect((await lente).reponse.envoi?.etat).toBe("envoye");
     expect(accuses()).toHaveLength(1);
+    // L'accusé qui n'est pas parti laisse la référence au journal.
+    expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "accuse_non_envoye", code: "en_cours", reference });
   });
 });
 
@@ -633,6 +635,46 @@ describe("commande retrouvée, mais Stripe refuse une écriture", () => {
     expect(message.texte).toContain("traitée à la main");
     expect(cle).toMatch(new RegExp(`^accuse-${reference}-manuel-[0-9a-f]{16}$`));
     expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "enregistrement_impossible", reference });
+  });
+});
+
+describe("Resend répond 409, puis la relecture chez Stripe échoue", () => {
+  const DEJA_PARTI = { de: "x", a: ["y@resend.dev"], copieCachee: [], repondreA: "x", objet: "Accusé de réception", texte: "x", html: "x", piecesJointes: [] };
+
+  function relecturesEnPanne(): void {
+    stripe.lirePaiement = async () => {
+      throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
+    };
+  }
+
+  it("la déclaration qui enregistre : son accusé exact part sous une clé qui lui est propre, et le journal garde la référence", async () => {
+    const { reference } = await commandeConfirmee();
+    // La clé de son accusé a déjà servi à un autre contenu.
+    await emails.envoyer(DEJA_PARTI, `accuse-${reference}`);
+    relecturesEnPanne();
+    const { statut, reponse } = await renoncer(declaration(reference));
+    expect(statut).toBe(200);
+    expect(reponse.envoi?.etat).toBe("envoye");
+    // Le remboursement est déjà fait : l'accusé le dit, sans promettre un traitement à la main.
+    expect(texte(reponse.accuse!)).toContain("Statut : rétractation enregistrée — remboursement effectué");
+    expect(stripe.remboursements).toHaveLength(1);
+    expect(emails.appels.at(-1)!.cle).toMatch(new RegExp(`^accuse-${reference}-manuel-[0-9a-f]{16}$`));
+    expect(accuses().at(-1)!.message.texte).toBe(courrielEnTexte(reponse.accuse!));
+    expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "relecture_impossible", reference });
+  });
+
+  it("une autre déclaration : l'accusé part « traitée à la main par le vendeur », hors plafond", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = "2026-09-25T14:05:00.000Z";
+    await emails.envoyer(DEJA_PARTI, `accuse-${reference}-1`);
+    relecturesEnPanne();
+    const { statut, reponse } = await renoncer(declaration(reference));
+    expect(statut).toBe(200);
+    expect(reponse.envoi?.etat).toBe("envoye");
+    expect(texte(reponse.accuse!)).toContain("Statut : déclaration traitée à la main par le vendeur, qui vous répond sous 7 jours");
+    expect(emails.appels.at(-1)!.cle).toMatch(new RegExp(`^accuse-${reference}-manuel-[0-9a-f]{16}$`));
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "relecture_impossible", reference });
   });
 });
 

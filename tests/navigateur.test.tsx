@@ -510,7 +510,8 @@ describe("formulaire de rétractation", () => {
     expect(texte()).toContain("Votre déclaration est reçue");
     expect(document.activeElement?.textContent).toBe("Votre déclaration est reçue");
     expect(texte()).toContain("Un accusé de réception vous a été envoyé par e-mail à delivered@resend.dev.");
-    expect(texte()).toContain("Si l'adresse e-mail utilisée lors du paiement est différente, une copie y part aussi.");
+    // Hors production, la copie part elle aussi à l'adresse de test : la page ne l'annonce pas.
+    expect(texte()).not.toContain("une copie y part aussi");
     expect(texte()).toContain("l'accusé est parti à delivered@resend.dev au lieu de camille@exemple.fr");
     expect(texte()).toContain("Accusé de réception de votre rétractation — Mission Gâteau");
 
@@ -542,6 +543,42 @@ describe("formulaire de rétractation", () => {
     expect(appels).toHaveLength(2);
     expect(appels[1]!.corps).toEqual(appels[0]!.corps);
     expect(texte()).toContain("Un accusé de réception vous a été envoyé par e-mail");
+  });
+
+  it("à l'adresse saisie : la page dit qu'une copie part aussi à l'adresse du paiement si elle diffère", async () => {
+    await envoyerUneDeclaration(() =>
+      Response.json({ ...ACCUSE, envoi: { etat: "envoye", adresse: "camille@exemple.fr", saisie: "camille@exemple.fr", remplacee: false } }),
+    );
+    expect(texte()).toContain("Un accusé de réception vous a été envoyé par e-mail à camille@exemple.fr.");
+    expect(texte()).toContain("Si l'adresse e-mail utilisée lors du paiement est différente, une copie y part aussi.");
+    expect(texte()).not.toContain("Exemplaire d'essai");
+  });
+
+  it("si le nouvel envoi échoue à son tour, le dit à l'étape du résultat, sous son bouton, et l'annonce", async () => {
+    let essais = 0;
+    await envoyerUneDeclaration(() => {
+      essais += 1;
+      if (essais === 1) return Response.json({ ...ACCUSE, envoi: { etat: "echec" } });
+      throw new TypeError("Failed to fetch");
+    });
+    await cliquer(bouton("Renvoyer l'accusé de réception"));
+    expect(essais).toBe(2);
+    const alertes = () => [...conteneur.querySelectorAll('[role="alert"]')].map((alerte) => espaces(alerte.textContent ?? ""));
+    expect(alertes().some((alerte) => alerte.includes("Votre déclaration n'a pas pu être envoyée. Vérifiez votre connexion et réessayez"))).toBe(true);
+    // La page reste au résultat : l'accusé, son échec et le bouton pour renvoyer.
+    expect(texte()).toContain("L'accusé de réception n'a pas pu partir pour le moment.");
+    expect(texte()).toContain("Accusé de réception de votre rétractation — Mission Gâteau");
+
+    // Même chose après « Réessayer », quand la déclaration était en cours de traitement.
+    await rendre(<></>);
+    let tentatives = 0;
+    await envoyerUneDeclaration(() => {
+      tentatives += 1;
+      return tentatives === 1 ? Response.json({ issue: "en_cours", message: "x" }, { status: 202 }) : Response.json({ erreur: "x" }, { status: 400 });
+    });
+    await cliquer(bouton("Réessayer"));
+    expect(alertes().some((alerte) => alerte.includes("Votre déclaration n'a pas pu être envoyée. Rechargez la page et réessayez"))).toBe(true);
+    expect(espaces(texte())).toContain("Votre déclaration est en cours de traitement : rechargez la page dans quelques instants.");
   });
 
   it("au-delà de trois accusés : affiche l'accusé et dit pourquoi il n'est pas renvoyé par e-mail", async () => {

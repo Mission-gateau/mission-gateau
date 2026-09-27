@@ -100,8 +100,12 @@ export interface ClientStripe {
    * renvoie en réponse à cette écriture : à jour, écritures précédentes
    * comprises. C'est sur lui que se décide qui, du premier téléchargement ou
    * de la rétractation, l'emporte (voir src/vente/course.ts).
+   *
+   * Avec une clé d'idempotence, Stripe n'exécute que la première requête
+   * portant cette clé (24 heures durant) : la même requête est rejouée à
+   * l'identique, une requête différente est refusée (voir erreurDIdempotence).
    */
-  modifierMetadonnees(idPaiement: string, metadonnees: Record<string, string>): Promise<PaiementLu>;
+  modifierMetadonnees(idPaiement: string, metadonnees: Record<string, string>, cleIdempotence?: string): Promise<PaiementLu>;
   modifierMetadonneesDuDebit(idDebit: string, metadonnees: Record<string, string>): Promise<void>;
   /**
    * Rembourse la totalité d'un paiement, motif « requested_by_customer ».
@@ -168,6 +172,20 @@ function codeErreur(erreur: unknown): string | null {
   if (typeof erreur !== "object" || erreur === null) return null;
   const code = (erreur as { code?: unknown }).code;
   return typeof code === "string" ? code : null;
+}
+
+/**
+ * Ce que dit une erreur de Stripe d'une clé d'idempotence déjà prise :
+ * « en_cours » quand une autre requête de même clé s'exécute encore (409),
+ * « deja_utilisee » quand la clé a servi à une requête aux paramètres
+ * différents, null pour toute autre erreur.
+ */
+export function erreurDIdempotence(erreur: unknown): "en_cours" | "deja_utilisee" | null {
+  if (typeof erreur !== "object" || erreur === null) return null;
+  const { type, statusCode, rawType } = erreur as { type?: unknown; statusCode?: unknown; rawType?: unknown };
+  if (statusCode === 409) return "en_cours";
+  if (type === "StripeIdempotencyError" || rawType === "idempotency_error") return "deja_utilisee";
+  return null;
 }
 
 /** Stripe limite le débit (429, « rate_limit ») : une panne passagère d'un genre particulier. */
@@ -280,8 +298,14 @@ export function creerClientStripe(
       };
     },
 
-    async modifierMetadonnees(idPaiement, metadonnees) {
-      return lirePaiement(await stripe.paymentIntents.update(idPaiement, { metadata: metadonnees, expand: ["latest_charge"] }));
+    async modifierMetadonnees(idPaiement, metadonnees, cleIdempotence) {
+      return lirePaiement(
+        await stripe.paymentIntents.update(
+          idPaiement,
+          { metadata: metadonnees, expand: ["latest_charge"] },
+          cleIdempotence ? { idempotencyKey: cleIdempotence } : undefined,
+        ),
+      );
     },
 
     async modifierMetadonneesDuDebit(idDebit, metadonnees) {

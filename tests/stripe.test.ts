@@ -5,6 +5,7 @@ import { metadonneesDuPaiement } from "@/vente/metadonnees";
 import { parametresDeSession } from "@/vente/session";
 import {
   creerClientStripe,
+  erreurDIdempotence,
   limiteDeDebit,
   requeteConfigurationsAvant,
   requeteParReference,
@@ -23,7 +24,7 @@ interface RequeteVue {
   corps: string;
 }
 
-function reseau(repondre: (requete: RequeteVue) => { statut?: number; json: unknown }) {
+function reseau(repondre: (requete: RequeteVue) => { statut?: number; json: unknown; entetes?: Record<string, string> }) {
   const vues: RequeteVue[] = [];
   const faux = async (entree: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const requete: RequeteVue = {
@@ -33,10 +34,10 @@ function reseau(repondre: (requete: RequeteVue) => { statut?: number; json: unkn
       corps: typeof init?.body === "string" ? init.body : "",
     };
     vues.push(requete);
-    const { statut = 200, json } = repondre(requete);
+    const { statut = 200, json, entetes = {} } = repondre(requete);
     return new Response(JSON.stringify(json), {
       status: statut,
-      headers: { "Content-Type": "application/json", "Request-Id": "req_faux" },
+      headers: { "Content-Type": "application/json", "Request-Id": "req_faux", ...entetes },
     });
   };
   const client = creerClientStripe(environnement(), { httpClient: Stripe.createFetchHttpClient(faux as typeof fetch) });
@@ -367,6 +368,36 @@ describe("client Stripe réel", () => {
       payeLe: 1790003600,
       metadonnees: { ref: REFERENCE, retractation: "2026-09-26T08:30:00.000Z", telechargement: "2026-09-26T08:29:59.000Z" },
     });
+  });
+
+  it("écrit une marque sous sa clé d'idempotence, et reconnaît les refus de Stripe pour une clé déjà prise", async () => {
+    const cle = `marque-retractation-${REFERENCE}-1`;
+    const { client, vues } = reseau(() => ({ json: paiement("succeeded", REFERENCE) }));
+    await client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:00.000Z" }, cle);
+    expect(vues[0]!.entetes.get("idempotency-key")).toBe(cle);
+
+    // Même clé, autres paramètres : Stripe refuse (400, « idempotency_error »).
+    const refus = reseau(() => ({
+      statut: 400,
+      json: { error: { type: "idempotency_error", message: "Keys for idempotent requests can only be used with the same parameters they were first used with." } },
+    }));
+    const dejaUtilisee = await refus.client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:01.000Z" }, cle).catch((e: unknown) => e);
+    expect(erreurDIdempotence(dejaUtilisee)).toBe("deja_utilisee");
+    expect(refus.vues).toHaveLength(1);
+
+    // Une autre requête de même clé s'exécute encore : 409 (sans nouvel essai ici, Stripe le déconseille par son en-tête).
+    const conflit = reseau(() => ({
+      statut: 409,
+      json: { error: { type: "idempotency_error", message: "There is currently another in-progress request using this idempotent key." } },
+      entetes: { "Stripe-Should-Retry": "false" },
+    }));
+    const enCours = await conflit.client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:01.000Z" }, cle).catch((e: unknown) => e);
+    expect(erreurDIdempotence(enCours)).toBe("en_cours");
+
+    // Toute autre erreur n'a rien à voir avec la clé.
+    expect(erreurDIdempotence(Object.assign(new Error("x"), { type: "StripeAPIError", statusCode: 500 }))).toBeNull();
+    expect(erreurDIdempotence(Object.assign(new Error("x"), { type: "StripeConnectionError" }))).toBeNull();
+    expect(erreurDIdempotence(null)).toBeNull();
   });
 
   it("reconnaît la limitation de débit de Stripe", async () => {

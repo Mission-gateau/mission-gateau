@@ -8,7 +8,7 @@ import { REPONSES_RETRACTATION } from "../contenu/retractation";
 import { ACHAT, REPONSES_COMMANDE } from "../contenu/vente";
 import { etatDeLaCommande, etatDuPaiement } from "./commande";
 import { envoyerLaConfirmation, type IssueConfirmation } from "./confirmation";
-import { issueDeLEcriture } from "./course";
+import { ecrireLaMarque, issueDeLEcriture, type EcritureDeMarque } from "./course";
 import { schemaDeclaration } from "./declaration";
 import type { Dependances } from "./dependances";
 import { adresseDuSite } from "./environnement";
@@ -21,7 +21,6 @@ import { paysAccepte } from "./pays";
 import { creerReference } from "./reference";
 import { traiterDeclaration, type ReponseRetractation } from "./retractation";
 import { LONGUEUR_CHAMP_FACTURE, lienDeCommande, parametresDeSession } from "./session";
-import type { PaiementLu } from "./stripe";
 import { erreursDeLaTache, tacheAutorisee, tacheQuotidienne } from "./tache";
 
 export { journal } from "./journal";
@@ -204,10 +203,12 @@ function refus(etat: Refus, statut = STATUTS[etat]): Response {
  * et pendant un litige. Déchiffre ensuite la configuration, construit le kit
  * avec la graine, le fait passer par verifierKit et le rend ; juste avant de
  * renvoyer le PDF pour la première fois, enregistre le premier
- * téléchargement, qui commence l'exécution du contrat, et décide sur le
- * paiement que Stripe renvoie en réponse : si une rétractation y est déjà
- * écrite, elle l'emporte (410, aucun PDF ; voir src/vente/course.ts). Si
- * l'enregistrement échoue, aucun PDF ne part.
+ * téléchargement, qui commence l'exécution du contrat, une seule fois (clé
+ * d'idempotence), et décide sur le paiement que Stripe renvoie en réponse :
+ * si une rétractation y est déjà écrite, elle l'emporte (410, aucun PDF ;
+ * voir src/vente/course.ts). Un premier téléchargement déjà écrit par un
+ * autre onglet se juge sur le paiement relu. Si l'enregistrement échoue,
+ * aucun PDF ne part.
  */
 export async function livrerKit(requete: Request, reference: string, deps: Dependances): Promise<Response> {
   const corps = await lireCorps(requete, TAILLE_MAX_KIT, true);
@@ -230,14 +231,18 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
   }
 
   if (!etat.suivi.telechargement) {
-    let apres: PaiementLu;
+    let ecriture: EcritureDeMarque;
     try {
-      apres = await client.modifierMetadonnees(etat.paiement.id, { [CLES.telechargement]: deps.maintenant().toISOString() });
+      ecriture = await ecrireLaMarque(client, etat.paiement, reference, "telechargement", {
+        [CLES.telechargement]: deps.maintenant().toISOString(),
+      });
     } catch {
       journal({ route: "kit", evenement: "enregistrement_impossible" });
       return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
     }
-    if (issueDeLEcriture("telechargement", apres.metadonnees) === "perd") {
+    // Un autre onglet écrit le premier téléchargement en ce moment : réessayer.
+    if (ecriture.issue === "en_cours") return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
+    if (ecriture.issue === "ecrite" && issueDeLEcriture("telechargement", ecriture.apres.metadonnees) === "perd") {
       // Une rétractation a été écrite avant : elle l'emporte, aucun PDF ne part.
       try {
         await client.modifierMetadonnees(etat.paiement.id, { [CLES.course]: "retractation" });
@@ -247,9 +252,12 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
       }
       return refus("retractee");
     }
-    const encore = etatDuPaiement(apres, reference, cleStripe, deps.maintenant());
+    // Premier téléchargement écrit par cette requête, ou par un autre onglet juste avant : le paiement à jour décide.
+    const encore = etatDuPaiement(ecriture.apres, reference, cleStripe, deps.maintenant());
+    // Croisement dont la course n'est pas encore écrite : réessayer dans un instant.
+    if (encore.etat === "a_examiner") return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
     if (encore.etat !== "payee") return refus(encore.etat);
-    journal({ route: "kit", evenement: "premier_telechargement" });
+    if (ecriture.issue === "ecrite") journal({ route: "kit", evenement: "premier_telechargement" });
   }
 
   return new Response(new Uint8Array(rendu.pdf), {

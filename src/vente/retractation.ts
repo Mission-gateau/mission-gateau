@@ -12,7 +12,7 @@ import {
   type Remboursement,
   type SuiteDonnee,
 } from "./courriels";
-import { issueDeLEcriture, marqueGagnante } from "./course";
+import { ecrireLaMarque, issueDUneRetractationBattue, issueDeLEcriture, marqueGagnante, type EcritureDeMarque } from "./course";
 import { dateAParis, heureAParis } from "./dates";
 import type { Declaration } from "./declaration";
 import { delaiExpire, dernierJourDuDelai } from "./delai";
@@ -38,15 +38,19 @@ import { limiteDeDebit, type ClientStripe, type PaiementLu } from "./stripe";
  * Une fois la commande retrouvée :
  * - la déclaration qui enregistre la rétractation reçoit toujours son accusé,
  *   sous la clé `accuse-<référence>`. Son empreinte est écrite avec
- *   `retractation` : une déclaration identique reçue ensuite (« Renvoyer »)
- *   reçoit exactement le même accusé, à la même heure, sous la même clé ;
+ *   `retractation`, une seule fois (voir ecrireLaMarque) : une déclaration
+ *   identique reçue ensuite (« Renvoyer ») reçoit exactement le même accusé,
+ *   à la même heure, sous la même clé ; une déclaration différente arrivée au
+ *   même instant n'écrase rien et devient une autre déclaration ;
  * - toute autre déclaration (rétractation déjà enregistrée par une autre
  *   déclaration, commande déjà téléchargée, délai expiré) reçoit un accusé
  *   par e-mail dans la limite de trois par commande (`accuses`), sous la clé
  *   `accuse-<référence>-<n>` ; au-delà, l'accusé s'affiche sans partir ;
  * - si une écriture ou une relecture chez Stripe échoue, l'accusé part quand
  *   même, avec le statut « traitée à la main par le vendeur » ; aucun
- *   remboursement automatique.
+ *   remboursement automatique. Seule exception : la déclaration qui a déjà
+ *   enregistré la rétractation (et demandé le remboursement) garde son accusé
+ *   exact, envoyé sous une clé qui lui est propre.
  *
  * Premier téléchargement et rétractation qui se croisent : voir
  * src/vente/course.ts. Les journaux ne portent jamais ni nom ni adresse ;
@@ -92,6 +96,15 @@ export function cleDAccuse(reference: string): string {
 /** La clé du n-ième accusé des autres déclarations, n de 1 à 3. */
 export function cleDAccuseNumero(reference: string, numero: number): string {
   return `accuse-${reference}-${numero}`;
+}
+
+/**
+ * La clé d'idempotence, chez Stripe, de l'écriture `accuses` = n : chaque
+ * valeur n'est écrite qu'une fois, si bien qu'une écriture en retard ne fait
+ * jamais reculer le compteur (la valeur n+1 n'est écrite qu'après n).
+ */
+export function cleDuCompteur(reference: string, numero: number): string {
+  return `accuses-${reference}-${numero}`;
 }
 
 /** La clé d'un accusé « traitée à la main » : propre à cette déclaration, reçue à cette heure. */
@@ -204,7 +217,9 @@ function nonTransmise(
   recueLe: Date,
   fiche: FicheVendeur,
 ): ReponseRetractation {
-  // Le vendeur peut ainsi honorer une déclaration faite pendant une panne.
+  // La référence extraite et l'heure, jamais un nom ni une adresse : le vendeur
+  // peut ainsi honorer une déclaration faite pendant une panne, ou juste après
+  // un paiement que la recherche de Stripe ne voyait pas encore.
   journal({
     route: "retractation",
     evenement: "declaration_non_transmise",
@@ -225,14 +240,16 @@ function nonTransmise(
 
 /**
  * La rétractation est valable : `retractation` et l'empreinte sont écrites
- * d'abord (la livraison est aussitôt bloquée), puis la décision se prend sur
- * le paiement renvoyé par cette écriture ; le remboursement ne vient
- * qu'ensuite, et seulement si la rétractation l'emporte.
+ * d'abord, une seule fois (la livraison est aussitôt bloquée), puis la
+ * décision se prend sur le paiement renvoyé par cette écriture ; le
+ * remboursement ne vient qu'ensuite, et seulement si la rétractation
+ * l'emporte. Si une autre déclaration l'a écrite juste avant, celle-ci est
+ * jugée sur le paiement relu, sans rien écraser.
  */
 async function enregistrerLaRetractation(c: Contexte): Promise<ReponseRetractation> {
-  let apres: PaiementLu;
+  let ecriture: EcritureDeMarque;
   try {
-    apres = await c.client.modifierMetadonnees(c.paiement.id, {
+    ecriture = await ecrireLaMarque(c.client, c.paiement, c.reference, "retractation", {
       [CLES.retractation]: c.recueLe.toISOString(),
       [CLES.empreinteRetractation]: c.empreinte,
     });
@@ -241,7 +258,20 @@ async function enregistrerLaRetractation(c: Contexte): Promise<ReponseRetractati
     journal({ route: "retractation", evenement: "enregistrement_impossible", reference: c.reference });
     return accuserSansEnregistrement(c, { type: "manuelle" });
   }
+  if (ecriture.issue === "en_cours") {
+    journal({ route: "retractation", evenement: "accuse_non_envoye", code: "enregistrement_en_cours", reference: c.reference });
+    return enCours();
+  }
+  if (ecriture.issue === "deja_ecrite") {
+    const relu = { ...c, paiement: ecriture.apres };
+    const suivi = lireSuivi(ecriture.apres.metadonnees);
+    if (suivi.retractation && suivi.empreinteRetractation === c.empreinte) {
+      return renvoyerLAccuseDeLaRetractation(relu, suivi.retractation);
+    }
+    return accuserUneAutreDeclaration(relu);
+  }
 
+  let apres = ecriture.apres;
   if (issueDeLEcriture("retractation", apres.metadonnees) === "perd") {
     // Le premier téléchargement a été écrit avant : il l'emporte, sans remboursement.
     const telechargeLe = lireSuivi(apres.metadonnees).telechargement!;
@@ -279,9 +309,7 @@ async function renvoyerLAccuseDeLaRetractation(c: Contexte, retracteeLe: Date): 
 
 /** Reçue avant le début du premier téléchargement qui l'a emporté : le vendeur tranche. Sinon, le droit avait pris fin. */
 function suiteDUneRetractationBattue(recueLe: Date, telechargeLe: Date): SuiteDonnee {
-  return recueLe.getTime() < telechargeLe.getTime()
-    ? { type: "simultanee", le: telechargeLe }
-    : { type: "telechargee", le: telechargeLe };
+  return { type: issueDUneRetractationBattue(recueLe, telechargeLe), le: telechargeLe };
 }
 
 /** Rembourse la totalité du paiement, sauf s'il l'est déjà ou s'il est contesté. Clé : `retractation-<référence>`. */
@@ -322,7 +350,8 @@ function suiteDUneAutreDeclaration(paiement: PaiementLu, recueLe: Date): SuiteDo
         montant: paiement.montant,
       };
     case "telechargement":
-      return { type: "telechargee", le: suivi.telechargement! };
+      // Même trouvé déjà écrit, le premier téléchargement a pu commencer après la réception de cette déclaration.
+      return suiteDUneRetractationBattue(recueLe, suivi.telechargement!);
     case "a_examiner":
       return { type: "manuelle" };
     case null:
@@ -371,7 +400,7 @@ async function envoyer(c: Contexte, accuse: DocumentCourriel, cle: string): Prom
     };
   }
   if (resultat.raison === "en_cours" || resultat.raison === "requete_differente") {
-    journal({ route: "retractation", evenement: "accuse_en_conflit", code: resultat.code });
+    journal({ route: "retractation", evenement: "accuse_en_conflit", code: resultat.code, reference: c.reference });
     return { type: "conflit", raison: resultat.raison };
   }
   journal({ route: "retractation", evenement: "accuse_non_envoye", code: resultat.code, reference: c.reference });
@@ -389,6 +418,12 @@ async function emailSansPanne(deps: Dependances, paiement: PaiementLu): Promise<
 
 function enCours(): ReponseRetractation {
   return { issue: "en_cours", message: RETRACTATION.enCours };
+}
+
+/** Rien de sûr n'est enregistré, et l'accusé n'est pas parti : « en cours de traitement », et la référence au journal. */
+function enCoursSansAccuse(c: Contexte): ReponseRetractation {
+  journal({ route: "retractation", evenement: "accuse_non_envoye", code: "en_cours", reference: c.reference });
+  return enCours();
 }
 
 /**
@@ -415,16 +450,26 @@ async function accuserLaRetractation(
   if (resultat.type === "echec") return { issue: "accuse", accuse, envoi: { etat: "echec" } };
   // 409 : la même clé est en cours chez Resend, ou a déjà servi. On relit le
   // paiement et on répond selon ce qui est enregistré.
+  let suivi;
   try {
     const frais = await c.client.lirePaiement(paiement.id);
-    const suivi = frais ? lireSuivi(frais.metadonnees) : null;
-    if (suivi?.retractation && suivi.accuseRetractation) {
-      return { issue: "deja_accusee", date: dateAParis(suivi.retractation), heure: heureAParis(suivi.retractation) };
-    }
+    if (!frais) throw new Error("Paiement introuvable à la relecture.");
+    suivi = lireSuivi(frais.metadonnees);
   } catch {
-    // Rien de sûr à dire : la déclaration est en cours de traitement.
+    // La relecture échoue : rien ne dit si cet accusé est déjà parti. Sa suite est connue (le
+    // remboursement, s'il y a lieu, est déjà demandé) : le même accusé part sous une clé propre à
+    // cette déclaration, hors plafond, et le journal garde la référence pour le vendeur.
+    journal({ route: "retractation", evenement: "relecture_impossible", reference: c.reference });
+    const renvoi = await envoyer(c, accuse, cleDAccuseManuel(c.reference, c.empreinte, c.recueLe));
+    if (renvoi.type === "envoye") return { issue: "accuse", accuse, envoi: renvoi.envoi };
+    if (renvoi.type === "echec") return { issue: "accuse", accuse, envoi: { etat: "echec" } };
+    return enCoursSansAccuse(c);
   }
-  return enCours();
+  // L'accusé de cette déclaration (même empreinte) est parti.
+  if (suivi.retractation && suivi.accuseRetractation && suivi.empreinteRetractation === c.empreinte) {
+    return { issue: "deja_accusee", date: dateAParis(suivi.retractation), heure: heureAParis(suivi.retractation) };
+  }
+  return enCoursSansAccuse(c);
 }
 
 /** Un accusé « traitée à la main », quand rien n'a pu être enregistré : hors plafond, sous une clé propre à la déclaration. */
@@ -433,15 +478,16 @@ async function accuserSansEnregistrement(c: Contexte, suite: SuiteDonnee): Promi
   const resultat = await envoyer(c, accuse, cleDAccuseManuel(c.reference, c.empreinte, c.recueLe));
   if (resultat.type === "envoye") return { issue: "accuse", accuse, envoi: resultat.envoi };
   if (resultat.type === "echec") return { issue: "accuse", accuse, envoi: { etat: "echec" } };
-  return enCours();
+  return enCoursSansAccuse(c);
 }
 
 /**
  * Une déclaration qui n'enregistre rien : nouvelle, avec sa propre heure de
  * réception, et accusée par e-mail dans la limite de trois par commande.
  * L'e-mail n° n (n = `accuses` + 1) part sous la clé `accuse-<référence>-<n>`,
- * puis `accuses` passe à n. Resend n'envoie qu'une fois une même clé : même
- * avec des déclarations simultanées, trois accusés au plus partent.
+ * puis `accuses` passe à n, chaque valeur sous sa propre clé d'idempotence :
+ * le compteur ne recule jamais. Resend n'envoie qu'une fois une même clé :
+ * même avec des déclarations simultanées, trois accusés au plus partent.
  */
 async function accuserUneAutreDeclaration(c: Contexte): Promise<ReponseRetractation> {
   let paiement = c.paiement;
@@ -460,7 +506,7 @@ async function accuserUneAutreDeclaration(c: Contexte): Promise<ReponseRetractat
     const resultat = await envoyer(c, accuse, cleDAccuseNumero(c.reference, numero));
     if (resultat.type === "envoye") {
       try {
-        await c.client.modifierMetadonnees(paiement.id, { [CLES.accuses]: String(numero) });
+        await c.client.modifierMetadonnees(paiement.id, { [CLES.accuses]: String(numero) }, cleDuCompteur(c.reference, numero));
       } catch {
         journal({ route: "retractation", evenement: "accuses_non_enregistre", reference: c.reference });
       }
@@ -472,17 +518,19 @@ async function accuserUneAutreDeclaration(c: Contexte): Promise<ReponseRetractat
     // 409 : on relit le paiement et on décide sur ce qui est enregistré.
     try {
       const frais = await c.client.lirePaiement(paiement.id);
-      if (!frais) break;
+      if (!frais) throw new Error("Paiement introuvable à la relecture.");
       paiement = frais;
       if (resultat.raison === "requete_differente" && lireSuivi(frais.metadonnees).accuses < numero) {
         // La clé de ce numéro a déjà servi : cet accusé compte, même si son compteur n'a pas été écrit.
-        paiement = await c.client.modifierMetadonnees(frais.id, { [CLES.accuses]: String(numero) });
+        paiement = await c.client.modifierMetadonnees(frais.id, { [CLES.accuses]: String(numero) }, cleDuCompteur(c.reference, numero));
       }
     } catch {
-      break;
+      // Stripe ne répond plus : la déclaration est reçue, et traitée à la main.
+      journal({ route: "retractation", evenement: "relecture_impossible", reference: c.reference });
+      return accuserSansEnregistrement(c, { type: "manuelle" });
     }
     // Rien n'est encore enregistré pour ce numéro : un autre envoi est en cours.
     if (lireSuivi(paiement.metadonnees).accuses < numero) break;
   }
-  return enCours();
+  return enCoursSansAccuse(c);
 }

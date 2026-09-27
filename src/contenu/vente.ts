@@ -63,7 +63,7 @@ export const REPONSES_COMMANDE = typographier({
   kitImpossible: "Ce jeu n'a pas pu être préparé. Composez un nouvel aperçu, ou réessayez dans quelques minutes.",
   indisponible: "La commande est momentanément impossible. Réessayez dans quelques minutes.",
   stripe: "Le paiement n'a pas pu être préparé. Réessayez dans quelques minutes.",
-  methode: "Cette adresse attend un envoi de formulaire.",
+  methode: "Cette adresse attend une demande envoyée par une page du site.",
   enregistrementImpossible:
     "Votre téléchargement n'a pas pu être enregistré : le jeu ne vous est pas envoyé pour le moment. Réessayez dans quelques minutes.",
 } as const);

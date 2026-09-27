@@ -405,13 +405,13 @@ describe("contenu de la confirmation", () => {
       expect(message.piecesJointes).toHaveLength(1);
       expect(message.piecesJointes[0]!.nom).toBe(nom);
       expect(message.piecesJointes[0]!.type).toBe("application/pdf");
-      expect(texteDe(message)).toContain(`Pièce jointe : nos conditions générales de vente, version du 26 septembre 2026 (fichier ${nom}).`);
+      expect(texteDe(message)).toContain(`Pièce jointe : nos conditions générales de vente, version du 27 septembre 2026 (fichier ${nom}).`);
       expect(texteDe(message)).toContain("Nos conditions générales de vente, dans la version que vous avez acceptée, y sont jointes en PDF.");
     }
     const [a, b] = [premiere, seconde].map(({ message }) => message.piecesJointes[0]!.contenu);
     expect(Buffer.compare(a!, b!)).toBe(0);
     const pdf = texteDuPdf(a!).replace(/[  ]/g, " ");
-    expect(pdf).toContain("Version du 26 septembre 2026");
+    expect(pdf).toContain("Version du 27 septembre 2026");
     expect(pdf).toContain("Le jeu complet coûte 12,90 €");
     expect(pdf).toContain("11. Médiation de la consommation");
     expect(pdf).toContain("8. Droit de rétractation");

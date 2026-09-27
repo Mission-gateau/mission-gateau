@@ -1,4 +1,5 @@
 import { lireSuivi, type Marque } from "./metadonnees";
+import { erreurDIdempotence, type ClientStripe, type PaiementLu } from "./stripe";
 
 /**
  * Premier téléchargement et rétractation qui se croisent.
@@ -12,8 +13,13 @@ import { lireSuivi, type Marque } from "./metadonnees";
  *
  * - l'emporte la première des deux marques (`telechargement`,
  *   `retractation`) écrite chez Stripe ;
- * - chaque route décide sur le paiement que Stripe lui renvoie en réponse à
- *   sa propre écriture : si la marque de l'autre y figure déjà, l'autre
+ * - chaque marque ne s'écrit qu'une fois : l'écriture porte une clé
+ *   d'idempotence tirée de la marque et de la référence (ecrireLaMarque), si
+ *   bien que Stripe n'exécute que la première requête ; une seconde, venue
+ *   d'un autre onglet ou d'une autre déclaration, est refusée et relit
+ *   l'état au lieu d'écraser la première marque ;
+ * - chaque route qui a écrit sa marque décide sur le paiement que Stripe lui
+ *   renvoie en réponse : si la marque de l'autre y figure déjà, l'autre
  *   l'emporte ; sinon, elle l'emporte. Stripe applique les mises à jour d'un
  *   même paiement l'une après l'autre : des deux écritures, seule la seconde
  *   voit la marque de la première ;
@@ -48,4 +54,61 @@ export function autreMarque(marque: Marque): Marque {
  */
 export function issueDeLEcriture(marque: Marque, apres: Record<string, string>): "gagne" | "perd" {
   return lireSuivi(apres)[autreMarque(marque)] !== null ? "perd" : "gagne";
+}
+
+/**
+ * Une rétractation battue par le premier téléchargement, qu'elle ait écrit sa
+ * marque après lui ou trouvé la sienne déjà écrite : si la déclaration avait
+ * été reçue avant le début de ce téléchargement, les deux sont arrivés
+ * presque en même temps et le vendeur tranche (« simultanee ») ; sinon, le
+ * droit avait déjà pris fin (« telechargee »).
+ */
+export function issueDUneRetractationBattue(recueLe: Date, telechargeLe: Date): "simultanee" | "telechargee" {
+  return recueLe.getTime() < telechargeLe.getTime() ? "simultanee" : "telechargee";
+}
+
+/** Nombre de clés d'idempotence essayées pour une marque, au cas où Stripe aurait gardé l'échec d'une tentative. */
+export const ESSAIS_DE_MARQUE = 3;
+
+/** La clé d'idempotence de l'écriture d'une marque : la même pour toutes les requêtes qui l'écrivent. */
+export function cleDeMarque(marque: Marque, reference: string, essai: number): string {
+  return `marque-${marque}-${reference}-${essai}`;
+}
+
+export type EcritureDeMarque =
+  /** Cette requête a écrit la marque, la première : `apres` est la réponse de Stripe à son écriture. */
+  | { issue: "ecrite"; apres: PaiementLu }
+  /** Une autre requête l'avait déjà écrite : `apres` est le paiement relu, à jour. */
+  | { issue: "deja_ecrite"; apres: PaiementLu }
+  /** Une autre requête l'écrit en ce moment même. */
+  | { issue: "en_cours" };
+
+/**
+ * Écrit une marque une seule fois. Stripe n'exécute que la première requête
+ * de même clé : une autre, aux paramètres forcément différents (l'heure),
+ * est refusée, et on relit alors le paiement. Si la marque n'y est pas, la
+ * clé a servi à une tentative qui n'a rien écrit (Stripe garde aussi les
+ * échecs) : on passe à la clé suivante. Une panne de Stripe se propage à
+ * l'appelant.
+ */
+export async function ecrireLaMarque(
+  client: ClientStripe,
+  paiement: PaiementLu,
+  reference: string,
+  marque: Marque,
+  valeurs: Record<string, string>,
+): Promise<EcritureDeMarque> {
+  for (let essai = 1; essai <= ESSAIS_DE_MARQUE; essai += 1) {
+    try {
+      return { issue: "ecrite", apres: await client.modifierMetadonnees(paiement.id, valeurs, cleDeMarque(marque, reference, essai)) };
+    } catch (erreur) {
+      const conflit = erreurDIdempotence(erreur);
+      if (conflit === null) throw erreur;
+      if (conflit === "en_cours") return { issue: "en_cours" };
+      const frais = await client.lirePaiement(paiement.id);
+      if (!frais) throw new Error("Paiement introuvable à la relecture.");
+      if (lireSuivi(frais.metadonnees)[marque] !== null) return { issue: "deja_ecrite", apres: frais };
+    }
+  }
+  throw new Error("La marque n'a pas pu être écrite.");
 }
