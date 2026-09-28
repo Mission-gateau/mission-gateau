@@ -6,7 +6,7 @@ import { RETRACTATION } from "@/contenu/retractation";
 import type { DocumentCourriel } from "@/vente/courriels";
 import {
   LONGUEUR_MAX_EMAIL,
-  LONGUEUR_MAX_NOM,
+  LONGUEUR_MAX_NOM_SAISI,
   LONGUEUR_MAX_REFERENCE,
   champsRefuses,
   extraireReference,
@@ -26,7 +26,7 @@ type Envoi =
 type Reponse =
   | { issue: "accuse"; accuse: DocumentCourriel; envoi: Envoi }
   | { issue: "non_transmise"; cause: "introuvable" | "indisponible"; date: string; heure: string; mailto: string }
-  | { issue: "deja_accusee"; date: string; heure: string }
+  | { issue: "deja_accusee"; date: string; heure: string; accuse: DocumentCourriel | null }
   | { issue: "en_cours" };
 
 type Etape = "saisie" | "recapitulatif" | "resultat";
@@ -236,14 +236,14 @@ export function FormulaireRetractation({
           <label htmlFor="nom" className="block font-bold">
             {RETRACTATION.libelleNom}
           </label>
-          <input autoComplete="family-name" maxLength={LONGUEUR_MAX_NOM} className={CLASSE_CHAMP} {...champ("nom")} />
+          <input autoComplete="family-name" maxLength={LONGUEUR_MAX_NOM_SAISI} className={CLASSE_CHAMP} {...champ("nom")} />
           {erreurDe("nom")}
         </div>
         <div>
           <label htmlFor="prenom" className="block font-bold">
             {RETRACTATION.libellePrenom}
           </label>
-          <input autoComplete="given-name" maxLength={LONGUEUR_MAX_NOM} className={CLASSE_CHAMP} {...champ("prenom")} />
+          <input autoComplete="given-name" maxLength={LONGUEUR_MAX_NOM_SAISI} className={CLASSE_CHAMP} {...champ("prenom")} />
           {erreurDe("prenom")}
         </div>
         <div>
@@ -378,6 +378,7 @@ function Resultat({
         <>
           <TitreDEtape cible={titre}>{RETRACTATION.titreDejaAccusee}</TitreDEtape>
           <p className="mt-3 leading-relaxed">{remplir(RETRACTATION.dejaAccusee, { date: reponse.date, heure: reponse.heure })}</p>
+          {reponse.accuse ? <VueCourriel document={reponse.accuse} /> : null}
         </>
       );
     case "en_cours":

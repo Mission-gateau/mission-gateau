@@ -185,7 +185,7 @@ describe("conditions générales de vente", () => {
       "toute autre déclaration dénuée d'ambiguïté",
       "par courrier à 7 impasse des Bosquets, 34670 Baillargues, France",
       // Le fonctionnement de la fonction et de ses accusés de réception, mot pour mot (le lien coupe le texte visible).
-      "La fonction « Renoncer au contrat ici » se trouve à l'adresse https://www.missiongateau.com/renoncer ; son lien figure en bas de chaque page du site, sur la page de votre commande et dans l'e-mail de confirmation. Elle retrouve votre commande par sa référence, qui figure dans l'e-mail de confirmation (le lien de cet e-mail la remplit pour vous). Si aucune commande payée ne correspond à la référence indiquée, la page vous le dit aussitôt et votre déclaration n'est pas transmise : corrigez la référence, ou rétractez-vous par e-mail ou par courrier. Lorsque votre commande est retrouvée, nous vous adressons sans délai, par e-mail, un accusé de réception qui reprend le contenu de votre déclaration ainsi que la date et l'heure de son envoi ; pour une commande déjà rétractée, déjà téléchargée ou dont le délai a expiré, au-delà de trois accusés, les suivants s'affichent à l'écran sans être renvoyés par e-mail. Lorsque vous nous écrivez par e-mail ou par courrier, nous vous accusons réception de votre rétractation par e-mail, à l'adresse que vous nous indiquez ou, à défaut, à celle de votre commande.",
+      "La fonction « Renoncer au contrat ici » se trouve à l'adresse https://www.missiongateau.com/renoncer ; son lien figure en bas de chaque page du site, sur la page de votre commande et dans l'e-mail de confirmation. Elle retrouve votre commande par sa référence, qui figure dans l'e-mail de confirmation (le lien de cet e-mail la remplit pour vous). Si aucune commande payée ne correspond à la référence indiquée, la page vous le dit aussitôt et votre déclaration n'est pas transmise : corrigez la référence, ou rétractez-vous par e-mail ou par courrier. Si la page ne peut pas vérifier votre commande ou enregistrer votre déclaration sur le moment, elle vous le dit : réessayez un peu plus tard, ou envoyez votre déclaration par e-mail grâce au bouton proposé ; une déclaration envoyée avant la fin du délai de rétractation et avant le début du premier téléchargement préserve votre droit. Si elle a malgré tout été enregistrée, nous vous en adressons l'accusé de réception par e-mail, à l'adresse de votre commande. Lorsque votre commande est retrouvée, nous vous adressons sans délai, par e-mail, un accusé de réception qui reprend le contenu de votre déclaration ainsi que la date et l'heure de son envoi ; pour une commande déjà rétractée, déjà téléchargée ou dont le délai a expiré, au-delà de trois accusés, les suivants s'affichent à l'écran sans être renvoyés par e-mail. Si vous renvoyez à l'identique (mêmes nom, prénom, référence et adresse e-mail) la déclaration qui a enregistré votre rétractation, après l'envoi de son accusé, la page affiche cet accusé, sans nouvel e-mail. Lorsque vous nous écrivez par e-mail ou par courrier, nous vous accusons réception de votre rétractation par e-mail, à l'adresse que vous nous indiquez ou, à défaut, à celle de votre commande.",
       "Nous vous remboursons la totalité du prix payé, sans frais, sans retard injustifié et au plus tard 14 jours",
       "par le même moyen de paiement que celui utilisé pour la commande",
       "le jeu n'est plus livré",
@@ -194,7 +194,7 @@ describe("conditions générales de vente", () => {
       "usage familial",
       "revente",
       "interdites",
-      "Version du 27 septembre 2026",
+      "Version du 28 septembre 2026",
       "La version que vous avez acceptée vous est envoyée en PDF avec l'e-mail de confirmation de votre commande",
     ]) {
       expect(texte, attendu).toContain(attendu);
@@ -272,7 +272,7 @@ describe("conditions générales de vente", () => {
   });
 
   it("portent la version que Stripe garde avec chaque commande", () => {
-    expect(VERSION_CGV.identifiant).toBe("2026-09-27");
+    expect(VERSION_CGV.identifiant).toBe("2026-09-28");
     expect(texte).toContain(`version du ${VERSION_CGV.libelle}`);
   });
 });
@@ -284,12 +284,12 @@ describe("politique de confidentialité", () => {
   it("dit qui est responsable, ce que devient chaque donnée, et pourquoi", () => {
     for (const attendu of [
       "Quentin Courtois EI, entrepreneur individuel",
-      "rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers",
+      "elles ne sont ni enregistrées, ni journalisées, ni transmises à un tiers (le journal de notre hébergeur ne note que la requête elle-même : voir « Destinataires »)",
       "seuls le thème et la tranche d'âge du jeu y figurent en clair, sur la ligne de commande et sur la facture",
       "30 jours",
       "effacées automatiquement",
       // La trace de la commande, et combien de temps elle reste.
-      "celle de l'envoi de la confirmation, celle du premier téléchargement et, si vous vous rétractez, celle de votre rétractation restent avec la commande chez Stripe aussi longtemps que la facture, dix ans",
+      "celle de l'envoi de la confirmation, celle du premier téléchargement, si vous vous rétractez, celle de votre rétractation et, si le vendeur a dû examiner votre commande, celle de sa réponse restent avec la commande chez Stripe aussi longtemps que la facture, dix ans",
       "Votre adresse e-mail, votre nom et votre adresse de facturation",
       "dix ans (article L123-22 du Code de commerce)",
       // Les copies des e-mails gardées par le vendeur.
@@ -298,11 +298,13 @@ describe("politique de confidentialité", () => {
       "L'exécution du contrat (article 6, paragraphe 1, b du RGPD)",
       "L'obligation légale (article 6, paragraphe 1, c du RGPD)",
       "L'intérêt légitime du vendeur (article 6, paragraphe 1, f du RGPD)",
-      "Mise à jour le 27 septembre 2026",
+      "Mise à jour le 28 septembre 2026",
       // La déclaration de rétractation : ce qui s'ajoute à la trace de la commande, et ce qui reste d'une déclaration non transmise.
       "une empreinte de la déclaration qui l'a enregistrée",
       "le nombre d'accusés de réception envoyés pour la commande",
-      "seules la référence et l'heure de votre demande restent dans le journal du serveur, que notre hébergeur garde une heure",
+      // Seule la référence de la commande sert à la retrouver, avec la session de paiement que porte le lien de sa page.
+      "seule la référence de votre commande sert à la retrouver (avec, si vous venez de la page de votre commande, l'identifiant de la session de paiement Stripe que porte son lien)",
+      "le site n'écrit alors dans le journal de son hébergeur que la référence de la commande et l'heure de votre demande, jamais votre nom ni votre adresse e-mail",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
@@ -331,8 +333,13 @@ describe("politique de confidentialité", () => {
       "par les décisions d'adéquation de la Commission européenne, par le cadre de protection des données UE–États-Unis, auquel Google LLC déclare adhérer, et par les clauses contractuelles types",
       "en vigueur depuis le 2 avril 2026",
       "en vigueur depuis le 23 août 2025",
-      "Aucune donnée n'est vendue, ni transmise à qui que ce soit d'autre.",
+      "Aucune donnée n'est vendue, ni transmise à qui que ce soit d'autre, sauf au médiateur de la consommation si vous le saisissez.",
       "Vercel Inc.",
+      // Le journal de l'hébergeur, tel que Vercel le déclare dans sa documentation et son avis de confidentialité.
+      "Selon sa documentation, son journal d'exécution enregistre, pour chaque requête vers une page ou une fonction du site, la méthode, l'adresse demandée et ses paramètres, le nom de domaine, l'heure, le code de réponse, le navigateur utilisé et la région de ses serveurs qui l'a traitée, ainsi que les lignes que le site y écrit ; il garde ce journal une heure, avec l'offre qu'utilise le site",
+      "documentation de Vercel sur ses journaux d'exécution , mise à jour le 28 août 2026",
+      "Vercel déclare aussi recueillir, sur le trafic des sites qu'il héberge, l'adresse IP des visiteurs, la ville et le pays qu'il en déduit et des informations sur la configuration de leur système",
+      "sans indiquer de durée chiffrée",
       "avis de confidentialité de Vercel",
       "en vigueur depuis le 1er juin 2026",
     ]) {
@@ -342,8 +349,11 @@ describe("politique de confidentialité", () => {
     expect(html).toContain('href="https://resend.com/security/gdpr"');
     expect(html).toContain('href="https://resend.com/legal/dpa"');
     expect(html).toContain('href="https://vercel.com/legal/privacy-notice"');
-    expect(html).toContain('href="https://policies.google.com/privacy?hl=fr"');
-    expect(html).toContain('href="https://policies.google.com/privacy/frameworks?hl=fr"');
+    expect(html).toContain('href="https://vercel.com/docs/logs/runtime"');
+    // Les règles de Google, dans leur version pour la France (sans « gl=FR », un visiteur hors de l'Espace économique européen en voit une autre).
+    expect(html).toContain('href="https://policies.google.com/privacy?hl=fr&amp;gl=FR"');
+    expect(html).toContain('href="https://policies.google.com/privacy/frameworks?hl=fr&amp;gl=FR"');
+    expect(html).not.toMatch(/policies\.google\.com\/[^"]*\?hl=fr"/);
     expect(texte).not.toMatch(/21 septembre 2026|27 août 2026/);
     expect(html).not.toContain("vercel.com/legal/privacy-policy");
   });

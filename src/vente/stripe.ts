@@ -28,12 +28,25 @@ export interface PaiementLu {
   /** Montant payé, en centimes. */
   montant: number;
   metadonnees: Record<string, string>;
-  /** Vrai seulement si le paiement a été remboursé en totalité. */
-  rembourseEnTotalite: boolean;
+  /**
+   * Les remboursements du paiement (ceux de son dernier débit, le débit
+   * réussi), lus sur les remboursements eux-mêmes et jamais sur `refunded` :
+   * voir src/vente/remboursement.ts.
+   */
+  remboursements: RemboursementDuPaiement[];
   /** Vrai si le dernier débit fait l'objet d'un litige (Charge.disputed). */
   litige: boolean;
   /** E-mail de facturation du dernier débit : le dernier recours pour écrire à l'acheteur. */
   emailDuDebit: string | null;
+}
+
+/** Un remboursement d'un paiement, tel que Stripe le rend. */
+export interface RemboursementDuPaiement {
+  id: string;
+  /** « pending », « requires_action », « succeeded », « failed » ou « canceled ». */
+  statut: string;
+  /** Montant remboursé, en centimes. */
+  montant: number;
 }
 
 /**
@@ -61,7 +74,12 @@ export interface SessionLue {
 /** Un remboursement tel que Stripe l'a accepté. */
 export interface RemboursementLu {
   id: string;
-  /** « succeeded », « pending », « requires_action », « failed » ou « canceled ». */
+  /**
+   * « succeeded », « pending », « requires_action », « failed » ou
+   * « canceled » ; « deja_rembourse » quand Stripe refuse un nouveau
+   * remboursement parce que le paiement l'est déjà en totalité (fait ou
+   * demandé).
+   */
   statut: string;
 }
 
@@ -126,7 +144,7 @@ export interface ClientStripe {
  * guillemet ni barre oblique inverse.
  */
 export function requeteParReference(reference: string): string {
-  return `metadata["${CLES.reference}"]:"${reference}"`;
+  return `metadata["${CLES.reference}"]:"${reference}" AND metadata["${CLES.boutique}"]:"${BOUTIQUE}"`;
 }
 
 export function requeteConfigurationsAvant(avant: number): string {
@@ -137,8 +155,15 @@ export function requetePaiementsAboutisDepuis(depuis: number): string {
   return `status:"succeeded" AND created>${Math.floor(depuis)} AND metadata["${CLES.boutique}"]:"${BOUTIQUE}"`;
 }
 
+/**
+ * Ce que chaque lecture d'un paiement développe : son dernier débit, et les
+ * remboursements de ce débit (Stripe ne les renvoie que sur demande).
+ */
+export const DEVELOPPEMENT_DU_PAIEMENT = "latest_charge.refunds";
+
 function lirePaiement(paiement: Stripe.PaymentIntent): PaiementLu {
   const charge = paiement.latest_charge && typeof paiement.latest_charge === "object" ? paiement.latest_charge : null;
+  const remboursements = charge?.refunds?.data ?? [];
   return {
     id: paiement.id,
     statut: paiement.status,
@@ -146,7 +171,11 @@ function lirePaiement(paiement: Stripe.PaymentIntent): PaiementLu {
     payeLe: charge?.created ?? paiement.created,
     montant: paiement.amount_received || paiement.amount,
     metadonnees: { ...(paiement.metadata ?? {}) },
-    rembourseEnTotalite: charge?.refunded === true,
+    remboursements: remboursements.map((remboursement) => ({
+      id: remboursement.id,
+      statut: remboursement.status ?? "pending",
+      montant: remboursement.amount,
+    })),
     litige: charge?.disputed === true,
     emailDuDebit: charge?.billing_details?.email ?? null,
   };
@@ -215,7 +244,7 @@ export function creerClientStripe(
 
   const relire = async (id: string): Promise<PaiementLu | null> => {
     try {
-      return lirePaiement(await stripe.paymentIntents.retrieve(id, { expand: ["latest_charge"] }));
+      return lirePaiement(await stripe.paymentIntents.retrieve(id, { expand: [DEVELOPPEMENT_DU_PAIEMENT] }));
     } catch (erreur) {
       if (codeErreur(erreur) === "resource_missing") return null;
       throw erreur;
@@ -232,7 +261,7 @@ export function creerClientStripe(
     async lireSession(id) {
       try {
         return lireSessionStripe(
-          await stripe.checkout.sessions.retrieve(id, { expand: ["payment_intent.latest_charge"] }),
+          await stripe.checkout.sessions.retrieve(id, { expand: [`payment_intent.${DEVELOPPEMENT_DU_PAIEMENT}`] }),
         );
       } catch (erreur) {
         if (codeErreur(erreur) === "resource_missing") return null;
@@ -245,11 +274,13 @@ export function creerClientStripe(
         query: requeteParReference(reference),
         limit: 10,
       });
-      const memeReference = resultat.data.filter((paiement) => paiement.metadata?.[CLES.reference] === reference);
+      const memeReference = resultat.data.filter(
+        (paiement) => paiement.metadata?.[CLES.reference] === reference && paiement.metadata?.[CLES.boutique] === BOUTIQUE,
+      );
       const choisi = memeReference.find((paiement) => paiement.status === "succeeded") ?? memeReference[0];
       if (!choisi) return null;
       const frais = await relire(choisi.id);
-      return frais && frais.metadonnees[CLES.reference] === reference ? frais : null;
+      return frais && frais.metadonnees[CLES.reference] === reference && frais.metadonnees[CLES.boutique] === BOUTIQUE ? frais : null;
     },
 
     lirePaiement: relire,
@@ -264,7 +295,7 @@ export function creerClientStripe(
       const resultat = await stripe.paymentIntents.search({
         query: requetePaiementsAboutisDepuis(depuis),
         limit: 100,
-        expand: ["data.latest_charge"],
+        expand: [`data.${DEVELOPPEMENT_DU_PAIEMENT}`],
         ...(page ? { page } : {}),
       });
       return {
@@ -277,7 +308,7 @@ export function creerClientStripe(
       const resultat = await stripe.paymentIntents.search({
         query: requeteConfigurationsAvant(avant),
         limit: 100,
-        expand: ["data.latest_charge"],
+        expand: [`data.${DEVELOPPEMENT_DU_PAIEMENT}`],
         ...(page ? { page } : {}),
       });
       return {
@@ -302,7 +333,7 @@ export function creerClientStripe(
       return lirePaiement(
         await stripe.paymentIntents.update(
           idPaiement,
-          { metadata: metadonnees, expand: ["latest_charge"] },
+          { metadata: metadonnees, expand: [DEVELOPPEMENT_DU_PAIEMENT] },
           cleIdempotence ? { idempotencyKey: cleIdempotence } : undefined,
         ),
       );
@@ -320,7 +351,7 @@ export function creerClientStripe(
         );
         return { id: remboursement.id, statut: remboursement.status ?? "pending" };
       } catch (erreur) {
-        if (codeErreur(erreur) === "charge_already_refunded") return { id: "", statut: "succeeded" };
+        if (codeErreur(erreur) === "charge_already_refunded") return { id: "", statut: "deja_rembourse" };
         throw erreur;
       }
     },

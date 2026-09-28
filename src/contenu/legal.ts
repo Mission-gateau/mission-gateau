@@ -19,7 +19,7 @@ export { VERSION_CGV, conditionsGenerales } from "./cgv";
 
 /** Date de mise à jour de chaque page. */
 export const MISE_A_JOUR_MENTIONS = "27 septembre 2026";
-export const MISE_A_JOUR_CONFIDENTIALITE = "27 septembre 2026";
+export const MISE_A_JOUR_CONFIDENTIALITE = "28 septembre 2026";
 
 // ---------------------------------------------------------------------------
 // Mentions légales
@@ -144,7 +144,7 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
       titre: "L'aperçu gratuit : rien n'est conservé",
       blocs: [
         p(
-          "Pour composer un aperçu, vos réponses — thème, âge fêté, prénom de l'enfant, nombre d'enfants, durée, cachettes et, si vous les donnez, les détails de la fête — sont envoyées au site par le formulaire. Elles servent à produire le PDF, puis disparaissent avec la requête : rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers.",
+          "Pour composer un aperçu, vos réponses — thème, âge fêté, prénom de l'enfant, nombre d'enfants, durée, cachettes et, si vous les donnez, les détails de la fête — sont envoyées au site par le formulaire. Elles servent à produire le PDF, puis disparaissent avec la requête : elles ne sont ni enregistrées, ni journalisées, ni transmises à un tiers (le journal de notre hébergeur ne note que la requête elle-même : voir « Destinataires »).",
         ),
       ],
     },
@@ -156,7 +156,7 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
             "Vos réponses. Pour que le jeu puisse vous être livré, elles sont confiées à Stripe, notre prestataire de paiement, chiffrées ; seuls le thème et la tranche d'âge du jeu y figurent en clair, sur la ligne de commande et sur la facture. Vos réponses chiffrées y restent 30 jours après le paiement, la durée de validité du lien de téléchargement, puis sont effacées automatiquement. Si vous quittez la page de paiement sans payer, elles peuvent rester attachées, chiffrées, à la session de paiement abandonnée : Stripe ne donne aucun moyen de les en effacer, et elles restent illisibles sans la clé secrète du site.",
           ],
           [
-            "La trace de votre commande. La référence de la commande, la référence du jeu, le pays de résidence déclaré, la version des conditions de vente acceptée, l'heure de vos deux accords, celle de l'envoi de la confirmation, celle du premier téléchargement et, si vous vous rétractez, celle de votre rétractation restent avec la commande chez Stripe aussi longtemps que la facture, dix ans : elles prouvent ce qui a été vendu, ce que vous avez accepté et ce qui a été fait.",
+            "La trace de votre commande. La référence de la commande, la référence du jeu, le pays de résidence déclaré, la version des conditions de vente acceptée, l'heure de vos deux accords, celle de l'envoi de la confirmation, celle du premier téléchargement, si vous vous rétractez, celle de votre rétractation et, si le vendeur a dû examiner votre commande, celle de sa réponse restent avec la commande chez Stripe aussi longtemps que la facture, dix ans : elles prouvent ce qui a été vendu, ce que vous avez accepté et ce qui a été fait.",
           ],
           [
             "Vos coordonnées de facturation. Votre adresse e-mail, votre nom et votre adresse de facturation, que vous saisissez sur la page de paiement de Stripe, ainsi que la facture, restent chez Stripe au titre de nos obligations comptables : dix ans (article L123-22 du Code de commerce).",
@@ -165,7 +165,7 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
             "Nos e-mails. L'e-mail de confirmation de votre commande et, si vous vous rétractez, l'accusé de réception de votre déclaration vous sont envoyés par Resend, notre prestataire d'envoi d'e-mails. Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie, hébergée par Google (voir « Destinataires »), comme preuve de leur envoi pendant cinq ans, le délai pendant lequel une action en justice sur la commande reste possible (article 2224 du Code civil). Les messages que vous nous écrivez y arrivent aussi.",
           ],
           [
-            "Votre déclaration de rétractation. Si vous utilisez la fonction « Renoncer au contrat ici », seule la référence de votre commande sert à la retrouver (avec, si vous venez de la page de votre commande, l'identifiant de votre paiement chez Stripe que porte son lien) ; vos nom et prénom et l'adresse e-mail que vous indiquez servent à traiter votre déclaration et à vous en accuser réception : ils ne sont gardés que dans cet accusé de réception et dans sa copie. À la trace de la commande chez Stripe s'ajoutent seulement l'heure de votre rétractation, une empreinte de la déclaration qui l'a enregistrée (un code calculé à partir de ces quatre champs, qui sert à reconnaître une déclaration identique sans les garder en clair) et le nombre d'accusés de réception envoyés pour la commande. Si aucune commande payée ne correspond à la référence indiquée, ou si votre commande ne peut pas être vérifiée, votre déclaration n'est ni transmise ni gardée : seules la référence et l'heure de votre demande restent dans le journal du serveur, que notre hébergeur garde une heure.",
+            "Votre déclaration de rétractation. Si vous utilisez la fonction « Renoncer au contrat ici », seule la référence de votre commande sert à la retrouver (avec, si vous venez de la page de votre commande, l'identifiant de la session de paiement Stripe que porte son lien) ; vos nom et prénom et l'adresse e-mail que vous indiquez servent à traiter votre déclaration et à vous en accuser réception : ils ne sont gardés que dans cet accusé de réception et dans sa copie. À la trace de la commande chez Stripe s'ajoutent seulement l'heure de votre rétractation, une empreinte de la déclaration qui l'a enregistrée (un code calculé à partir de ces quatre champs, qui sert à reconnaître une déclaration identique sans les garder en clair) et le nombre d'accusés de réception envoyés pour la commande. Si aucune commande payée ne correspond à la référence indiquée, ou si votre commande ne peut pas être vérifiée, votre déclaration n'est ni transmise ni gardée : le site n'écrit alors dans le journal de son hébergeur que la référence de la commande et l'heure de votre demande, jamais votre nom ni votre adresse e-mail (voir « Destinataires »).",
           ],
           [
             "Vos données de carte. Elles sont traitées par Stripe seul ; le vendeur n'y a jamais accès.",
@@ -207,18 +207,20 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
           ],
           [
             "Google (Gmail), qui héberge la messagerie du vendeur, un compte Gmail personnel : il reçoit et conserve les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez. Google n'est lié au vendeur par aucun accord de traitement des données : il traite ces messages selon ses propres règles de confidentialité, qui désignent Google Ireland Limited comme responsable du traitement pour les utilisateurs établis dans l'Espace économique européen, comme le vendeur. Google déclare disposer de serveurs dans le monde entier, si bien que ces données peuvent être traitées hors de l'Union européenne, et encadrer ces transferts par les décisions d'adéquation de la Commission européenne, par le cadre de protection des données UE–États-Unis, auquel Google LLC déclare adhérer, et par les clauses contractuelles types lorsqu'aucune décision d'adéquation ne s'applique (",
-            lien("règles de confidentialité de Google", "https://policies.google.com/privacy?hl=fr"),
+            lien("règles de confidentialité de Google", "https://policies.google.com/privacy?hl=fr&gl=FR"),
             ", en vigueur depuis le 2 avril 2026, et ",
-            lien("cadres légaux de Google pour les transferts de données", "https://policies.google.com/privacy/frameworks?hl=fr"),
+            lien("cadres légaux de Google pour les transferts de données", "https://policies.google.com/privacy/frameworks?hl=fr&gl=FR"),
             ", en vigueur depuis le 23 août 2025).",
           ],
           [
-            `${fiche.hebergeur.nom}, hébergeur du site, aux États-Unis : chaque requête passe par ses serveurs. Vercel déclare se conformer au cadre de protection des données UE–États-Unis, à son extension au Royaume-Uni et au cadre Suisse–États-Unis, et recourir aux clauses contractuelles types ou à d'autres mécanismes appropriés pour ses transferts (`,
+            `${fiche.hebergeur.nom}, hébergeur du site, aux États-Unis : chaque requête passe par ses serveurs. Selon sa documentation, son journal d'exécution enregistre, pour chaque requête vers une page ou une fonction du site, la méthode, l'adresse demandée et ses paramètres, le nom de domaine, l'heure, le code de réponse, le navigateur utilisé et la région de ses serveurs qui l'a traitée, ainsi que les lignes que le site y écrit ; il garde ce journal une heure, avec l'offre qu'utilise le site (`,
+            lien("documentation de Vercel sur ses journaux d'exécution", "https://vercel.com/docs/logs/runtime"),
+            `, mise à jour le 28 août 2026). Vercel déclare aussi recueillir, sur le trafic des sites qu'il héberge, l'adresse IP des visiteurs, la ville et le pays qu'il en déduit et des informations sur la configuration de leur système, et garder ses informations pendant la durée qu'il juge nécessaire à ses obligations et à son activité, sans indiquer de durée chiffrée. Vercel déclare se conformer au cadre de protection des données UE–États-Unis, à son extension au Royaume-Uni et au cadre Suisse–États-Unis, et recourir aux clauses contractuelles types ou à d'autres mécanismes appropriés pour ses transferts (`,
             lien("avis de confidentialité de Vercel", "https://vercel.com/legal/privacy-notice"),
             ", en vigueur depuis le 1er juin 2026).",
           ],
         ),
-        p("Aucune donnée n'est vendue, ni transmise à qui que ce soit d'autre."),
+        p("Aucune donnée n'est vendue, ni transmise à qui que ce soit d'autre, sauf au médiateur de la consommation si vous le saisissez."),
       ],
     },
     {

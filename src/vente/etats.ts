@@ -16,6 +16,7 @@ const TEXTES_REFUS: Record<Refus, { titre: string; texte: string }> = {
   introuvable: COMMANDE.introuvable,
   expiree: COMMANDE.expiree,
   remboursee: COMMANDE.remboursee,
+  remboursement_demande: COMMANDE.remboursementDemande,
   retractee: COMMANDE.retractee,
   a_examiner: COMMANDE.aExaminer,
   litige: COMMANDE.litige,

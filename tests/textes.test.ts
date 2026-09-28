@@ -154,6 +154,8 @@ describe("gabarits", () => {
       "heure", "montant", "produit", "test", "article", "version", "fichier",
       // Médiation, et accusé d'une rétractation déjà enregistrée.
       "demande", "dateDeclaration", "heureDeclaration",
+      // Liste quotidienne des commandes à traiter.
+      "titre", "nombre", "action", "section", "libelle", "gagnante",
     ]);
     const inconnues = new Set<string>();
     for (const { texte } of textesDeProse()) {

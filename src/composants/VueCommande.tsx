@@ -62,9 +62,11 @@ export function VueCommande({
             <li>
               {situation.remboursement === "effectue"
                 ? remplir(COMMANDE.retractee.rembourse, { montant: situation.montant })
-                : situation.remboursement === "litige"
-                  ? COMMANDE.retractee.litige
-                  : COMMANDE.retractee.aRembourser}
+                : situation.remboursement === "demande"
+                  ? remplir(COMMANDE.retractee.demande, { montant: situation.montant })
+                  : situation.remboursement === "litige"
+                    ? COMMANDE.retractee.litige
+                    : COMMANDE.retractee.aRembourser}
             </li>
           </ul>
           <p className="mt-6 text-sm leading-relaxed">{serviceClient}</p>

@@ -24,16 +24,26 @@ vi.mock("@/vente/livraison", async (importOriginal) => {
 });
 
 import { etatDuPaiement } from "@/vente/commande";
-import { ESSAIS_DE_MARQUE, autreMarque, cleDeMarque, ecrireLaMarque, issueDeLEcriture, marqueGagnante } from "@/vente/course";
+import {
+  ClesDeMarqueEpuisees,
+  ESSAIS_DE_MARQUE,
+  RelectureDeLaMarqueImpossible,
+  autreMarque,
+  cleDeMarque,
+  ecrireLaMarque,
+  issueDeLEcriture,
+  marqueGagnante,
+} from "@/vente/course";
 import { courrielEnTexte, type DocumentCourriel } from "@/vente/courriels";
 import type { Dependances } from "@/vente/dependances";
+import type { ClientEmail } from "@/vente/envoi";
 import { CLES, lireSuivi } from "@/vente/metadonnees";
 import { cleDAccuse, cleDAccuseNumero, empreinteDeDeclaration } from "@/vente/retractation";
 import { creerCommande, livrerKit, renoncer } from "@/vente/serveur";
 import type { ClientStripe, PaiementLu } from "@/vente/stripe";
 import { tacheQuotidienne } from "@/vente/tache";
 import { FauxEmail } from "./fauxEmail";
-import { CLE_REELLE, FauxStripe, corpsDeCommande, dependances, environnement, requeteJson } from "./fauxStripe";
+import { CLE_REELLE, FauxStripe, corpsDeCommande, dependances, environnement, requeteJson, type PanneStripe } from "./fauxStripe";
 
 const PRODUCTION = environnement({ vercelEnv: "production", cleStripe: CLE_REELLE });
 const PAYEE_LE = new Date("2026-09-24T10:00:00.000Z");
@@ -110,18 +120,83 @@ const DECISIFS: Filtre = (methode, args) => {
   return cles.some((cle) => cle === CLES.telechargement || cle === CLES.retractation || cle === CLES.course);
 };
 
+/**
+ * Sous panne : tout ce qui peut décider attend son tour ; seules la lecture de
+ * la session de l'acheteur (sa copie cachée) et l'écriture de l'identifiant
+ * de l'accusé passent aussitôt. Toutes, retenues ou non, peuvent recevoir la
+ * panne injectée.
+ */
+const SOUS_PANNE: Filtre = (methode, args) =>
+  methode !== "sessionDuPaiement" &&
+  !(methode === "modifierMetadonnees" && CLES.accuseRetractation in (args[1] as Record<string, string>));
+
+/**
+ * Une panne injectée dans le `rang`-ième appel retenu d'une requête (appels à
+ * Stripe et à Resend comptés ensemble) : une panne de Stripe si cet appel va
+ * chez Stripe, un échec d'envoi s'il va chez Resend.
+ */
+interface Injection {
+  route: string;
+  rang: number;
+  genre: PanneStripe | "resend";
+  faite: boolean;
+}
+
+/** Les appels retenus de chaque requête, Stripe et Resend ensemble, dans l'ordre : chez qui chacun est allé. */
+type Comptes = Map<string, ("stripe" | "resend")[]>;
+
+function prendreUnRang(comptes: Comptes, route: string, chez: "stripe" | "resend"): number {
+  const appels = comptes.get(route) ?? [];
+  comptes.set(route, [...appels, chez]);
+  return appels.length;
+}
+
 /** Le faux Stripe vu par une requête : chaque appel retenu attend son tour à la porte de l'ordonnanceur. */
-function facade(stripe: FauxStripe, route: string, ordonnanceur: Ordonnanceur, filtre: Filtre): ClientStripe {
+function facade(
+  stripe: FauxStripe,
+  route: string,
+  ordonnanceur: Ordonnanceur,
+  filtre: Filtre,
+  comptes: Comptes = new Map(),
+  injection: Injection | null = null,
+): ClientStripe {
   return new Proxy(stripe, {
     get(cible, nom, recepteur) {
       const valeur = Reflect.get(cible, nom, recepteur) as unknown;
       if (typeof valeur !== "function" || typeof nom !== "string") return valeur;
       return async (...args: unknown[]) => {
         if (filtre(nom, args)) await ordonnanceur.porte(route);
+        const rang = prendreUnRang(comptes, route, "stripe");
+        if (injection && injection.route === route && injection.rang === rang && injection.genre !== "resend") {
+          // L'appel qui suit, tout de suite, est celui-ci.
+          stripe.panneAuProchainAppel = injection.genre;
+          injection.faite = true;
+        }
         return (valeur as (...a: unknown[]) => unknown).apply(cible, args);
       };
     },
   }) as unknown as ClientStripe;
+}
+
+/** Le faux Resend vu par une requête : chaque envoi attend lui aussi son tour. */
+function facadeEmail(
+  emails: FauxEmail,
+  route: string,
+  ordonnanceur: Ordonnanceur,
+  comptes: Comptes,
+  injection: Injection | null,
+): ClientEmail {
+  return {
+    async envoyer(message, cle) {
+      await ordonnanceur.porte(route);
+      const rang = prendreUnRang(comptes, route, "resend");
+      if (injection && injection.route === route && injection.rang === rang && injection.genre === "resend") {
+        emails.panneAuProchainEnvoi = true;
+        injection.faite = true;
+      }
+      return emails.envoyer(message, cle);
+    },
+  };
 }
 
 interface Acteur {
@@ -143,6 +218,10 @@ interface Scenario {
   panne?: (stripe: FauxStripe) => void;
   sansPanne: boolean;
   filtre?: Filtre;
+  /** L'ordonnanceur retient aussi les appels à Resend. */
+  resend?: boolean;
+  /** Le faux Resend garde la clé d'un envoi en échec (Resend ne dit pas s'il le fait). */
+  garderLesClesEnEchec?: boolean;
 }
 
 interface ReponseDeclaration {
@@ -170,6 +249,12 @@ interface Issue {
   clesDesAccuses: string[];
   reference: string;
   apresLaTache: { rembourse: boolean; pdf: boolean };
+  /** Les e-mails partis de la route de rétractation (la liste des commandes à traiter mise à part). */
+  emailsDeLaRoute: { cle: string; texte: string }[];
+  /** Les appels retenus de chaque requête, dans l'ordre : chez Stripe ou chez Resend. */
+  appels: Record<string, ("stripe" | "resend")[]>;
+  /** La panne injectée l'a-t-elle bien été ? */
+  panneFaite: boolean;
 }
 
 let journaux: string[];
@@ -194,9 +279,16 @@ function empreinteDe(acteur: Acteur, reference: string): string {
   return empreinteDeDeclaration({ ...(acteur.declarant ?? CAMILLE), reference, email: EMAIL });
 }
 
-async function jouer(prefixe: string[], scenario: Scenario): Promise<{ choix: Ordonnanceur["choix"]; issue: Issue }> {
+async function jouer(
+  prefixe: string[],
+  scenario: Scenario,
+  injection: Omit<Injection, "faite"> | null = null,
+): Promise<{ choix: Ordonnanceur["choix"]; issue: Issue }> {
   const stripe = new FauxStripe();
   const emails = new FauxEmail();
+  emails.garderLesClesEnEchec = scenario.garderLesClesEnEchec ?? false;
+  const panne: Injection | null = injection ? { ...injection, faite: false } : null;
+  const comptes: Comptes = new Map();
   const base = (client: ClientStripe | null, maintenant: Date): Dependances =>
     dependances(client, { email: emails, env: PRODUCTION, maintenant: () => maintenant });
 
@@ -212,7 +304,8 @@ async function jouer(prefixe: string[], scenario: Scenario): Promise<{ choix: Or
   );
   const reponses = await Promise.all(
     scenario.acteurs.map((acteur) => {
-      const deps = base(facade(stripe, acteur.nom, ordonnanceur, scenario.filtre ?? TOUT), acteur.le);
+      const deps = base(facade(stripe, acteur.nom, ordonnanceur, scenario.filtre ?? TOUT, comptes, panne), acteur.le);
+      if (scenario.resend) deps.email = facadeEmail(emails, acteur.nom, ordonnanceur, comptes, panne);
       const requete =
         acteur.genre === "kit"
           ? livrerKit(requeteJson(`http://localhost/api/commande/${reference}/kit`, {}), reference, deps)
@@ -244,6 +337,9 @@ async function jouer(prefixe: string[], scenario: Scenario): Promise<{ choix: Or
   const etatFinal = etatDuPaiement(stripe.paiements.get(paiement.id)!, reference, CLE_REELLE, RECUE_LE).etat;
   const compteurs = stripe.modifications.filter((m) => CLES.accuses in m.metadonnees).map((m) => Number(m.metadonnees[CLES.accuses]));
   const clesDesAccuses = emails.envoyes.map((envoye) => envoye.cle).filter((cle) => cle.startsWith("accuse-"));
+  const emailsDeLaRoute = emails.envoyes
+    .filter((envoye) => envoye.cle.startsWith("accuse-"))
+    .map((envoye) => ({ cle: envoye.cle, texte: envoye.message.texte }));
 
   // La tâche quotidienne passe ensuite, puis une nouvelle demande du kit : elles suivent la même règle.
   stripe.remboursementEnPanne = false;
@@ -268,17 +364,20 @@ async function jouer(prefixe: string[], scenario: Scenario): Promise<{ choix: Or
       clesDesAccuses,
       reference,
       apresLaTache: { rembourse: stripe.remboursements.length > 0, pdf: apresKit.status === 200 },
+      emailsDeLaRoute,
+      appels: Object.fromEntries(comptes),
+      panneFaite: panne?.faite ?? false,
     },
   };
 }
 
 /** Tous les ordres possibles, par exploration en profondeur des choix de l'ordonnanceur. */
-async function explorer(scenario: Scenario): Promise<Issue[]> {
+async function explorer(scenario: Scenario, injection: Omit<Injection, "faite"> | null = null): Promise<Issue[]> {
   const issues: Issue[] = [];
   const pile: string[][] = [[]];
   while (pile.length > 0) {
     const prefixe = pile.pop()!;
-    const { choix, issue } = await jouer(prefixe, scenario);
+    const { choix, issue } = await jouer(prefixe, scenario, injection);
     for (let rang = prefixe.length; rang < choix.length; rang += 1) {
       for (const autre of choix[rang]!.options) {
         if (autre !== choix[rang]!.pris) pile.push([...choix.slice(0, rang).map((c) => c.pris), autre]);
@@ -474,6 +573,135 @@ describe("premier téléchargement et rétractation en même temps", () => {
   });
 });
 
+/**
+ * Les invariants qui tiennent même quand un appel à Stripe ou à Resend
+ * échoue : jamais le PDF et le remboursement ensemble ; un remboursement au
+ * plus ; aucun accusé annoncé sans être parti ; un compteur d'accusés qui ne
+ * fait que monter ; parmi les e-mails de la route de rétractation, aucune clé
+ * hors de `accuse-<ref>` et `accuse-<ref>-1` à `-3`, et quatre au plus ;
+ * « non transmise » seulement si aucun e-mail de la route n'est parti pour
+ * cette déclaration.
+ */
+function verifierSousPanne(issue: Issue, ici: string): void {
+  expect(issue.pdf && issue.rembourse, ici).toBe(false);
+  expect(issue.pdf && issue.apresLaTache.rembourse, ici).toBe(false);
+  expect(issue.apresLaTache.pdf && issue.apresLaTache.rembourse, ici).toBe(false);
+  expect(issue.remboursements, ici).toBeLessThanOrEqual(1);
+  expect(issue.accusesAnnoncesNonPartis, ici).toBe(0);
+  for (let rang = 1; rang < issue.compteurs.length; rang += 1) {
+    expect(issue.compteurs[rang]!, ici).toBeGreaterThanOrEqual(issue.compteurs[rang - 1]!);
+  }
+  // Un accusé réaffiché (« déjà accusée ») est toujours un e-mail réellement parti de la route.
+  const textes = new Set(issue.emailsDeLaRoute.map(({ texte }) => texte));
+  for (const { acteur, reponse } of issue.declarations) {
+    if (reponse.issue === "deja_accusee" && reponse.accuse) {
+      expect(textes.has(courrielEnTexte(reponse.accuse)), `${ici} — ${acteur.nom} réaffiche un accusé qui n'est pas parti`).toBe(true);
+    }
+  }
+  const permises = new Set([`accuse-${issue.reference}`, ...[1, 2, 3].map((n) => `accuse-${issue.reference}-${n}`)]);
+  for (const { cle } of issue.emailsDeLaRoute) expect(permises.has(cle), `${ici} — clé ${cle}`).toBe(true);
+  expect(issue.emailsDeLaRoute.length, ici).toBeLessThanOrEqual(4);
+  for (const { acteur, reponse } of issue.declarations) {
+    if (reponse.issue !== "non_transmise") continue;
+    const prenom = `Prénom : ${(acteur.declarant ?? CAMILLE).prenom}\n`;
+    const partis = issue.emailsDeLaRoute.filter(({ texte }) => texte.replace(/[\u00a0\u202f]/g, " ").includes(prenom));
+    expect(partis, `${ici} — ${acteur.nom} non transmise`).toEqual([]);
+  }
+}
+
+/**
+ * Un appel à Stripe reçoit un 500 gardé sous sa clé, un 500 alors qu'il
+ * s'est appliqué, un 429 ou une coupure du réseau ; un envoi à Resend, un
+ * échec.
+ */
+const GENRES_DE_PANNE: Injection["genre"][] = ["500", "500_appliquee", "429", "connexion", "resend"];
+
+/**
+ * Une exploration sans panne, puis une par appel retenu de chaque requête et
+ * par genre de panne (500 gardé par Stripe, 500 appliqué, 429, coupure du
+ * réseau pour un appel à Stripe ; échec d'envoi pour un appel à Resend) :
+ * chacune parcourt tous les ordres possibles.
+ */
+async function balayer(scenario: Scenario): Promise<{ configurations: number; ordres: number; pannes: number }> {
+  const sansPanne = await explorer(scenario);
+  for (const issue of sansPanne) verifierSousPanne(issue, decrire(issue));
+  // Chez qui va chaque appel, rang par rang, dans les ordres sans panne.
+  const chez = new Map<string, Set<string>[]>();
+  for (const issue of sansPanne) {
+    for (const [route, appels] of Object.entries(issue.appels)) {
+      const rangs = chez.get(route) ?? [];
+      appels.forEach((destination, rang) => (rangs[rang] ??= new Set()).add(destination));
+      chez.set(route, rangs);
+    }
+  }
+  let configurations = 0;
+  let ordres = sansPanne.length;
+  let pannes = 0;
+  for (const [route, rangs] of chez) {
+    for (const [rang, destinations] of rangs.entries()) {
+      for (const genre of GENRES_DE_PANNE) {
+        if (!destinations.has(genre === "resend" ? "resend" : "stripe")) continue;
+        const issues = await explorer(scenario, { route, rang, genre });
+        configurations += 1;
+        ordres += issues.length;
+        for (const issue of issues) {
+          if (issue.panneFaite) pannes += 1;
+          verifierSousPanne(issue, `${route}, appel n° ${rang + 1} en panne (${genre}) — ${decrire(issue)}`);
+        }
+      }
+    }
+  }
+  return { configurations, ordres, pannes };
+}
+
+describe("avec une panne injectée à chaque appel à Stripe et à Resend, dans tous les ordres", () => {
+  const TELECHARGEE = { [CLES.telechargement]: "2026-09-25T09:00:00.000Z" };
+  const SCENARIOS_SOUS_PANNE: Scenario[] = [
+    {
+      nom: "un téléchargement et une déclaration reçue avant son début",
+      acteurs: [kit(APRES), declaration(RECUE_LE)],
+      sansPanne: false,
+      filtre: SOUS_PANNE,
+      resend: true,
+    },
+    {
+      nom: "un téléchargement et une déclaration reçue après son début",
+      acteurs: [kit(AVANT), declaration(RECUE_LE)],
+      sansPanne: false,
+      filtre: SOUS_PANNE,
+      resend: true,
+    },
+    {
+      nom: "deux déclarations différentes sur une commande rétractable",
+      acteurs: [declaration(RECUE_LE), declaration(new Date(RECUE_LE.getTime() + 1), DOMINIQUE, "rétractation 2")],
+      sansPanne: false,
+      filtre: SOUS_PANNE,
+      resend: true,
+    },
+    {
+      nom: "deux déclarations sur une commande téléchargée, un accusé déjà parti",
+      acteurs: [declaration(RECUE_LE), declaration(new Date(RECUE_LE.getTime() + 1), DOMINIQUE, "rétractation 2")],
+      avant: { ...TELECHARGEE, [CLES.accuses]: "1" },
+      sansPanne: false,
+      filtre: SOUS_PANNE,
+      resend: true,
+    },
+  ];
+
+  for (const scenario of SCENARIOS_SOUS_PANNE) {
+    for (const garder of [false, true]) {
+      it(`${scenario.nom} — Resend ${garder ? "garde" : "ne garde pas"} la clé d'un envoi en échec`, async () => {
+        const { configurations, ordres, pannes } = await balayer({ ...scenario, garderLesClesEnEchec: garder });
+        process.stdout.write(
+          `\n  Pannes « ${scenario.nom} », clé ${garder ? "gardée" : "oubliée"} : ${configurations} pannes, ${ordres} ordres explorés, ${pannes} avec la panne\n`,
+        );
+        expect(configurations).toBeGreaterThanOrEqual(10);
+        expect(pannes).toBeGreaterThan(0);
+      }, 120_000);
+    }
+  }
+});
+
 describe("déclarations qui n'enregistrent rien, en même temps", () => {
   const TELECHARGEE = { [CLES.telechargement]: "2026-09-25T09:00:00.000Z" };
 
@@ -581,7 +809,7 @@ describe("une marque ne s'écrit qu'une fois (ecrireLaMarque)", () => {
     expect(stripe.paiements.get(paiement.id)!.metadonnees.retractation).toBeUndefined();
   });
 
-  it("un échec gardé par Stripe sous une clé fait passer à la clé suivante ; trois échecs gardés, et la panne remonte", async () => {
+  it("un échec gardé par Stripe sous une clé fait passer à la clé suivante ; dix échecs gardés, et la panne remonte", async () => {
     const { stripe, paiement, reference } = await commande();
     stripe.metadonneesEnPanne = true;
     await expect(ecrireLaMarque(stripe, paiement, reference, "retractation", marque(RECUE_LE))).rejects.toThrow("panne simulée");
@@ -598,23 +826,26 @@ describe("une marque ne s'écrit qu'une fois (ecrireLaMarque)", () => {
       ).rejects.toThrow();
       autre.stripe.metadonneesEnPanne = false;
     }
-    // Les trois clés ont servi à des échecs gardés : la marque ne peut plus s'écrire avant que Stripe les oublie (24 heures).
-    await expect(ecrireLaMarque(autre.stripe, autre.paiement, autre.reference, "retractation", marque(APRES))).rejects.toThrow(
-      "La marque n'a pas pu être écrite.",
+    // Les dix clés ont servi à des échecs gardés : la marque ne peut plus s'écrire avant que Stripe les oublie (24 heures).
+    expect(ESSAIS_DE_MARQUE).toBe(10);
+    await expect(ecrireLaMarque(autre.stripe, autre.paiement, autre.reference, "retractation", marque(APRES))).rejects.toBeInstanceOf(
+      ClesDeMarqueEpuisees,
     );
     expect(autre.stripe.paiements.get(autre.paiement.id)!.metadonnees.retractation).toBeUndefined();
     autre.stripe.oublierLesClesDIdempotence();
     expect((await ecrireLaMarque(autre.stripe, autre.paiement, autre.reference, "retractation", marque(APRES))).issue).toBe("ecrite");
   });
 
-  it("Stripe injoignable pendant la relecture : la panne remonte, rien n'est écrasé", async () => {
+  it("Stripe injoignable pendant la relecture : la panne remonte, signalée comme une panne de lecture, rien n'est écrasé", async () => {
     const { stripe, paiement, reference } = await commande();
     await ecrireLaMarque(stripe, paiement, reference, "retractation", marque(RECUE_LE));
     const lire = stripe.lirePaiement.bind(stripe);
     stripe.lirePaiement = async () => {
       throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
     };
-    await expect(ecrireLaMarque(stripe, paiement, reference, "retractation", marque(APRES))).rejects.toThrow("panne simulée");
+    const erreur = await ecrireLaMarque(stripe, paiement, reference, "retractation", marque(APRES)).catch((e: unknown) => e);
+    expect(erreur).toBeInstanceOf(RelectureDeLaMarqueImpossible);
+    expect((erreur as RelectureDeLaMarqueImpossible).erreur).toMatchObject({ message: "panne simulée" });
     stripe.lirePaiement = lire;
     expect(stripe.paiements.get(paiement.id)!.metadonnees.retractation).toBe(RECUE_LE.toISOString());
   });

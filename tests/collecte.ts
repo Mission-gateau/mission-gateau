@@ -8,7 +8,7 @@ import { CREDITS, SITE } from "@/contenu/site";
 import { LISTE_THEMES } from "@/contenu/themes";
 import { mentionsLegales, politiqueDeConfidentialite } from "@/contenu/legal";
 import { VERSIONS_CGV } from "@/contenu/cgv";
-import { ACCUSE, CONFIRMATION } from "@/contenu/emails";
+import { ACCUSE, A_TRAITER, CONFIRMATION } from "@/contenu/emails";
 import { MODELE_FORMULAIRE } from "@/contenu/formulaireRetractation";
 import { REPONSES_RETRACTATION, RETRACTATION } from "@/contenu/retractation";
 import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
@@ -91,6 +91,7 @@ export function tousLesTextes(): TexteRepere[] {
     ["formulaireRetractation", MODELE_FORMULAIRE],
     ["emailConfirmation", CONFIRMATION],
     ["emailAccuse", ACCUSE],
+    ["emailATraiter", A_TRAITER],
   ];
   for (const [nom, valeur] of sources) parcourir(valeur, nom, resultat);
   return resultat;

@@ -1,20 +1,25 @@
 import { timingSafeEqual } from "node:crypto";
+import { EXPEDITEUR } from "../contenu/emails";
+import { candidatALaListe, cleDeLaListe, courrielDeLaListe, listeATraiter, tailleDeLaListe } from "./aTraiter";
 import { etatDuPaiement } from "./commande";
 import { envoyerLaConfirmation } from "./confirmation";
+import { courrielEnHtml, courrielEnTexte } from "./courriels";
 import { marqueGagnante } from "./course";
 import type { Dependances } from "./dependances";
 import { bilanVide, effacerLesConfigurationsAnciennes, toutesLesPages, type BilanEffacement } from "./effacement";
+import { adresseDEnvoi } from "./envoi";
 import type { Environnement } from "./environnement";
 import { journal } from "./journal";
-import { BOUTIQUE, CLES, lireSuivi } from "./metadonnees";
+import { BOUTIQUE, CLES, estUneCommande, lireSuivi } from "./metadonnees";
+import { rembourseEnTotalite, remboursementExistant } from "./remboursement";
 import { cleDeRemboursement, rembourserSansPanne } from "./retractation";
 import type { ClientStripe, PaiementLu } from "./stripe";
 
 /**
- * La tâche quotidienne (cron Vercel, déclaré dans vercel.json), en trois
- * phases, chacune écrivant sa ligne de journal dès qu'elle finit : un
- * dépassement de durée ne fait pas perdre les compteurs des phases déjà
- * faites.
+ * La tâche quotidienne (cron Vercel, déclaré dans vercel.json), en quatre
+ * phases, chacune écrivant sa ligne de journal dès qu'elle finit, même en
+ * échec : un dépassement de durée ne fait pas perdre les compteurs des phases
+ * déjà faites.
  * 1. `effacement` : la configuration chiffrée des paiements de plus de 30
  *    jours, comme avant ;
  * 2. `confirmations` : la confirmation des commandes payées depuis plus d'une
@@ -22,10 +27,14 @@ import type { ClientStripe, PaiementLu } from "./stripe";
  *    ou à examiner — pour l'acheteur qui n'est pas revenu sur le site, sans
  *    jamais en envoyer deux (voir src/vente/confirmation.ts) ;
  * 3. `remboursements` : le remboursement des rétractations qui l'ont emporté
- *    (voir src/vente/course.ts) et ne sont pas encore remboursées, hors
- *    litige.
+ *    (voir src/vente/course.ts) et dont aucun remboursement n'est demandé ni
+ *    fait (un remboursement `failed` ou `canceled` est retenté), hors
+ *    litige ;
+ * 4. `a_traiter` : la liste des commandes qui attendent une action du
+ *    vendeur, envoyée par e-mail au vendeur s'il y en a au moins une (voir
+ *    src/vente/aTraiter.ts).
  *
- * Les phases 2 et 3 ne voient que les paiements de cette boutique
+ * Les phases 2 à 4 ne voient que les paiements de cette boutique
  * (`boutique` = `mission-gateau`, exigé dans la recherche puis revérifié).
  * Elle n'agit que si la requête porte le secret de CRON_SECRET, que Vercel
  * envoie de lui-même. Ses compteurs ne partent que dans les journaux.
@@ -47,10 +56,33 @@ export interface BilanConfirmations {
 export interface BilanRemboursements {
   retractationsExaminees: number;
   remboursementsRetentes: number;
+  /** Remboursements effectués (`succeeded`). */
   remboursementsReussis: number;
+  /** Remboursements demandés, pas encore réglés (`pending`, `requires_action`). */
+  remboursementsDemandes: number;
   remboursementsEchoues: number;
   /** Rétractations qui ont perdu la course, ou croisements à examiner : jamais remboursées ici. */
   remboursementsExclus: number;
+  erreurs: number;
+}
+
+export interface BilanATraiter {
+  /** Paiements relus : ceux qui portent une rétractation ou une contestation. */
+  commandesRelues: number;
+  aExaminer: number;
+  simultanees: number;
+  accuseManquant: number;
+  sansRemboursement: number;
+  remboursementEnAttente: number;
+  contestations: number;
+  /**
+   * 1 si Resend a accepté la liste à ce passage : envoyée, ou déjà envoyée
+   * sous la même clé (même liste, le même jour), auquel cas Resend rejoue sa
+   * réponse sans second e-mail. Resend ne distingue pas les deux.
+   */
+  listeAcceptee: number;
+  /** 1 si Resend a répondu 409 (liste déjà envoyée, ou envoi en cours) : compté, ce n'est pas une erreur. */
+  listeEnConflit: number;
   erreurs: number;
 }
 
@@ -58,6 +90,7 @@ export interface BilanTache {
   effacement: BilanEffacement;
   confirmations: BilanConfirmations;
   remboursements: BilanRemboursements;
+  aTraiter: BilanATraiter;
 }
 
 export function bilanTacheVide(): BilanTache {
@@ -79,15 +112,28 @@ export function bilanTacheVide(): BilanTache {
       retractationsExaminees: 0,
       remboursementsRetentes: 0,
       remboursementsReussis: 0,
+      remboursementsDemandes: 0,
       remboursementsEchoues: 0,
       remboursementsExclus: 0,
+      erreurs: 0,
+    },
+    aTraiter: {
+      commandesRelues: 0,
+      aExaminer: 0,
+      simultanees: 0,
+      accuseManquant: 0,
+      sansRemboursement: 0,
+      remboursementEnAttente: 0,
+      contestations: 0,
+      listeAcceptee: 0,
+      listeEnConflit: 0,
       erreurs: 0,
     },
   };
 }
 
 export function erreursDeLaTache(bilan: BilanTache): number {
-  return bilan.effacement.erreurs + bilan.confirmations.erreurs + bilan.remboursements.erreurs;
+  return bilan.effacement.erreurs + bilan.confirmations.erreurs + bilan.remboursements.erreurs + bilan.aTraiter.erreurs;
 }
 
 /** Une heure après le paiement : l'acheteur revenu sur le site a déjà reçu sa confirmation. */
@@ -129,10 +175,12 @@ export async function tacheQuotidienne(deps: Dependances): Promise<BilanTache> {
   }
 
   let paiements: PaiementLu[] = [];
+  let recherche = true;
   try {
     try {
       paiements = await paiementsDeLaBoutique(client, maintenant);
     } catch {
+      recherche = false;
       bilan.confirmations.erreurs += 1;
     }
     await confirmerLesOubliees(paiements, deps, cleStripe, maintenant, bilan.confirmations);
@@ -144,6 +192,14 @@ export async function tacheQuotidienne(deps: Dependances): Promise<BilanTache> {
     await rembourserLesRetractations(paiements, deps, client, maintenant, bilan.remboursements);
   } finally {
     noter("remboursements", bilan.remboursements);
+  }
+
+  try {
+    // Sans la recherche, la liste serait vide à tort : la phase le compte comme une erreur.
+    if (!recherche) bilan.aTraiter.erreurs += 1;
+    else await signalerLesCommandesATraiter(paiements, deps, client, maintenant, bilan.aTraiter);
+  } finally {
+    noter("a_traiter", bilan.aTraiter);
   }
   return bilan;
 }
@@ -177,7 +233,7 @@ async function confirmerLesOubliees(
         bilan.confirmationsDejaFaites += 1;
         continue;
       }
-      if (paiement.rembourseEnTotalite || paiement.litige || marqueGagnante(paiement.metadonnees) !== null) {
+      if (rembourseEnTotalite(paiement) || paiement.litige || marqueGagnante(paiement.metadonnees) !== null) {
         bilan.confirmationsExclues += 1;
         continue;
       }
@@ -193,7 +249,9 @@ async function confirmerLesOubliees(
       }
       const etat = etatDuPaiement(frais, reference, cleStripe, maintenant);
       if (etat.etat !== "payee") {
-        if (["retractee", "remboursee", "litige", "a_examiner"].includes(etat.etat)) bilan.confirmationsExclues += 1;
+        if (["retractee", "remboursee", "remboursement_demande", "litige", "a_examiner"].includes(etat.etat)) {
+          bilan.confirmationsExclues += 1;
+        }
         else bilan.confirmationsImpossibles += 1;
         continue;
       }
@@ -216,9 +274,11 @@ async function confirmerLesOubliees(
 /**
  * Les rétractations à rembourser, relues à jour avant tout remboursement : la
  * recherche peut rendre des métadonnées périmées, et seule une rétractation
- * qui l'a emporté se rembourse (voir src/vente/course.ts). Une tentative par
- * jour et par commande : la clé d'idempotence porte le jour, et Stripe ne
- * rembourse jamais au-delà du montant payé.
+ * qui l'a emporté se rembourse (voir src/vente/course.ts). Aucun
+ * remboursement n'est créé s'il en existe déjà un demandé ou fait (`pending`,
+ * `requires_action`, `succeeded`) ; un remboursement `failed` ou `canceled`
+ * est retenté. Une tentative par jour et par commande : la clé d'idempotence
+ * porte le jour, et Stripe ne rembourse jamais au-delà du montant payé.
  */
 async function rembourserLesRetractations(
   paiements: PaiementLu[],
@@ -232,23 +292,87 @@ async function rembourserLesRetractations(
     if (!lireSuivi(paiement.metadonnees).retractation) continue;
     bilan.retractationsExaminees += 1;
     try {
-      if (paiement.rembourseEnTotalite || paiement.litige) continue;
+      if (remboursementExistant(paiement) || paiement.litige) continue;
       const frais = await client.lirePaiement(paiement.id);
       if (!frais) {
         bilan.erreurs += 1;
         continue;
       }
-      if (frais.rembourseEnTotalite || frais.litige) continue;
+      if (remboursementExistant(frais) || frais.litige) continue;
       if (marqueGagnante(frais.metadonnees) !== "retractation") {
         bilan.remboursementsExclus += 1;
         continue;
       }
       bilan.remboursementsRetentes += 1;
       const reference = frais.metadonnees[CLES.reference]!;
-      if (await rembourserSansPanne(deps, frais, cleDeRemboursement(reference, jour))) bilan.remboursementsReussis += 1;
+      const etat = await rembourserSansPanne(deps, frais, cleDeRemboursement(reference, jour));
+      if (etat === "effectue") bilan.remboursementsReussis += 1;
+      else if (etat === "demande") bilan.remboursementsDemandes += 1;
       else bilan.remboursementsEchoues += 1;
     } catch {
       bilan.erreurs += 1;
     }
   }
+}
+
+/**
+ * La liste des commandes à traiter (voir src/vente/aTraiter.ts), à l'issue
+ * des remboursements : les paiements qui portent une rétractation ou une
+ * contestation sont relus à jour, et la liste part au vendeur s'il y a au
+ * moins une commande. La clé d'idempotence porte le jour de Paris et
+ * l'empreinte de la liste : une liste inchangée ne repart pas.
+ */
+async function signalerLesCommandesATraiter(
+  paiements: PaiementLu[],
+  deps: Dependances,
+  client: ClientStripe,
+  maintenant: Date,
+  bilan: BilanATraiter,
+): Promise<void> {
+  const frais: PaiementLu[] = [];
+  for (const paiement of paiements) {
+    if (!candidatALaListe(paiement)) continue;
+    const reference = paiement.metadonnees[CLES.reference]!;
+    try {
+      const relu = await client.lirePaiement(paiement.id);
+      bilan.commandesRelues += 1;
+      if (!relu) bilan.erreurs += 1;
+      else if (relu.statut === "succeeded" && estUneCommande(relu.metadonnees, reference)) frais.push(relu);
+    } catch {
+      bilan.erreurs += 1;
+    }
+  }
+  const liste = listeATraiter(frais, maintenant);
+  bilan.aExaminer = liste.a_examiner.length;
+  bilan.simultanees = liste.simultanees.length;
+  bilan.accuseManquant = liste.accuse_manquant.length;
+  bilan.sansRemboursement = liste.sans_remboursement.length;
+  bilan.remboursementEnAttente = liste.remboursement_en_attente.length;
+  bilan.contestations = liste.contestations.length;
+  if (tailleDeLaListe(liste) === 0) return;
+
+  const { email, env, fiche } = deps;
+  if (!email) {
+    bilan.erreurs += 1;
+    return;
+  }
+  const document = courrielDeLaListe(liste, maintenant);
+  const vendeur = adresseDEnvoi(fiche.email.trim(), env, fiche).adresse;
+  const resultat = await email.envoyer(
+    {
+      de: EXPEDITEUR,
+      a: [vendeur],
+      copieCachee: [],
+      repondreA: fiche.email.trim(),
+      objet: document.objet,
+      texte: courrielEnTexte(document),
+      html: courrielEnHtml(document),
+      piecesJointes: [],
+    },
+    cleDeLaListe(document, maintenant),
+  );
+  // La ligne de journal de la phase compte l'issue : acceptée par Resend, en conflit (409, pas une erreur), ou en échec.
+  if (resultat.ok) bilan.listeAcceptee = 1;
+  else if (resultat.raison === "en_cours" || resultat.raison === "requete_differente") bilan.listeEnConflit = 1;
+  else bilan.erreurs += 1;
 }

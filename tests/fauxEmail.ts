@@ -10,19 +10,27 @@ import type { ClientEmail, MessageEmail, ResultatEnvoi } from "@/vente/envoi";
  * - une même clé pendant qu'une requête est en cours : 409
  *   concurrent_idempotent_requests.
  * `delai` ralentit chaque envoi, pour éprouver les appels simultanés.
+ * `panneAuProchainEnvoi` fait échouer l'envoi suivant. La documentation de
+ * Resend ne dit pas si une requête en échec garde sa clé :
+ * `garderLesClesEnEchec` joue les deux cas (gardée, la clé rejoue l'échec à
+ * la même requête et répond 409 invalid_idempotent_request à une autre).
  */
 export class FauxEmail implements ClientEmail {
   /** Chaque appel, même refusé. */
   readonly appels: { message: MessageEmail; cle: string }[] = [];
   /** Les e-mails réellement partis. */
   readonly envoyes: { message: MessageEmail; cle: string; id: string }[] = [];
-  private readonly parCle = new Map<string, { empreinte: string; id: string }>();
+  private readonly parCle = new Map<string, { empreinte: string; id: string | null }>();
   private readonly enCours = new Set<string>();
   delai = 0;
   /** Resend refuse l'envoi (domaine de l'expéditeur non vérifié, par exemple). */
   refuse = false;
   /** Resend ne répond pas. */
   enPanne = false;
+  /** L'envoi suivant échoue (erreur de Resend), puis tout redevient normal. */
+  panneAuProchainEnvoi = false;
+  /** Une requête en échec garde-t-elle sa clé ? (Resend ne le documente pas.) */
+  garderLesClesEnEchec = false;
 
   async envoyer(message: MessageEmail, cle: string): Promise<ResultatEnvoi> {
     this.appels.push({ message, cle });
@@ -32,9 +40,13 @@ export class FauxEmail implements ClientEmail {
     const empreinte = empreinteDe(message);
     const deja = this.parCle.get(cle);
     if (deja) {
-      return deja.empreinte === empreinte
-        ? { ok: true, id: deja.id }
-        : { ok: false, raison: "requete_differente", code: "invalid_idempotent_request" };
+      if (deja.empreinte !== empreinte) return { ok: false, raison: "requete_differente", code: "invalid_idempotent_request" };
+      return deja.id ? { ok: true, id: deja.id } : { ok: false, raison: "panne", code: "application_error" };
+    }
+    if (this.panneAuProchainEnvoi) {
+      this.panneAuProchainEnvoi = false;
+      if (this.garderLesClesEnEchec) this.parCle.set(cle, { empreinte, id: null });
+      return { ok: false, raison: "panne", code: "application_error" };
     }
     this.enCours.add(cle);
     try {

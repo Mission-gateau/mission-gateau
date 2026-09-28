@@ -203,7 +203,7 @@ describe("session Stripe Checkout", () => {
     // Plus aucun « renoncé » au moment du paiement : le droit ne prend fin qu'au premier téléchargement.
     expect(description).not.toMatch(/renonc/i);
     expect(description).toContain("valable 30 jours");
-    expect(description).toContain("version du 27 septembre 2026");
+    expect(description).toContain("version du 28 septembre 2026");
     const pied = facture.invoice_data!.footer!;
     for (const attendu of [
       "Quentin Courtois EI",
@@ -290,7 +290,7 @@ describe("ce que Stripe garde de la commande", () => {
     expect(meta[CLES.versionKit]).toBe("1.2");
     expect(meta[CLES.graine]).toBe("k7m2p9q4rs");
     expect(meta[CLES.pays]).toBe("BE");
-    expect(meta[CLES.versionCgv]).toBe("2026-09-27");
+    expect(meta[CLES.versionCgv]).toBe("2026-09-28");
     // La boutique : la tâche quotidienne ne touche qu'aux paiements qui la portent.
     expect(meta[CLES.boutique]).toBe("mission-gateau");
     expect(meta[CLES.accordCgv]).toBe("2026-09-24T12:00:00.000Z");

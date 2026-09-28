@@ -42,6 +42,21 @@ const lignes = (...entrees: [string, string | null][]): BlocCourriel => ({
     .map(([libelle, valeur]) => ({ libelle, valeur })),
 });
 
+/**
+ * Un gabarit rempli dont certaines valeurs sont des adresses : elles
+ * deviennent des liens, cliquables dans la version HTML ; la version texte
+ * les écrit telles quelles.
+ */
+function remplirAvecLiens(modele: string, valeurs: Record<string, string>, liens: Record<string, string>): MorceauCourriel[] {
+  const morceaux: MorceauCourriel[] = [];
+  for (const partie of modele.split(/(\{\w+\})/)) {
+    const cle = /^\{(\w+)\}$/.exec(partie)?.[1];
+    if (cle !== undefined && cle in liens) morceaux.push({ texte: liens[cle]!, lien: liens[cle]! });
+    else if (partie !== "") morceaux.push(remplir(partie, valeurs));
+  }
+  return morceaux;
+}
+
 // ---------------------------------------------------------------------------
 // Rendus
 // ---------------------------------------------------------------------------
@@ -223,12 +238,17 @@ export function courrielDeConfirmation(donnees: DonneesConfirmation): DocumentCo
       ),
       paragraphe(remplir(CONFIRMATION.serviceClient, { email: fiche.email })),
       paragraphe(remplir(CONFIRMATION.garantie, { article: donnees.version.articleGarantie })),
+      // Le site du médiateur et sa page de demande de médiation sont des liens, comme « Renoncer au contrat ici ».
       ...(mediateur
         ? [
             paragraphe(
-              remplir(CONFIRMATION.mediateur, { nom: mediateur.nom, adresse: mediateur.adresse, site: mediateur.site }),
+              ...remplirAvecLiens(
+                CONFIRMATION.mediateur,
+                { nom: mediateur.nom, adresse: mediateur.adresse },
+                { site: mediateur.site.trim() },
+              ),
             ),
-            paragraphe(remplir(CONFIRMATION.mediation, { demande: pageDeDemande(mediateur) })),
+            paragraphe(...remplirAvecLiens(CONFIRMATION.mediation, {}, { demande: pageDeDemande(mediateur) })),
           ]
         : []),
       paragraphe(remplir(CONFIRMATION.pieceJointe, { version: donnees.version.libelle, fichier: donnees.nomPdf })),
@@ -242,8 +262,11 @@ export function courrielDeConfirmation(donnees: DonneesConfirmation): DocumentCo
 
 export type { Declaration } from "./declaration";
 
-/** Où en est le remboursement d'une commande rétractée, lu sur le paiement. */
-export type Remboursement = "effectue" | "a_venir" | "litige";
+/**
+ * Où en est le remboursement d'une commande rétractée, lu sur ses
+ * remboursements (voir src/vente/remboursement.ts), ou paiement contesté.
+ */
+export type Remboursement = "effectue" | "demande" | "a_venir" | "litige";
 
 /**
  * La suite donnée à une déclaration de rétractation :
@@ -253,9 +276,9 @@ export type Remboursement = "effectue" | "a_venir" | "litige";
  * - `simultanee` : la déclaration, reçue avant le début du premier
  *   téléchargement, a perdu la course contre lui (voir src/vente/course.ts) ;
  * - `expiree` : le délai a pris fin le `dernierJour` ;
- * - `manuelle` : la commande est retrouvée, mais une écriture ou une relecture
- *   chez Stripe a échoué, ou la course est à examiner : le vendeur traite la
- *   déclaration à la main.
+ * - `manuelle` : premier téléchargement et rétractation se sont croisés sans
+ *   que la course soit écrite (commande « à examiner ») : le vendeur examine
+ *   la commande et répond sous 7 jours.
  */
 export type SuiteDonnee =
   | {
@@ -271,7 +294,9 @@ export type SuiteDonnee =
   | { type: "manuelle" };
 
 function detailDuRemboursement(remboursement: Remboursement): { statut: string; texte: string } {
-  return { effectue: ACCUSE.rembourse, a_venir: ACCUSE.aRembourser, litige: ACCUSE.litige }[remboursement];
+  return { effectue: ACCUSE.rembourse, demande: ACCUSE.demande, a_venir: ACCUSE.aRembourser, litige: ACCUSE.litige }[
+    remboursement
+  ];
 }
 
 function suiteEnBlocs(suite: SuiteDonnee): BlocCourriel[] {

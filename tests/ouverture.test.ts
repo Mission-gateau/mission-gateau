@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
+import { dependancesReelles } from "@/vente/dependances";
 import { adresseDuSite, cleConforme, lireEnvironnement, natureCle } from "@/vente/environnement";
 import { CHAMPS_OBLIGATOIRES, ficheComplete, ficheCompleteHorsConvention, manquesDeLaFiche } from "@/vente/fiche";
 import { exemplaireDEssai, livraisonPossible, stripePermis, venteOuverte } from "@/vente/ouverture";
@@ -207,7 +208,7 @@ describe("ouverture de la vente", () => {
     expect(venteOuverte(PRODUCTION_REELLE, ficheAvec("mediateur.conventionSignee", false))).toBe(false);
   });
 
-  it("en production, seule une clé réelle donne un client Stripe ; ailleurs, toute clé valable", () => {
+  it("en production, seule une clé réelle donne un client Stripe ; ailleurs, seule une clé de test", () => {
     for (const cle of [CLE_REELLE, CLE_RESTREINTE_REELLE]) {
       expect(stripePermis(environnement({ vercelEnv: "production", cleStripe: cle })), cle).toBe(true);
     }
@@ -215,17 +216,39 @@ describe("ouverture de la vente", () => {
       expect(stripePermis(environnement({ vercelEnv: "production", cleStripe: cle })), String(cle)).toBe(false);
     }
     for (const vercelEnv of ["preview", "development", undefined]) {
-      for (const cle of [CLE_TEST, CLE_RESTREINTE_TEST, CLE_REELLE]) {
+      for (const cle of [CLE_TEST, CLE_RESTREINTE_TEST]) {
         expect(stripePermis(environnement({ vercelEnv, cleStripe: cle })), `${vercelEnv} ${cle}`).toBe(true);
       }
-      expect(stripePermis(environnement({ vercelEnv, cleStripe: undefined })), String(vercelEnv)).toBe(false);
+      // Une clé réelle posée par erreur pour tous les environnements : aucun client hors production.
+      for (const cle of [CLE_REELLE, CLE_RESTREINTE_REELLE, undefined, "pk_test_abc"]) {
+        expect(stripePermis(environnement({ vercelEnv, cleStripe: cle })), `${vercelEnv} ${cle}`).toBe(false);
+      }
     }
+  });
+
+  it("clé réelle en préversion ou en local : les vraies dépendances ne créent aucun client Stripe", () => {
+    const client = (vercelEnv: string | null, cle: string) => {
+      vi.stubEnv("VERCEL_ENV", vercelEnv ?? "");
+      vi.stubEnv("STRIPE_SECRET_KEY", cle);
+      try {
+        return dependancesReelles().client;
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    };
+    for (const vercelEnv of ["preview", "development", null]) {
+      expect(client(vercelEnv, CLE_REELLE), String(vercelEnv)).toBeNull();
+      expect(client(vercelEnv, CLE_RESTREINTE_REELLE), String(vercelEnv)).toBeNull();
+      expect(client(vercelEnv, CLE_TEST), String(vercelEnv)).not.toBeNull();
+    }
+    expect(client("production", CLE_REELLE)).not.toBeNull();
   });
 
   it("la livraison des commandes payées n'a besoin que de ce client, pas de l'ouverture de la vente", () => {
     expect(livraisonPossible(environnement({ vercelEnv: "production", cleStripe: CLE_REELLE }))).toBe(true);
     expect(livraisonPossible(environnement({ vercelEnv: "production", cleStripe: CLE_TEST }))).toBe(false);
-    expect(livraisonPossible(environnement({ vercelEnv: "preview", cleStripe: CLE_REELLE }))).toBe(true);
+    expect(livraisonPossible(environnement({ vercelEnv: "preview", cleStripe: CLE_REELLE }))).toBe(false);
+    expect(livraisonPossible(environnement({ vercelEnv: "preview", cleStripe: CLE_TEST }))).toBe(true);
     expect(livraisonPossible(environnement({ cleStripe: undefined }))).toBe(false);
   });
 

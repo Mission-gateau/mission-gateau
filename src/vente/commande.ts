@@ -4,8 +4,9 @@ import { VERSION_KIT } from "../engine/kit";
 import type { Configuration } from "../engine/types";
 import { marqueGagnante } from "./course";
 import { delaiExpire, dernierJourDuDelai, finDuDelai, type Jour } from "./delai";
-import { CLES, lireCommande, lireConfiguration, lireSuivi, type Commande, type Suivi } from "./metadonnees";
+import { CLES, estUneCommande, lireCommande, lireConfiguration, lireSuivi, type Commande, type Suivi } from "./metadonnees";
 import { referenceValide, sessionValide } from "./reference";
+import { etatDuRemboursement, rembourseEnTotalite, type EtatDuRemboursement } from "./remboursement";
 import type { ClientStripe, PaiementLu, SessionLue } from "./stripe";
 
 /** Le lien de téléchargement vaut 30 jours après le paiement ; la configuration est effacée ensuite. */
@@ -40,8 +41,8 @@ export type EtatCommande =
   | {
       etat: "retractee";
       retracteeLe: Date;
-      /** Vrai une fois le paiement remboursé en totalité chez Stripe. */
-      rembourse: boolean;
+      /** Lu sur les remboursements du paiement : effectué, demandé, ou à venir. */
+      remboursement: EtatDuRemboursement;
       /** Vrai si le paiement fait l'objet d'une contestation auprès de la banque. */
       litige: boolean;
       montant: number;
@@ -53,6 +54,8 @@ export type EtatCommande =
   | { etat: "introuvable" }
   | { etat: "expiree" }
   | { etat: "remboursee" }
+  /** Remboursé hors rétractation, remboursement demandé mais pas encore réglé chez Stripe. */
+  | { etat: "remboursement_demande" }
   | { etat: "autre_version" }
   | { etat: "illisible" }
   | { etat: "indisponible" };
@@ -69,7 +72,9 @@ export type CommandePayee = Extract<EtatCommande, { etat: "payee" }>;
  * lue directement : la recherche de Stripe met jusqu'à une minute à voir un
  * paiement neuf. Sans elle (lien de l'e-mail), le paiement est cherché par sa
  * référence, puis relu par son identifiant. Dans les deux cas, la référence
- * est revérifiée à l'identique.
+ * est revérifiée à l'identique, et le paiement doit porter `boutique` =
+ * `mission-gateau` (la session ne la porte pas : c'est le paiement qui
+ * compte) ; un paiement d'un autre produit est « introuvable ».
  *
  * La configuration est déchiffrée et revalidée pour s'assurer que le jeu peut
  * être produit, mais rien n'est généré ici.
@@ -93,13 +98,14 @@ export async function etatDeLaCommande(entree: {
     if (sessionValide(sessionId)) {
       const lue = await client.lireSession(sessionId);
       if (lue && lue.metadonnees[CLES.reference] === reference) {
+        if (lue.paiement && !estUneCommande(lue.paiement.metadonnees, reference)) return { etat: "introuvable" };
         if (!lue.payee) return { etat: "non_aboutie" };
         session = lue;
         paiement = lue.paiement;
       }
     }
     paiement ??= await client.paiementParReference(reference);
-    if (!paiement || paiement.metadonnees[CLES.reference] !== reference) return { etat: "introuvable" };
+    if (!paiement || !estUneCommande(paiement.metadonnees, reference)) return { etat: "introuvable" };
     return etatDuPaiement(paiement, reference, cleStripe, maintenant, session);
   } catch {
     return { etat: "indisponible" };
@@ -129,13 +135,17 @@ export function etatDuPaiement(
     return {
       etat: "retractee",
       retracteeLe: suivi.retractation,
-      rembourse: paiement.rembourseEnTotalite,
+      remboursement: etatDuRemboursement(paiement),
       litige: paiement.litige,
       montant: paiement.montant,
     };
   }
   if (paiement.litige) return { etat: "litige" };
-  if (paiement.rembourseEnTotalite) return { etat: "remboursee" };
+  // Remboursé hors rétractation (depuis le tableau de bord de Stripe), fait ou seulement demandé : plus rien n'est livré ;
+  // seul l'affichage distingue les deux.
+  if (rembourseEnTotalite(paiement)) {
+    return { etat: etatDuRemboursement(paiement) === "effectue" ? "remboursee" : "remboursement_demande" };
+  }
 
   // Les 30 jours courent à partir du débit réussi, pas de la première tentative.
   const payeeLe = new Date(paiement.payeLe * 1000);
