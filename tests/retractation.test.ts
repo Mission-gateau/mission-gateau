@@ -164,7 +164,8 @@ describe("rétractation valable", () => {
     expect(message.repondreA).toBe(VENDEUR.email);
     expect(message.de).toBe("Mission Gâteau <commandes@missiongateau.com>");
     expect(message.piecesJointes).toEqual([]);
-    expect(stripe.paiements.get(paiement.id)!.metadonnees[CLES.accuseRetractation]).toBe(accuses()[0]!.id);
+    // L'identifiant de l'accusé chez Resend, et la suite qu'il annonçait.
+    expect(stripe.paiements.get(paiement.id)!.metadonnees[CLES.accuseRetractation]).toBe(`${accuses()[0]!.id}|retractee|effectue`);
 
     const corps = message.texte.replace(/[\u00a0\u202f]/g, " ");
     for (const attendu of [
@@ -324,7 +325,7 @@ describe("la déclaration qui enregistre la rétractation", () => {
     const appels = emails.appels.filter(({ cle }) => cle === `accuse-${reference}`);
     expect(appels).toHaveLength(2);
     expect(empreinteDe(appels[1]!.message)).toBe(empreinteDe(appels[0]!.message));
-    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).accuseRetractation).toBe(accuses()[0]!.id);
+    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).accuseRetractation).toBe(`${accuses()[0]!.id}|retractee|effectue`);
 
     // Son accusé est parti : une déclaration identique n'appelle plus Resend ; la page réaffiche le même accusé, à la même heure.
     horloge = new Date(RECUE_LE.getTime() + 600_000);
@@ -1009,6 +1010,128 @@ describe("un paiement sans boutique n'est jamais une commande", () => {
     }
     expect(emails.appels).toHaveLength(0);
     expect(stripe.modifications).toHaveLength(0);
+  });
+});
+
+describe("la page réaffiche l'accusé parti, jamais un autre (relecture du lot 7)", () => {
+  it("remboursement demandé puis effectué : la déclaration identique réaffiche l'accusé « demandé », celui qui est parti", async () => {
+    const { reference } = await commandeConfirmee();
+    stripe.statutDesNouveauxRemboursements = "pending";
+    const premiere = await renoncer(declaration(reference));
+    expect(texte(premiere.reponse.accuse!)).toContain("remboursement demandé");
+    stripe.reglerRemboursement(stripe.remboursements[0]!.id, "succeeded");
+    horloge = new Date(RECUE_LE.getTime() + 3_600_000);
+    const identique = await renoncer(declaration(reference));
+    expect(identique.reponse.issue).toBe("deja_accusee");
+    expect(texte(identique.reponse.accuse!)).toBe(texte(premiere.reponse.accuse!));
+    expect(accuses()[0]!.message.texte).toBe(courrielEnTexte(identique.reponse.accuse!));
+  });
+
+  it("accusé « traitée à la main » parti, puis course tranchée par le vendeur : la déclaration identique réaffiche celui qui est parti", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    // Le premier téléchargement s'écrit juste avant la marque de la rétractation, et la course ne peut pas s'écrire.
+    stripe.avantEcriture = ({ cle }) => {
+      if (cle === `marque-retractation-${reference}-1`) {
+        stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = new Date(RECUE_LE.getTime() - 500).toISOString();
+      }
+    };
+    stripe.clesEnPanne.add(CLES.course);
+    const premiere = await renoncer(declaration(reference));
+    expect(texte(premiere.reponse.accuse!)).toContain("Statut : déclaration traitée à la main par le vendeur");
+    stripe.avantEcriture = null;
+    stripe.clesEnPanne.clear();
+    // Le vendeur tranche : la rétractation l'emporte.
+    stripe.paiements.get(paiement.id)!.metadonnees[CLES.course] = "retractation";
+    horloge = new Date(RECUE_LE.getTime() + 3_600_000);
+    const identique = await renoncer(declaration(reference));
+    expect(identique.reponse.issue).toBe("deja_accusee");
+    expect(texte(identique.reponse.accuse!)).toBe(texte(premiere.reponse.accuse!));
+    expect(texte(identique.reponse.accuse!)).not.toContain("remboursement à venir");
+  });
+
+  it("accusé envoyé à la main par le vendeur (retractation_accuse = manuel) : la page le rappelle, sans en inventer le contenu", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    const empreinte = empreinteDeDeclaration({ nom: "Martin", prenom: "Camille", reference, email: SAISIE });
+    Object.assign(meta, { [CLES.retractation]: RECUE_LE.toISOString(), [CLES.empreinteRetractation]: empreinte, [CLES.accuseRetractation]: "manuel" });
+    const avant = emails.appels.length;
+    const { reponse } = await renoncer(declaration(reference));
+    expect(reponse.issue).toBe("deja_accusee");
+    expect(reponse.accuse).toBeNull();
+    expect(emails.appels).toHaveLength(avant);
+  });
+});
+
+describe("Stripe répond 409 : une autre requête de même clé est en cours (relecture du lot 7)", () => {
+  it("sur l'écriture de la marque : la règle du § 1 s'applique (relecture, puis réponse de panne)", async () => {
+    const { reference } = await commandeConfirmee();
+    stripe.clesDIdempotenceEnCours.add(`marque-retractation-${reference}-1`);
+    const relus = stripe.paiementsRelus.length;
+    const avant = emails.appels.length;
+    const { statut, reponse } = await renoncer(declaration(reference));
+    expect(statut).toBe(503);
+    expect(reponse.issue).toBe("non_transmise");
+    expect(reponse.mailto).toMatch(/^mailto:/);
+    expect(stripe.paiementsRelus.length).toBeGreaterThan(relus);
+    expect(emails.appels).toHaveLength(avant);
+    expect(lignesDuJournal()).toContainEqual(
+      expect.objectContaining({ evenement: "declaration_non_transmise", cause: "stripe_indisponible", reference }),
+    );
+  });
+
+  it("sur l'écriture du compteur après un 409 de Resend : « en cours », sans passer au numéro suivant ; le compteur ne recule pas", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = "2026-09-25T14:05:00.000Z";
+    const cle = `accuses-${reference}-1`;
+    // L'écriture du compteur par d1 est arrivée chez Stripe et s'exécute encore.
+    let libererD1: () => void = () => {};
+    let d1EnCours: () => void = () => {};
+    const d1Arrete = new Promise<void>((resoudre) => (d1EnCours = resoudre));
+    let premiere = true;
+    stripe.avantEcriture = async (ecriture) => {
+      if (ecriture.cle === cle && premiere) {
+        premiere = false;
+        stripe.clesDIdempotenceEnCours.add(cle);
+        d1EnCours();
+        await new Promise<void>((resoudre) => (libererD1 = resoudre));
+        stripe.clesDIdempotenceEnCours.delete(cle);
+      }
+    };
+    const d1 = renoncer(declaration(reference, { prenom: "Dun" }));
+    await d1Arrete;
+    horloge = new Date(RECUE_LE.getTime() + 60_000);
+    const d3 = await renoncer(declaration(reference, { prenom: "Dtrois" }));
+    expect(d3.statut).toBe(202);
+    expect(d3.reponse.issue).toBe("en_cours");
+    libererD1();
+    expect((await d1).reponse.envoi?.etat).toBe("envoye");
+    expect(emails.envoyes.filter(({ cle: c }) => c.startsWith("accuse-")).map(({ cle: c }) => c)).toEqual([`accuse-${reference}-1`]);
+    expect(stripe.modifications.filter((m) => CLES.accuses in m.metadonnees).map((m) => m.metadonnees[CLES.accuses])).toEqual(["1"]);
+    // 25 heures plus tard, clés oubliées : n° 2 et 3, puis le plafond ; trois accusés numérotés en tout.
+    emails.oublierLesCles();
+    stripe.oublierLesClesDIdempotence();
+    const etats: string[] = [];
+    for (const [rang, prenom] of ["Eun", "Edeux", "Etrois"].entries()) {
+      horloge = new Date(RECUE_LE.getTime() + 25 * 3_600_000 + rang * 60_000);
+      etats.push((await renoncer(declaration(reference, { prenom }))).reponse.envoi!.etat);
+    }
+    expect(etats).toEqual(["envoye", "envoye", "plafond"]);
+    expect(accuses().map(({ cle: c }) => c).sort()).toEqual([1, 2, 3].map((n) => `accuse-${reference}-${n}`));
+  });
+});
+
+describe("la cause au journal", () => {
+  it("une panne de la relecture qui suit le refus d'une clé est une panne de lecture : « stripe_indisponible »", async () => {
+    const { reference } = await commandeConfirmee();
+    stripe.garderUnEchec(`marque-retractation-${reference}-1`);
+    stripe.lirePaiement = async () => {
+      throw Object.assign(new Error("panne simulée"), { type: "StripeAPIError", statusCode: 500 });
+    };
+    const { statut } = await renoncer(declaration(reference));
+    expect(statut).toBe(503);
+    expect(lignesDuJournal()).toContainEqual(
+      expect.objectContaining({ evenement: "declaration_non_transmise", cause: "stripe_indisponible", reference }),
+    );
   });
 });
 

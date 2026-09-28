@@ -75,8 +75,12 @@ export interface BilanATraiter {
   sansRemboursement: number;
   remboursementEnAttente: number;
   contestations: number;
-  /** 1 si la liste est partie par e-mail à ce passage. */
-  listeEnvoyee: number;
+  /**
+   * 1 si Resend a accepté la liste à ce passage : envoyée, ou déjà envoyée
+   * sous la même clé (même liste, le même jour), auquel cas Resend rejoue sa
+   * réponse sans second e-mail. Resend ne distingue pas les deux.
+   */
+  listeAcceptee: number;
   /** 1 si Resend a répondu 409 (liste déjà envoyée, ou envoi en cours) : compté, ce n'est pas une erreur. */
   listeEnConflit: number;
   erreurs: number;
@@ -121,7 +125,7 @@ export function bilanTacheVide(): BilanTache {
       sansRemboursement: 0,
       remboursementEnAttente: 0,
       contestations: 0,
-      listeEnvoyee: 0,
+      listeAcceptee: 0,
       listeEnConflit: 0,
       erreurs: 0,
     },
@@ -367,8 +371,8 @@ async function signalerLesCommandesATraiter(
     },
     cleDeLaListe(document, maintenant),
   );
-  // La ligne de journal de la phase compte l'issue : envoyée, en conflit chez Resend (409, pas une erreur), ou en échec.
-  if (resultat.ok) bilan.listeEnvoyee = 1;
+  // La ligne de journal de la phase compte l'issue : acceptée par Resend, en conflit (409, pas une erreur), ou en échec.
+  if (resultat.ok) bilan.listeAcceptee = 1;
   else if (resultat.raison === "en_cours" || resultat.raison === "requete_differente") bilan.listeEnConflit = 1;
   else bilan.erreurs += 1;
 }

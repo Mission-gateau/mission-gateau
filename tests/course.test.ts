@@ -27,6 +27,7 @@ import { etatDuPaiement } from "@/vente/commande";
 import {
   ClesDeMarqueEpuisees,
   ESSAIS_DE_MARQUE,
+  RelectureDeLaMarqueImpossible,
   autreMarque,
   cleDeMarque,
   ecrireLaMarque,
@@ -590,6 +591,13 @@ function verifierSousPanne(issue: Issue, ici: string): void {
   for (let rang = 1; rang < issue.compteurs.length; rang += 1) {
     expect(issue.compteurs[rang]!, ici).toBeGreaterThanOrEqual(issue.compteurs[rang - 1]!);
   }
+  // Un accusé réaffiché (« déjà accusée ») est toujours un e-mail réellement parti de la route.
+  const textes = new Set(issue.emailsDeLaRoute.map(({ texte }) => texte));
+  for (const { acteur, reponse } of issue.declarations) {
+    if (reponse.issue === "deja_accusee" && reponse.accuse) {
+      expect(textes.has(courrielEnTexte(reponse.accuse)), `${ici} — ${acteur.nom} réaffiche un accusé qui n'est pas parti`).toBe(true);
+    }
+  }
   const permises = new Set([`accuse-${issue.reference}`, ...[1, 2, 3].map((n) => `accuse-${issue.reference}-${n}`)]);
   for (const { cle } of issue.emailsDeLaRoute) expect(permises.has(cle), `${ici} — clé ${cle}`).toBe(true);
   expect(issue.emailsDeLaRoute.length, ici).toBeLessThanOrEqual(4);
@@ -603,10 +611,10 @@ function verifierSousPanne(issue: Issue, ici: string): void {
 
 /**
  * Un appel à Stripe reçoit un 500 gardé sous sa clé, un 500 alors qu'il
- * s'est appliqué, ou un 429 (le code suit le même chemin pour une coupure du
- * réseau, éprouvée à part) ; un envoi à Resend, un échec.
+ * s'est appliqué, un 429 ou une coupure du réseau ; un envoi à Resend, un
+ * échec.
  */
-const GENRES_DE_PANNE: Injection["genre"][] = ["500", "500_appliquee", "429", "resend"];
+const GENRES_DE_PANNE: Injection["genre"][] = ["500", "500_appliquee", "429", "connexion", "resend"];
 
 /**
  * Une exploration sans panne, puis une par appel retenu de chaque requête et
@@ -828,14 +836,16 @@ describe("une marque ne s'écrit qu'une fois (ecrireLaMarque)", () => {
     expect((await ecrireLaMarque(autre.stripe, autre.paiement, autre.reference, "retractation", marque(APRES))).issue).toBe("ecrite");
   });
 
-  it("Stripe injoignable pendant la relecture : la panne remonte, rien n'est écrasé", async () => {
+  it("Stripe injoignable pendant la relecture : la panne remonte, signalée comme une panne de lecture, rien n'est écrasé", async () => {
     const { stripe, paiement, reference } = await commande();
     await ecrireLaMarque(stripe, paiement, reference, "retractation", marque(RECUE_LE));
     const lire = stripe.lirePaiement.bind(stripe);
     stripe.lirePaiement = async () => {
       throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
     };
-    await expect(ecrireLaMarque(stripe, paiement, reference, "retractation", marque(APRES))).rejects.toThrow("panne simulée");
+    const erreur = await ecrireLaMarque(stripe, paiement, reference, "retractation", marque(APRES)).catch((e: unknown) => e);
+    expect(erreur).toBeInstanceOf(RelectureDeLaMarqueImpossible);
+    expect((erreur as RelectureDeLaMarqueImpossible).erreur).toMatchObject({ message: "panne simulée" });
     stripe.lirePaiement = lire;
     expect(stripe.paiements.get(paiement.id)!.metadonnees.retractation).toBe(RECUE_LE.toISOString());
   });

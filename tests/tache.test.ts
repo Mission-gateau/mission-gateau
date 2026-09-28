@@ -416,7 +416,7 @@ describe("la liste quotidienne des commandes à traiter", () => {
       sansRemboursement: 0,
       remboursementEnAttente: 1,
       contestations: 1,
-      listeEnvoyee: 1,
+      listeAcceptee: 1,
       listeEnConflit: 0,
       erreurs: 0,
     });
@@ -455,7 +455,7 @@ describe("la liste quotidienne des commandes à traiter", () => {
     marquer(retractee, { [CLES.retractation]: il(2 * JOUR), [CLES.accuseRetractation]: "re_1" });
     stripe.remboursementEnPanne = true;
     const { phases } = await lancer();
-    expect(phases.a_traiter).toMatchObject({ sansRemboursement: 1, listeEnvoyee: 1 });
+    expect(phases.a_traiter).toMatchObject({ sansRemboursement: 1, listeAcceptee: 1 });
     expect(listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ")).toContain("Rétractations sans remboursement demandé : 1");
   });
 
@@ -464,23 +464,24 @@ describe("la liste quotidienne des commandes à traiter", () => {
     stripe.contester(contestee.paiement.id);
     await lancer();
     expect(listes()).toHaveLength(1);
-    // Second passage du jour, même liste : même clé, même contenu, Resend ne renvoie rien.
+    // Second passage du jour, même liste : même clé, même contenu, Resend rejoue sa réponse sans rien renvoyer.
     horloge = new Date(MAINTENANT.getTime() + 12 * HEURE);
     const second = await lancer();
-    expect(second.phases.a_traiter).toMatchObject({ contestations: 1, erreurs: 0 });
+    // « Acceptée » : envoyée, ou déjà envoyée sous cette clé — Resend ne distingue pas les deux.
+    expect(second.phases.a_traiter).toMatchObject({ contestations: 1, listeAcceptee: 1, erreurs: 0 });
     expect(listes()).toHaveLength(1);
     // Une nouvelle commande à traiter le même jour : la liste change, et repart.
     const autre = await payee(2 * JOUR);
     stripe.contester(autre.paiement.id);
     const troisieme = await lancer();
-    expect(troisieme.phases.a_traiter).toMatchObject({ contestations: 2, listeEnvoyee: 1 });
+    expect(troisieme.phases.a_traiter).toMatchObject({ contestations: 2, listeAcceptee: 1 });
     expect(listes()).toHaveLength(2);
     expect(listes()[1]!.cle).not.toBe(listes()[0]!.cle);
     // Le vendeur a répondu aux deux : la liste est vide, rien ne part.
     marquer(contestee, { [CLES.examinee]: new Date().toISOString() });
     marquer(autre, { [CLES.examinee]: new Date().toISOString() });
     const vide = await lancer();
-    expect(vide.phases.a_traiter).toMatchObject({ contestations: 0, listeEnvoyee: 0, erreurs: 0 });
+    expect(vide.phases.a_traiter).toMatchObject({ contestations: 0, listeAcceptee: 0, erreurs: 0 });
     expect(listes()).toHaveLength(2);
   });
 
@@ -494,7 +495,7 @@ describe("la liste quotidienne des commandes à traiter", () => {
     await emails.envoyer({ ...premiere!.message, texte: "autre" }, premiere!.cle);
     const { statut, phases } = await lancer();
     expect(statut).toBe(200);
-    expect(phases.a_traiter).toMatchObject({ listeEnvoyee: 0, listeEnConflit: 1, erreurs: 0 });
+    expect(phases.a_traiter).toMatchObject({ listeAcceptee: 0, listeEnConflit: 1, erreurs: 0 });
   });
 
   it("écrit sa ligne de journal même quand elle échoue", async () => {
@@ -505,7 +506,7 @@ describe("la liste quotidienne des commandes à traiter", () => {
     };
     const { statut, phases } = await lancer();
     expect(statut).toBe(500);
-    expect(phases.a_traiter).toMatchObject({ erreurs: 1, listeEnvoyee: 0 });
+    expect(phases.a_traiter).toMatchObject({ erreurs: 1, listeAcceptee: 0 });
     expect(listes()).toHaveLength(0);
   });
 });

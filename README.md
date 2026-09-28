@@ -391,7 +391,8 @@ sur l'état de la page de la commande :
   (le vendeur répond alors sous 7 jours). Cette déclaration reçoit son accusé
   par e-mail, sous la clé `accuse-<ref>` ; une fois parti, `retractation_accuse`
   retient son identifiant chez Resend ;
-- l'écriture de `retractation` échoue : la route relit une fois le paiement.
+- l'écriture de `retractation` échoue (y compris un 409 : une autre requête
+  écrit la marque au même instant) : la route relit une fois le paiement.
   Si la marque de cette déclaration (son empreinte) y figure, l'écriture s'est
   appliquée et sa réponse s'est perdue : la déclaration est enregistrée, et
   la course se décide sur cette relecture, qui remplace la réponse perdue —
@@ -409,7 +410,12 @@ sur l'état de la page de la commande :
   n'est pas parti, elle redemande l'envoi sous la même clé, à l'heure
   enregistrée ; une fois `retractation_accuse` écrit, **elle n'appelle plus
   jamais Resend** : la page affiche « Votre déclaration du … est déjà
-  enregistrée » au-dessus du même accusé, à la même heure. Si Resend répond
+  enregistrée » au-dessus de l'accusé parti, à la même heure —
+  `retractation_accuse` garde l'identifiant de l'accusé et la suite qu'il
+  annonçait (`<id>|retractee|demande`, par exemple), si bien que la page le
+  réaffiche à l'identique même si le remboursement ou la course ont changé
+  depuis ; un accusé envoyé à la main (`manuel`) est rappelé sans être
+  réaffiché. Si Resend répond
   409 sur `accuse-<ref>` et que la relecture du paiement échoue (ou ne montre
   pas l'accusé enregistré) : « Votre déclaration est en cours de traitement :
   rechargez la page dans quelques instants. », et rien d'autre ne part ;
@@ -423,13 +429,14 @@ sur l'état de la page de la commande :
   rejouée, ne déclenche aucun e-mail et ne change pas la réponse. Si Resend
   répond que la clé du n° n a déjà servi pour une autre requête (409
   `invalid_idempotent_request`), le n° n compte comme parti : `accuses` = n
-  est écrit sous sa clé, puis le n° n + 1 est essayé, quelle que soit la
-  réponse de Stripe — sauf une réponse qui prouve que Stripe n'a pas exécuté
-  l'écriture ni pris sa clé (429, ou réseau coupé sans réponse) : la
-  déclaration est alors « en cours de traitement », et rien d'autre ne part.
-  La valeur n est ainsi toujours écrite, ou sa clé prise, avant que n + 1
-  puisse l'être : une écriture en retard est rejouée sans effet, et le
-  compteur ne recule jamais. Si Resend répond que la clé est en cours (409
+  est écrit sous sa clé, puis le n° n + 1 est essayé — seulement si Stripe a
+  sûrement pris la clé de cette écriture (succès, réponse rejouée, ou réponse
+  500, que Stripe garde sous la clé). Toute autre réponse (429, 409 d'une
+  requête de même clé encore en cours, autre erreur 5xx, réseau coupé) ne le
+  garantit pas : la déclaration est alors « en cours de traitement », et rien
+  d'autre ne part. La valeur n est ainsi toujours écrite, ou sa clé prise,
+  avant que n + 1 puisse l'être : une écriture en retard est rejouée sans
+  effet, et le compteur ne recule pas. Si Resend répond que la clé est en cours (409
   `concurrent_idempotent_requests`) : « en cours de traitement », rien
   d'autre ne part. Jamais un second remboursement. L'accusé d'une
   rétractation déjà enregistrée donne les deux heures ; celui d'une commande
@@ -501,13 +508,17 @@ un téléchargement et deux déclarations, différentes ou identiques ; deux
 déclarations sur une commande téléchargée) sur un faux Stripe qui suit les
 règles d'idempotence de Stripe, en forçant tous les ordres possibles de leurs
 lectures et écritures, puis recommence avec une panne injectée à chaque appel
-à Stripe (500 gardé sous sa clé, 500 appliqué, 429) et à Resend (échec
-d'envoi, clé gardée ou non), l'ordonnanceur retenant aussi les envois : jamais
+à Stripe (500 gardé sous sa clé, 500 appliqué, 429, coupure du réseau) et à
+Resend (échec d'envoi, clé gardée ou non), l'ordonnanceur retenant aussi les
+envois : jamais
 le PDF et le remboursement ensemble ; sans panne, jamais ni l'un ni l'autre ;
 un remboursement au plus ; aucun accusé annoncé sans être parti ; un compteur
 d'accusés qui ne fait que monter ; parmi les e-mails de la route, aucune clé
-hors de `accuse-<ref>` et `accuse-<ref>-1` à `-3`, et quatre au plus ; « non
-transmise » seulement si aucun e-mail de la route n'est parti.
+hors de `accuse-<ref>` et `accuse-<ref>-1` à `-3`, et quatre au plus ; une
+requête qui répond « non transmise » n'a envoyé aucun e-mail (deux onglets
+d'une même déclaration restent deux requêtes : l'un peut répondre « non
+transmise » pendant que l'autre envoie l'accusé) ; un accusé réaffiché est
+toujours un e-mail réellement parti.
 
 ### Une rétractation reçue par e-mail ou par courrier
 
@@ -559,8 +570,8 @@ e-mail au vendeur (l'e-mail de la fiche), depuis
 Gâteau ». La clé d'idempotence de Resend, `a-traiter-<AAAA-MM-JJ>-<empreinte>`
 (jour de Paris ; 16 caractères hexadécimaux du SHA-256 du contenu), fait
 qu'une liste inchangée ne repart pas, et qu'une liste modifiée au second
-passage du jour repart : deux e-mails par jour au plus. Rien ne part quand la
-liste est vide. Chaque commande y figure par sa référence, la date du
+passage du jour repart : deux e-mails par jour au plus, la tâche passant deux
+fois par jour. Rien ne part quand la liste est vide. Chaque commande y figure par sa référence, la date du
 paiement et ses marques, à l'heure de Paris — jamais un nom ni une adresse.
 Pour chaque rubrique :
 
@@ -572,7 +583,9 @@ Pour chaque rubrique :
   même façon, répondre, puis écrire `examinee` (la commande quitte la
   rubrique) ;
 - **rétractations dont l'accusé n'est pas parti** (`retractation` sans
-  `retractation_accuse`) : envoyer l'accusé à l'adresse de la commande, puis
+  `retractation_accuse`) : chercher d'abord, dans la messagerie du vendeur,
+  la copie cachée de l'accusé (il a pu partir sans que son identifiant soit
+  enregistré) ; sinon, envoyer l'accusé à l'adresse de la commande. Puis
   écrire `retractation_accuse` = `manuel` ;
 - **rétractations sans remboursement demandé** (la rétractation l'a
   emporté, et aucun remboursement `pending`, `requires_action` ni
@@ -672,7 +685,9 @@ Elle examine les paiements aboutis des 45 derniers jours, au plus 2 000 par
 passage. Chaque phase écrit sa ligne de journal dès qu'elle finit, même en
 échec (`{"tache":"quotidienne","phase":"effacement",…}`, puis `confirmations`,
 `remboursements`, `a_traiter`, cette dernière avec un compteur par rubrique
-et l'issue de l'envoi) : un dépassement de durée ne fait pas perdre les
+et l'issue de l'envoi : `listeAcceptee`, liste acceptée par Resend — envoyée,
+ou déjà envoyée sous la même clé, sans second e-mail, Resend ne distinguant
+pas les deux ; `listeEnConflit`, 409) : un dépassement de durée ne fait pas perdre les
 compteurs des phases déjà faites. La réponse ne dit que `{ "ok": true }` ou
 `{ "ok": false }`.
 
@@ -813,15 +828,19 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   si c'est le cas, un numéro peut être compté sans qu'aucun e-mail soit
   parti (l'accusé suivant prend alors le numéro d'après). Ces cas sont
   acceptés ; les tests les jouent tous les deux.
-- **Le compteur `accuses` ne recule jamais.** Chaque valeur n s'écrit sous sa
+- **Le compteur `accuses` ne recule pas.** Chaque valeur n s'écrit sous sa
   propre clé d'idempotence (`accuses-<ref>-<n>`), et n + 1 ne s'écrit qu'une
-  fois n écrit ou sa clé prise : une écriture en retard est rejouée sans
-  effet. Pour cela, quand Resend dit qu'un numéro a déjà servi et que Stripe
-  répond 429 (ou que le réseau coupe) à l'écriture de ce numéro — preuve que
-  Stripe ne l'a pas exécutée et n'a pas pris sa clé —, la déclaration est
-  « en cours de traitement » au lieu de passer au numéro suivant :
-  l'exploration des ordres a montré qu'autrement le compteur pouvait
-  reculer.
+  fois n écrit ou sa clé sûrement prise : une écriture en retard est rejouée
+  sans effet. Pour cela, quand Resend dit qu'un numéro a déjà servi, la route
+  ne passe au numéro suivant que si Stripe a répondu à l'écriture de ce
+  numéro par un succès, une réponse rejouée ou un 500 (qu'il garde sous la
+  clé) ; sur un 429, un 409 (une autre requête de même clé encore en cours),
+  une autre erreur 5xx ou un réseau coupé, rien ne garantit que la clé est
+  prise, et la déclaration est « en cours de traitement ». C'est un écart au
+  cahier du lot 7 (« sans décider sur la réponse ») : l'exploration des
+  ordres, puis la relecture, ont montré qu'autrement le compteur pouvait
+  reculer. Il repose sur une hypothèse : Stripe garde une réponse 500 sous sa
+  clé d'idempotence, comme sa documentation le dit des requêtes exécutées.
 - **Stripe n'offre pas d'écriture conditionnelle** : la règle « première
   écriture gagnante » repose sur ses clés d'idempotence. Une marque
   (`telechargement`, `retractation`) ne s'écrit qu'une fois ; une requête
@@ -860,11 +879,12 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   24 heures), et 3 000 par mois. Une commande payée puis rétractée compte au
   pire 14 destinataires : la confirmation (l'acheteur et le vendeur : 2),
   puis les quatre accusés de la route (l'adresse saisie, l'acheteur en copie
-  cachée si elle diffère, le vendeur : 3 chacun, 12). **Huit commandes payées
-  puis rétractées le même jour suffisent donc à l'épuiser** (sept en
-  consomment 98) ; au-delà, plus aucune confirmation ne part ce jour-là, et
-  rien n'est livré. La réponse serait une offre payante de Resend, à décider
-  par le vendeur.
+  cachée si elle diffère, le vendeur : 3 chacun, 12). Avec les deux listes
+  quotidiennes des commandes à traiter (1 destinataire chacune), **sept
+  commandes payées puis rétractées le même jour suffisent donc à l'épuiser**
+  (7 × 14 + 2 = 100) ; au-delà, plus aucune confirmation ne part ce jour-là,
+  et rien n'est livré. La réponse serait une offre payante de Resend, à
+  décider par le vendeur.
 - **Les lectures de Stripe** : la recherche est limitée à 20 lectures par
   seconde, et un compte dispose d'une allocation de lectures de 500 par
   transaction en moyenne sur 30 jours glissants, avec un minimum de 10 000 par
@@ -882,7 +902,19 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
 - **Les journaux d'exécution de l'offre Hobby de Vercel ne sont gardés
   qu'une heure** : la liste quotidienne des commandes à traiter les remplace
   pour la surveillance ; ils restent un complément, à lire dans l'heure (ou à
-  exporter par un drain de journaux, payant).
+  exporter par un drain de journaux, payant). La liste et les remboursements
+  de la tâche partent de la recherche de Stripe, qui peut avoir une minute de
+  retard : une rétractation écrite juste avant un passage n'est vue qu'au
+  passage suivant.
+- **Resend répond 409 sur `accuse-<ref>`, et `retractation_accuse` n'a pas pu
+  être écrit** après l'envoi de l'accusé : une déclaration identique dont
+  l'accusé aurait changé (remboursement réglé depuis, par exemple) lit « en
+  cours de traitement » jusqu'à ce que Resend oublie la clé (24 heures) ; la
+  liste quotidienne montre la commande au vendeur.
+- Un remboursement **partiel** fait depuis le tableau de bord avant une
+  rétractation n'est pas complété automatiquement : l'accusé annonce le
+  remboursement de la totalité, et la tâche ne crée pas de second
+  remboursement tant que le premier existe ; c'est au vendeur de compléter.
 - Une course téléchargement / rétractation dont la route perdante n'a pas pu
   écrire `course` reste « à examiner » : c'est au vendeur de trancher, en
   écrivant `course` (`telechargement` ou `retractation`) dans le tableau de

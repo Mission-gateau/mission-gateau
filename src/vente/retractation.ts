@@ -14,6 +14,7 @@ import {
 } from "./courriels";
 import {
   ClesDeMarqueEpuisees,
+  RelectureDeLaMarqueImpossible,
   ecrireLaMarque,
   issueDUneRetractationBattue,
   issueDeLEcriture,
@@ -40,19 +41,20 @@ import { limiteDeDebit, type ClientStripe, type PaiementLu } from "./stripe";
  * la commande la donne (la recherche de Stripe peut ne pas encore connaître
  * un paiement de moins d'une minute), sinon par la recherche sur la
  * référence. Sinon, ou si un appel à Stripe échoue avant que la déclaration
- * soit enregistrée, rien n'est enregistré ni envoyé, et la page propose
- * d'envoyer la déclaration par e-mail, depuis la messagerie de la personne.
+ * soit enregistrée, rien n'est envoyé (l'écriture a pu s'appliquer malgré
+ * tout : voir apresUnEchecDEcriture), et la page propose d'envoyer la
+ * déclaration par e-mail, depuis la messagerie de la personne.
  *
  * Chaque e-mail de cette fonction est compté, par commande : elle n'envoie
  * jamais que l'accusé de la déclaration qui enregistre la rétractation (clé
  * `accuse-<référence>`) et, pour les autres déclarations, les accusés n° 1 à
  * 3 (clés `accuse-<référence>-1` à `-3`). Aucune autre clé :
  * - la déclaration qui enregistre la rétractation reçoit son accusé ; une
- *   fois parti, `retractation_accuse` retient son identifiant, et une
- *   déclaration identique (même empreinte) n'appelle plus jamais Resend : la
- *   page réaffiche le même accusé, à la même heure. Tant que l'accusé n'est
- *   pas enregistré, une déclaration identique redemande l'envoi sous la même
- *   clé ;
+ *   fois parti, `retractation_accuse` retient son identifiant et la suite
+ *   qu'il annonçait, et une déclaration identique (même empreinte) n'appelle
+ *   plus jamais Resend : la page réaffiche exactement l'accusé parti, à la
+ *   même heure. Tant que l'accusé n'est pas enregistré, une déclaration
+ *   identique redemande l'envoi sous la même clé ;
  * - toute autre déclaration (rétractation déjà enregistrée par une
  *   déclaration différente, commande déjà téléchargée, délai expiré) reçoit
  *   l'accusé n° n, n = `accuses` + 1 ; au-delà de trois, l'accusé s'affiche
@@ -84,11 +86,15 @@ export type EnvoiAccuse =
   | { etat: "plafond" };
 
 export type ReponseRetractation =
-  /** Aucune commande payée retrouvée, ou Stripe en panne avant l'enregistrement : rien n'est enregistré ni envoyé. */
+  /** Aucune commande payée retrouvée, ou Stripe en panne avant l'enregistrement : rien n'est envoyé. */
   | { issue: "non_transmise"; cause: CauseNonTransmise; message: string; date: string; heure: string; mailto: string }
   | { issue: "accuse"; accuse: DocumentCourriel; envoi: EnvoiAccuse }
-  /** Déclaration identique à celle qui a enregistré la rétractation, dont l'accusé est déjà parti : le même accusé, sans nouvel e-mail. */
-  | { issue: "deja_accusee"; date: string; heure: string; accuse: DocumentCourriel }
+  /**
+   * Déclaration identique à celle qui a enregistré la rétractation, dont
+   * l'accusé est déjà parti : l'accusé parti, sans nouvel e-mail ; null s'il a
+   * été envoyé à la main par le vendeur (son contenu n'est pas connu).
+   */
+  | { issue: "deja_accusee"; date: string; heure: string; accuse: DocumentCourriel | null }
   /** Resend traite déjà la même clé, et rien n'est encore enregistré. */
   | { issue: "en_cours"; message: string };
 
@@ -121,6 +127,39 @@ export function cleDAccuseNumero(reference: string, numero: number): string {
  */
 export function cleDuCompteur(reference: string, numero: number): string {
   return `accuses-${reference}-${numero}`;
+}
+
+/**
+ * La valeur de `retractation_accuse` : l'identifiant de l'accusé chez Resend,
+ * puis la suite qu'il annonçait (`<id>|retractee|<remboursement>`,
+ * `<id>|telechargee`, `<id>|simultanee` ou `<id>|manuelle`), pour qu'une
+ * déclaration identique réaffiche exactement l'accusé parti, même si le
+ * remboursement ou la course ont changé depuis. Le vendeur, qui envoie un
+ * accusé à la main, y écrit `manuel`.
+ */
+export function valeurDeLAccuse(id: string, suite: SuiteDonnee): string {
+  return suite.type === "retractee" ? `${id}|retractee|${suite.remboursement}` : `${id}|${suite.type}`;
+}
+
+const REMBOURSEMENTS: ReadonlySet<string> = new Set<Remboursement>(["effectue", "demande", "a_venir", "litige"]);
+
+/** La suite qu'annonçait l'accusé parti, relue dans `retractation_accuse` ; null si elle n'y est pas. */
+function suiteDeLAccuseParti(valeur: string, paiement: PaiementLu): SuiteDonnee | null {
+  const [, type, remboursement] = valeur.split("|");
+  const telechargeLe = lireSuivi(paiement.metadonnees).telechargement;
+  switch (type) {
+    case "retractee":
+      return remboursement && REMBOURSEMENTS.has(remboursement)
+        ? { type: "retractee", remboursement: remboursement as Remboursement, montant: paiement.montant }
+        : null;
+    case "telechargee":
+    case "simultanee":
+      return telechargeLe ? { type, le: telechargeLe } : null;
+    case "manuelle":
+      return { type: "manuelle" };
+    default:
+      return null;
+  }
 }
 
 /** Une seule clé par commande pour son remboursement ; la tâche quotidienne y ajoute le jour de sa tentative. */
@@ -268,8 +307,10 @@ async function enregistrerLaRetractation(c: Contexte, paiement: PaiementLu): Pro
   } catch (erreur) {
     return apresUnEchecDEcriture(c, paiement, erreur);
   }
-  // Une autre déclaration écrit la marque en ce moment même : rien n'est encore sûr.
-  if (ecriture.issue === "en_cours") return enCours(c, "enregistrement_en_cours");
+  // Une autre requête écrit la marque en ce moment même (409 de Stripe) : un échec d'écriture comme un autre.
+  if (ecriture.issue === "en_cours") {
+    return apresUnEchecDEcriture(c, paiement, Object.assign(new Error("Une autre requête écrit la marque."), { statusCode: 409 }));
+  }
   if (ecriture.issue === "deja_ecrite") return jugerLaDeclaration(c, ecriture.apres);
 
   let apres = ecriture.apres;
@@ -314,26 +355,27 @@ async function apresUnEchecDEcriture(c: Contexte, paiement: PaiementLu, erreur: 
   return nonTransmise(causeDeLEchec(erreur), c.declaration, c.recueLe, c.deps.fiche);
 }
 
+function statutHttp(erreur: unknown): number | null {
+  const statut = typeof erreur === "object" && erreur !== null ? (erreur as { statusCode?: unknown }).statusCode : undefined;
+  return typeof statut === "number" ? statut : null;
+}
+
 function causeDeLEchec(erreur: unknown): CauseDuJournal {
+  // La relecture qui suit le refus d'une clé a échoué : une panne de lecture.
+  if (erreur instanceof RelectureDeLaMarqueImpossible) return limiteDeDebit(erreur.erreur) ? "stripe_limite" : "stripe_indisponible";
   if (limiteDeDebit(erreur)) return "stripe_limite";
   if (erreur instanceof ClesDeMarqueEpuisees) return "ecriture_impossible";
-  const statut = typeof erreur === "object" && erreur !== null ? (erreur as { statusCode?: unknown }).statusCode : undefined;
-  return typeof statut === "number" && statut >= 500 ? "ecriture_impossible" : "stripe_indisponible";
+  return (statutHttp(erreur) ?? 0) >= 500 ? "ecriture_impossible" : "stripe_indisponible";
 }
 
 /**
  * La suite donnée à la déclaration qui a enregistré la rétractation, lue sur
  * le paiement : la marque qui l'emporte décide (voir src/vente/course.ts).
  */
-async function suiteDeLaRetractation(
-  c: Contexte,
-  paiement: PaiementLu,
-  retracteeLe: Date,
-  rembourser: boolean,
-): Promise<SuiteDonnee> {
+async function suiteDeLaRetractation(c: Contexte, paiement: PaiementLu, retracteeLe: Date): Promise<SuiteDonnee> {
   switch (marqueGagnante(paiement.metadonnees)) {
     case "retractation":
-      return suiteDuRemboursement(c, paiement, rembourser);
+      return suiteDuRemboursement(c, paiement);
     case "telechargement":
       return suiteDUneRetractationBattue(retracteeLe, lireSuivi(paiement.metadonnees).telechargement!);
     default:
@@ -353,14 +395,10 @@ function suiteDUneRetractationBattue(recueLe: Date, telechargeLe: Date): SuiteDo
  * si un remboursement a déjà échoué (la tâche quotidienne le retente, sous
  * une autre clé).
  */
-async function suiteDuRemboursement(
-  c: Contexte,
-  paiement: PaiementLu,
-  rembourser: boolean,
-): Promise<Extract<SuiteDonnee, { type: "retractee" }>> {
+async function suiteDuRemboursement(c: Contexte, paiement: PaiementLu): Promise<Extract<SuiteDonnee, { type: "retractee" }>> {
   const montant = paiement.montant;
   const affiche = remboursementAffiche(paiement);
-  if (affiche !== "a_venir" || !rembourser || paiement.remboursements.length > 0) {
+  if (affiche !== "a_venir" || paiement.remboursements.length > 0) {
     return { type: "retractee", remboursement: affiche, montant };
   }
   const fait = await rembourserSansPanne(c.deps, paiement, cleDeRemboursement(c.reference));
@@ -478,7 +516,10 @@ function enCours(c: Contexte, code: string): ReponseRetractation {
   return { issue: "en_cours", message: RETRACTATION.enCours };
 }
 
-function dejaAccusee(retracteeLe: Date, accuse: DocumentCourriel): ReponseRetractation {
+/** L'accusé déjà parti, reconstruit à l'identique d'après la suite gardée dans `retractation_accuse`. */
+function dejaAccusee(c: Contexte, paiement: PaiementLu, retracteeLe: Date, valeur: string): ReponseRetractation {
+  const suite = suiteDeLAccuseParti(valeur, paiement);
+  const accuse = suite ? accuseDeReception({ declaration: c.declaration, recueLe: retracteeLe, suite, fiche: c.deps.fiche }) : null;
   return { issue: "deja_accusee", date: dateAParis(retracteeLe), heure: heureAParis(retracteeLe), accuse };
 }
 
@@ -486,23 +527,22 @@ function dejaAccusee(retracteeLe: Date, accuse: DocumentCourriel): ReponseRetrac
  * L'accusé de la déclaration qui a enregistré la rétractation (ou d'une
  * déclaration identique) : clé `accuse-<référence>`, à l'heure enregistrée
  * dans `retractation`, avec la suite lue sur le paiement. Une fois parti,
- * `retractation_accuse` retient son identifiant ; ensuite, plus aucun appel
- * à Resend : la page réaffiche le même accusé.
+ * `retractation_accuse` retient son identifiant et la suite qu'il annonçait ;
+ * ensuite, plus aucun appel à Resend : la page réaffiche l'accusé parti.
  */
 async function accuserLaRetractation(c: Contexte, paiement: PaiementLu): Promise<ReponseRetractation> {
   const suivi = lireSuivi(paiement.metadonnees);
   const retracteeLe = suivi.retractation!;
-  const dejaParti = suivi.accuseRetractation !== null;
-  const suite = await suiteDeLaRetractation(c, paiement, retracteeLe, !dejaParti);
-  const accuse = accuseDeReception({ declaration: c.declaration, recueLe: retracteeLe, suite, fiche: c.deps.fiche });
-  if (dejaParti) {
+  if (suivi.accuseRetractation) {
     journal({ route: "retractation", evenement: "declaration_identique" });
-    return dejaAccusee(retracteeLe, accuse);
+    return dejaAccusee(c, paiement, retracteeLe, suivi.accuseRetractation);
   }
+  const suite = await suiteDeLaRetractation(c, paiement, retracteeLe);
+  const accuse = accuseDeReception({ declaration: c.declaration, recueLe: retracteeLe, suite, fiche: c.deps.fiche });
   const resultat = await envoyer(c, accuse, cleDAccuse(c.reference));
   if (resultat.type === "envoye") {
     try {
-      await c.client.modifierMetadonnees(paiement.id, { [CLES.accuseRetractation]: resultat.id });
+      await c.client.modifierMetadonnees(paiement.id, { [CLES.accuseRetractation]: valeurDeLAccuse(resultat.id, suite) });
     } catch {
       journal({ route: "retractation", evenement: "accuse_non_enregistre", reference: c.reference });
     }
@@ -515,7 +555,9 @@ async function accuserLaRetractation(c: Contexte, paiement: PaiementLu): Promise
   try {
     const frais = await c.client.lirePaiement(paiement.id);
     const relu = frais ? lireSuivi(frais.metadonnees) : null;
-    if (relu?.accuseRetractation && relu.empreinteRetractation === c.empreinte) return dejaAccusee(retracteeLe, accuse);
+    if (frais && relu?.accuseRetractation && relu.empreinteRetractation === c.empreinte) {
+      return dejaAccusee(c, frais, retracteeLe, relu.accuseRetractation);
+    }
   } catch {
     // Rien de sûr : la déclaration est en cours de traitement.
   }
@@ -528,14 +570,14 @@ async function accuserLaRetractation(c: Contexte, paiement: PaiementLu): Promise
  * L'e-mail n° n (n = `accuses` + 1) part sous la clé `accuse-<référence>-<n>`.
  * Parti, `accuses` passe à n, au mieux. Si Resend dit que la clé du n° n a
  * déjà servi pour une autre requête, ce numéro compte comme parti : `accuses`
- * = n est écrit, puis le n° n + 1 est essayé, quelle que soit la réponse de
- * Stripe (succès, réponse rejouée, échec gardé sous la clé), sauf une : une
- * réponse qui prouve que Stripe n'a pas exécuté l'écriture, et n'a donc pas
- * pris sa clé (429, ou réseau coupé avant toute réponse). La valeur n est
- * ainsi toujours écrite, ou sa clé prise, avant que n + 1 puisse l'être : une
- * écriture en retard est rejouée sans effet, et le compteur ne recule jamais.
- * Sinon, la déclaration est « en cours de traitement », et rien d'autre ne
- * part.
+ * = n est écrit, puis le n° n + 1 est essayé — mais seulement si Stripe a
+ * sûrement pris la clé de cette écriture : succès (ou réponse rejouée), ou
+ * réponse 500, que Stripe garde sous la clé. Toute autre réponse (429, 409
+ * d'une requête de même clé encore en cours, autre erreur 5xx, réseau coupé)
+ * ne le garantit pas : la déclaration est alors « en cours de traitement », et
+ * rien d'autre ne part. La valeur n est ainsi toujours écrite, ou sa clé
+ * prise, avant que n + 1 puisse l'être : une écriture en retard est rejouée
+ * sans effet, et le compteur ne recule pas.
  */
 async function accuserUneAutreDeclaration(c: Contexte, paiement: PaiementLu): Promise<ReponseRetractation> {
   const accuse = accuseDeReception({
@@ -565,8 +607,9 @@ async function accuserUneAutreDeclaration(c: Contexte, paiement: PaiementLu): Pr
 /**
  * Écrit `accuses` = n sous la clé `accuses-<référence>-<n>`, au mieux : ni un
  * échec ni une réponse rejouée ne déclenchent d'e-mail ni ne changent la
- * réponse. Rend faux seulement quand Stripe n'a sûrement pas pris la clé :
- * débit limité (429), ou réseau coupé sans réponse de Stripe.
+ * réponse. Rend vrai quand Stripe a sûrement pris la clé : l'écriture a
+ * abouti (ou sa réponse a été rejouée), ou Stripe a répondu 500, réponse
+ * qu'il garde sous la clé.
  */
 async function compterLAccuse(c: Contexte, idPaiement: string, numero: number): Promise<boolean> {
   try {
@@ -574,7 +617,6 @@ async function compterLAccuse(c: Contexte, idPaiement: string, numero: number): 
     return true;
   } catch (erreur) {
     journal({ route: "retractation", evenement: "accuses_non_enregistre", reference: c.reference });
-    const statut = typeof erreur === "object" && erreur !== null ? (erreur as { statusCode?: unknown }).statusCode : undefined;
-    return !limiteDeDebit(erreur) && typeof statut === "number";
+    return statutHttp(erreur) === 500;
   }
 }

@@ -26,7 +26,7 @@ type Envoi =
 type Reponse =
   | { issue: "accuse"; accuse: DocumentCourriel; envoi: Envoi }
   | { issue: "non_transmise"; cause: "introuvable" | "indisponible"; date: string; heure: string; mailto: string }
-  | { issue: "deja_accusee"; date: string; heure: string; accuse: DocumentCourriel }
+  | { issue: "deja_accusee"; date: string; heure: string; accuse: DocumentCourriel | null }
   | { issue: "en_cours" };
 
 type Etape = "saisie" | "recapitulatif" | "resultat";
@@ -378,7 +378,7 @@ function Resultat({
         <>
           <TitreDEtape cible={titre}>{RETRACTATION.titreDejaAccusee}</TitreDEtape>
           <p className="mt-3 leading-relaxed">{remplir(RETRACTATION.dejaAccusee, { date: reponse.date, heure: reponse.heure })}</p>
-          <VueCourriel document={reponse.accuse} />
+          {reponse.accuse ? <VueCourriel document={reponse.accuse} /> : null}
         </>
       );
     case "en_cours":

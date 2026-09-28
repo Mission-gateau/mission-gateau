@@ -93,6 +93,17 @@ export class ClesDeMarqueEpuisees extends Error {
   }
 }
 
+/** La relecture qui suit le refus d'une clé a échoué : une panne de lecture, pas d'écriture. */
+export class RelectureDeLaMarqueImpossible extends Error {
+  readonly erreur: unknown;
+
+  constructor(erreur: unknown) {
+    super("La relecture qui suit le refus d'une clé d'idempotence a échoué.");
+    this.name = "RelectureDeLaMarqueImpossible";
+    this.erreur = erreur;
+  }
+}
+
 /** La clé d'idempotence de l'écriture d'une marque : la même pour toutes les requêtes qui l'écrivent. */
 export function cleDeMarque(marque: Marque, reference: string, essai: number): string {
   return `marque-${marque}-${reference}-${essai}`;
@@ -112,7 +123,8 @@ export type EcritureDeMarque =
  * est refusée, et on relit alors le paiement. Si la marque n'y est pas, la
  * clé a servi à une tentative qui n'a rien écrit (Stripe garde aussi les
  * échecs) : on passe à la clé suivante. Une panne de Stripe se propage à
- * l'appelant ; quand toutes les clés ont servi, ClesDeMarqueEpuisees.
+ * l'appelant (RelectureDeLaMarqueImpossible si c'est cette relecture qui
+ * échoue) ; quand toutes les clés ont servi, ClesDeMarqueEpuisees.
  */
 export async function ecrireLaMarque(
   client: ClientStripe,
@@ -128,8 +140,13 @@ export async function ecrireLaMarque(
       const conflit = erreurDIdempotence(erreur);
       if (conflit === null) throw erreur;
       if (conflit === "en_cours") return { issue: "en_cours" };
-      const frais = await client.lirePaiement(paiement.id);
-      if (!frais) throw new Error("Paiement introuvable à la relecture.");
+      let frais: PaiementLu | null;
+      try {
+        frais = await client.lirePaiement(paiement.id);
+      } catch (panne) {
+        throw new RelectureDeLaMarqueImpossible(panne);
+      }
+      if (!frais) throw new RelectureDeLaMarqueImpossible(new Error("Paiement introuvable à la relecture."));
       if (lireSuivi(frais.metadonnees)[marque] !== null) return { issue: "deja_ecrite", apres: frais };
     }
   }

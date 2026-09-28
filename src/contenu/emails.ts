@@ -144,7 +144,7 @@ export const ACCUSE = typographier({
 export const A_TRAITER = typographier({
   objet: "Commandes à traiter — Mission Gâteau",
   intro:
-    "Voici, au {date}, les commandes qui attendent une action de votre part. Retrouvez chacune dans le tableau de bord de Stripe par sa référence (métadonnée ref). Cette liste ne contient ni nom ni adresse e-mail. Elle repart le jour même si elle change, et plus du tout quand il ne reste rien à traiter.",
+    "Voici, au {date}, les commandes qui attendent une action de votre part. Retrouvez chacune dans le tableau de bord de Stripe par sa référence (métadonnée ref) ; les dates et les heures sont celles de Paris. Cette liste ne contient ni nom ni adresse e-mail. Elle repart le jour même si elle change, et plus du tout quand il ne reste rien à traiter.",
   titre: "{titre} : {nombre}",
   action: "À faire : {action} Voir le README, section « {section} ».",
   section: "La liste quotidienne des commandes à traiter",
