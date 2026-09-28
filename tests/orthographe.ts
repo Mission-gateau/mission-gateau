@@ -51,6 +51,9 @@ export const LISTE_BLANCHE = new Set(
     "sessionStorage",
     // Suffixe ordinal de « 1er ».
     "er",
+    // Noms des métadonnées de Stripe et du fichier README, cités tels quels
+    // dans la liste quotidienne des commandes à traiter, envoyée au vendeur.
+    "ref", "retractation", "telechargement", "examinee", "README",
   ].map((mot) => mot.toLowerCase()),
 );
 

@@ -91,6 +91,11 @@ export const ACCUSE = typographier({
     texte:
       "Nous vous avons remboursé {montant} sur la carte utilisée pour le paiement ; le remboursement apparaît sur votre compte selon les délais de votre banque.",
   },
+  demande: {
+    statut: "remboursement demandé",
+    texte:
+      "Nous avons demandé le remboursement de {montant} sur la carte utilisée pour le paiement ; il apparaît sur votre compte selon les délais de votre banque.",
+  },
   aRembourser: {
     statut: "remboursement à venir",
     texte: "Nous vous rembourserons {montant} sur la carte utilisée pour le paiement, sous 14 jours au plus.",
@@ -123,9 +128,74 @@ export const ACCUSE = typographier({
   manuelle: {
     statut: "déclaration traitée à la main par le vendeur, qui vous répond sous 7 jours",
     texte:
-      "Votre déclaration est bien reçue, mais elle n'a pas pu être traitée automatiquement : le vendeur la traite à la main et vous répond sous 7 jours au plus. Aucun remboursement n'est fait automatiquement d'ici là.",
+      "Votre déclaration est bien reçue, mais elle n'a pas pu être traitée automatiquement : le vendeur la traite à la main et vous répond sous 7 jours au plus.",
   },
 
   titreVendeur: "Le vendeur",
   vendeur: "{vendeur}, {adresse}, {email}",
+} as const);
+
+/**
+ * La liste quotidienne des commandes à traiter, envoyée au vendeur par la
+ * tâche quotidienne (voir src/vente/aTraiter.ts). Elle ne contient jamais ni
+ * nom ni adresse e-mail : les commandes s'y lisent par leur référence, et les
+ * noms des métadonnées de Stripe y sont écrits tels quels.
+ */
+export const A_TRAITER = typographier({
+  objet: "Commandes à traiter — Mission Gâteau",
+  intro:
+    "Voici, au {date}, les commandes qui attendent une action de votre part. Retrouvez chacune dans le tableau de bord de Stripe par sa référence (métadonnée ref). Cette liste ne contient ni nom ni adresse e-mail. Elle repart le jour même si elle change, et plus du tout quand il ne reste rien à traiter.",
+  titre: "{titre} : {nombre}",
+  action: "À faire : {action} Voir le README, section « {section} ».",
+  section: "La liste quotidienne des commandes à traiter",
+  marques: {
+    payee: "payée le {date} à {heure}",
+    le: "{libelle} le {date} à {heure}",
+    confirmation: "confirmation envoyée",
+    telechargement: "premier téléchargement",
+    retractation: "rétractation reçue",
+    examinee: "réponse du vendeur",
+    course: "course gagnée par {gagnante}",
+    gagnantes: { telechargement: "le premier téléchargement", retractation: "la rétractation" },
+    accuseParti: "accusé de la rétractation parti",
+    accuseNonParti: "accusé de la rétractation non parti",
+    remboursement: {
+      effectue: "remboursement effectué",
+      demande: "remboursement demandé",
+      a_venir: "aucun remboursement demandé",
+    },
+    litige: "paiement contesté",
+  },
+  rubriques: {
+    a_examiner: {
+      titre: "Commandes à examiner : premier téléchargement et rétractation croisés, sans course",
+      action:
+        "comparez l'heure de la rétractation à celle du premier téléchargement ; une déclaration reçue avant le début du premier téléchargement prévaut. Écrivez alors course = retractation (la livraison s'arrête et la tâche rembourse), sinon course = telechargement (la livraison reprend), puis répondez au client sous 7 jours.",
+    },
+    simultanees: {
+      titre: "Déclarations arrivées en même temps que le premier téléchargement",
+      action:
+        "leur accusé promet une réponse sous 7 jours. Examinez la commande comme une commande à examiner, répondez au client, puis écrivez examinee avec la date et l'heure de votre réponse.",
+    },
+    accuse_manquant: {
+      titre: "Rétractations enregistrées dont l'accusé de réception n'est pas parti",
+      action:
+        "envoyez au client, à l'adresse de la commande, l'accusé de réception de sa déclaration, puis écrivez retractation_accuse = manuel.",
+    },
+    sans_remboursement: {
+      titre: "Rétractations sans remboursement demandé",
+      action:
+        "la tâche n'a pas pu rembourser. Vérifiez le paiement dans Stripe et remboursez-le au plus tard 14 jours après la rétractation.",
+    },
+    remboursement_en_attente: {
+      titre: "Remboursements en attente depuis plus de 5 jours",
+      action:
+        "vérifiez le remboursement dans Stripe (solde disponible, action demandée) : il doit aboutir au plus tard 14 jours après la rétractation.",
+    },
+    contestations: {
+      titre: "Paiements contestés",
+      action:
+        "répondez à la contestation dans le tableau de bord de Stripe et au client, puis écrivez examinee avec la date et l'heure de votre réponse.",
+    },
+  },
 } as const);

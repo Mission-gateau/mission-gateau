@@ -635,12 +635,25 @@ describe("formulaire de rétractation", () => {
     expect(texte()).not.toContain("vous a été envoyé");
   });
 
-  it("déclaration déjà enregistrée et accusée : le rappelle", async () => {
-    await envoyerUneDeclaration(() => Response.json({ issue: "deja_accusee", date: "24 septembre 2026", heure: "10 h 30" }));
+  it("déclaration déjà enregistrée et accusée : le rappelle au-dessus du même accusé, sans rien renvoyer", async () => {
+    await envoyerUneDeclaration(() =>
+      Response.json({ issue: "deja_accusee", date: "24 septembre 2026", heure: "10\u00a0h\u00a030", accuse: ACCUSE.accuse }),
+    );
     expect(texte()).toContain("Votre déclaration est déjà enregistrée");
-    expect(espaces(texte())).toContain(
+    const rappel = espaces(texte()).indexOf(
       "Votre déclaration du 24 septembre 2026 à 10 h 30 est déjà enregistrée, et son accusé de réception vous a été envoyé par e-mail.",
     );
+    const accuse = texte().indexOf("Accusé de réception de votre rétractation — Mission Gâteau");
+    expect(rappel).toBeGreaterThan(-1);
+    expect(accuse).toBeGreaterThan(rappel);
+    expect(texte()).not.toContain("Renvoyer l'accusé de réception");
+    expect(appels).toHaveLength(1);
+  });
+
+  it("ne tronque jamais un nom que le serveur accepte : 4 × 60 caractères avant normalisation", async () => {
+    await rendre(<FormulaireRetractation referenceInitiale="" sessionId={null} vendeur={VENDEUR_AFFICHE} />);
+    expect(champ<HTMLInputElement>("#nom").maxLength).toBe(240);
+    expect(champ<HTMLInputElement>("#prenom").maxLength).toBe(240);
   });
 
   it("dit quand la déclaration n'a pas pu partir", async () => {

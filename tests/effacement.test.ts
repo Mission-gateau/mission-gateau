@@ -197,7 +197,7 @@ describe("effacement à 30 jours", () => {
     const lignes = journaux.map((ligne) => JSON.parse(ligne) as Record<string, unknown>);
     // Une ligne par phase, dans l'ordre, faite de compteurs.
     const phases = lignes.filter((ligne) => ligne.tache === "quotidienne");
-    expect(phases.map((ligne) => ligne.phase)).toEqual(["effacement", "confirmations", "remboursements"]);
+    expect(phases.map((ligne) => ligne.phase)).toEqual(["effacement", "confirmations", "remboursements", "a_traiter"]);
     for (const entree of phases) {
       const autres = Object.entries(entree).filter(([cle]) => cle !== "tache" && cle !== "phase");
       expect(autres.length).toBeGreaterThan(0);

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { rembourseEnTotalite } from "@/vente/remboursement";
 import type { Dependances } from "@/vente/dependances";
 
 /**
@@ -16,10 +17,13 @@ import { POST as commanderRoute } from "@/app/api/commande/route";
 import { POST as confirmationPost } from "@/app/api/commande/[ref]/confirmation/route";
 import { GET as tache } from "@/app/api/effacement/route";
 import { POST as renoncerPost } from "@/app/api/renoncer/route";
+import { EXPEDITEUR } from "@/contenu/emails";
 import { CLES, lireSuivi } from "@/vente/metadonnees";
 import { FauxEmail } from "./fauxEmail";
 import {
   CLE_REELLE,
+  EMAIL_ACHETEUR,
+  FICHE_COMPLETE,
   FauxStripe,
   SECRET_TACHE,
   corpsDeCommande,
@@ -134,7 +138,8 @@ describe("confirmations manquantes", () => {
     stripe.contester(contestee.paiement.id);
     const { phases } = await lancer();
     expect(phases.confirmations).toMatchObject({ confirmationsEnvoyees: 0, confirmationsExclues: 3 });
-    expect(emails.appels).toHaveLength(0);
+    // Aucune confirmation ; seule la liste des commandes à traiter part, au vendeur.
+    expect(emails.appels.filter(({ cle }) => cle.startsWith("confirmation-"))).toHaveLength(0);
   });
 
   it("relit chaque paiement avant d'envoyer : la recherche de Stripe peut être en retard", async () => {
@@ -202,7 +207,7 @@ describe("remboursements à retenter", () => {
     stripe.remboursementEnPanne = false;
     horloge = MAINTENANT;
     expect(lireSuivi(stripe.paiements.get(reglee.paiement.id)!.metadonnees).retractation).not.toBeNull();
-    expect(stripe.paiements.get(reglee.paiement.id)!.rembourseEnTotalite).toBe(false);
+    expect(rembourseEnTotalite(stripe.paiements.get(reglee.paiement.id)!)).toBe(false);
     return reglee;
   }
 
@@ -210,7 +215,7 @@ describe("remboursements à retenter", () => {
     const { paiement, reference } = await retracteeSansRemboursement();
     const { phases } = await lancer();
     expect(phases.remboursements).toMatchObject({ remboursementsRetentes: 1, remboursementsReussis: 1, remboursementsEchoues: 0 });
-    expect(stripe.paiements.get(paiement.id)!.rembourseEnTotalite).toBe(true);
+    expect(rembourseEnTotalite(stripe.paiements.get(paiement.id)!)).toBe(true);
     const tentatives = stripe.demandesDeRemboursement.map((d) => d.cle);
     expect(tentatives).toEqual([`retractation-${reference}`, `retractation-${reference}-2026-09-24`]);
     expect(stripe.demandesDeRemboursement.every((d) => d.id === paiement.id)).toBe(true);
@@ -275,10 +280,10 @@ describe("remboursements à retenter", () => {
 });
 
 describe("la tâche entière", () => {
-  it("écrit une ligne de journal par phase, dans l'ordre : effacement, confirmations, remboursements", async () => {
+  it("écrit une ligne de journal par phase, dans l'ordre : effacement, confirmations, remboursements, commandes à traiter", async () => {
     await payee(3 * HEURE);
     const { lignes } = await lancer();
-    expect(lignes.map((ligne) => ligne.phase)).toEqual(["effacement", "confirmations", "remboursements"]);
+    expect(lignes.map((ligne) => ligne.phase)).toEqual(["effacement", "confirmations", "remboursements", "a_traiter"]);
   });
 
   it("garde les compteurs déjà faits quand une étape tombe en panne", async () => {
@@ -304,9 +309,14 @@ describe("la tâche entière", () => {
     let atteint: () => void = () => {};
     const remboursementAtteint = new Promise<void>((resoudre) => (atteint = resoudre));
     const lire = stripe.lirePaiement.bind(stripe);
+    let premiere = true;
     stripe.lirePaiement = async (id: string) => {
-      atteint();
-      await new Promise<void>((resoudre) => (liberer = resoudre));
+      // Seule la relecture de la phase des remboursements reste en suspens.
+      if (premiere) {
+        premiere = false;
+        atteint();
+        await new Promise<void>((resoudre) => (liberer = resoudre));
+      }
       return lire(id);
     };
     const avant = journaux.length;
@@ -320,7 +330,7 @@ describe("la tâche entière", () => {
     expect(dejaEcrites).toEqual(["effacement", "confirmations"]);
     liberer();
     expect((await enCours).status).toBe(200);
-    expect(stripe.paiements.get(paiement.id)!.rembourseEnTotalite).toBe(true);
+    expect(rembourseEnTotalite(stripe.paiements.get(paiement.id)!)).toBe(true);
   });
 
   it("peut tourner deux fois de suite sans rien faire deux fois", async () => {
@@ -356,3 +366,147 @@ describe("la tâche entière", () => {
     expect(reponse.status).toBe(401);
   });
 });
+
+describe("la liste quotidienne des commandes à traiter", () => {
+  const OBJET = "Commandes à traiter — Mission Gâteau";
+
+  function listes() {
+    return emails.envoyes.filter(({ cle }) => cle.startsWith("a-traiter-"));
+  }
+
+  function marquer(reglee: { paiement: { id: string } }, metadonnees: Record<string, string>) {
+    Object.assign(stripe.paiements.get(reglee.paiement.id)!.metadonnees, metadonnees);
+  }
+
+  const il = (duree: number) => new Date(MAINTENANT.getTime() - duree).toISOString();
+
+  it("relève chaque rubrique, et l'envoie au vendeur sans aucun nom ni adresse", async () => {
+    const aExaminer = await payee(3 * JOUR);
+    marquer(aExaminer, { [CLES.retractation]: il(2 * JOUR), [CLES.telechargement]: il(2 * JOUR - 500), [CLES.accuseRetractation]: "re_1" });
+    const simultanee = await payee(3 * JOUR);
+    marquer(simultanee, {
+      [CLES.retractation]: il(2 * JOUR),
+      [CLES.telechargement]: il(2 * JOUR - 1000),
+      [CLES.course]: "telechargement",
+      [CLES.accuseRetractation]: "re_2",
+    });
+    const sansAccuse = await payee(3 * JOUR);
+    marquer(sansAccuse, { [CLES.retractation]: il(2 * JOUR) });
+    const enAttente = await payee(8 * JOUR);
+    marquer(enAttente, { [CLES.retractation]: il(6 * JOUR), [CLES.accuseRetractation]: "re_3" });
+    stripe.rembourserHorsSite(enAttente.paiement.id, "pending");
+    const recente = await payee(3 * JOUR);
+    marquer(recente, { [CLES.retractation]: il(4 * JOUR), [CLES.accuseRetractation]: "re_4" });
+    stripe.rembourserHorsSite(recente.paiement.id, "pending");
+    const contestee = await payee(3 * JOUR);
+    stripe.contester(contestee.paiement.id);
+    // Rien à faire : téléchargée, ou rétractée et remboursée, ou examinée par le vendeur.
+    const tranquille = await payee(3 * JOUR);
+    marquer(tranquille, { [CLES.telechargement]: il(2 * JOUR), [CLES.confirmation]: il(3 * JOUR) });
+    const examinee = await payee(3 * JOUR);
+    stripe.contester(examinee.paiement.id);
+    marquer(examinee, { [CLES.examinee]: il(HEURE) });
+
+    const { phases } = await lancer();
+    // La rétractation sans accusé l'a emporté : la tâche l'a remboursée, elle n'est donc que dans une rubrique.
+    expect(phases.a_traiter).toMatchObject({
+      aExaminer: 1,
+      simultanees: 1,
+      accuseManquant: 1,
+      sansRemboursement: 0,
+      remboursementEnAttente: 1,
+      contestations: 1,
+      listeEnvoyee: 1,
+      listeEnConflit: 0,
+      erreurs: 0,
+    });
+    expect(listes()).toHaveLength(1);
+    const { message, cle } = listes()[0]!;
+    expect(message.de).toBe(EXPEDITEUR);
+    expect(message.a).toEqual([FICHE_COMPLETE.email]);
+    expect(message.copieCachee).toEqual([]);
+    expect(message.objet).toBe(OBJET);
+    // Jour de Paris, puis 16 caractères hexadécimaux de l'empreinte du contenu.
+    expect(cle).toMatch(/^a-traiter-2026-09-24-[0-9a-f]{16}$/);
+    const corps = message.texte.replace(/[\u00a0\u202f]/g, " ");
+    for (const reglee of [aExaminer, simultanee, sansAccuse, enAttente, contestee]) expect(corps).toContain(reglee.reference);
+    for (const reglee of [recente, tranquille, examinee]) expect(corps).not.toContain(reglee.reference);
+    for (const titre of [
+      "Commandes à examiner : premier téléchargement et rétractation croisés, sans course : 1",
+      "Déclarations arrivées en même temps que le premier téléchargement : 1",
+      "Rétractations enregistrées dont l'accusé de réception n'est pas parti : 1",
+      "Remboursements en attente depuis plus de 5 jours : 1",
+      "Paiements contestés : 1",
+    ]) {
+      expect(corps).toContain(titre);
+    }
+    expect(corps).not.toContain("Rétractations sans remboursement demandé");
+    // Chaque commande : sa référence, la date du paiement, ses marques à l'heure de Paris, et ce qu'il faut faire.
+    expect(corps).toContain(`${simultanee.reference} — payée le 21 septembre 2026 à 5 h 00 ; premier téléchargement le 22 septembre 2026 à 5 h 00 ; rétractation reçue le 22 septembre 2026 à 5 h 00 ; course gagnée par le premier téléchargement ; accusé de la rétractation parti ; aucun remboursement demandé`);
+    expect(corps).toContain("Voir le README, section « La liste quotidienne des commandes à traiter ».");
+    // Jamais un nom, jamais une adresse e-mail.
+    expect(marquesDans(message.texte + message.html)).toEqual([]);
+    expect(message.texte + message.html).not.toContain("@");
+    expect(message.texte).not.toContain(EMAIL_ACHETEUR);
+  });
+
+  it("une rétractation que la tâche n'a pas pu rembourser : rubrique « sans remboursement »", async () => {
+    const retractee = await payee(3 * JOUR);
+    marquer(retractee, { [CLES.retractation]: il(2 * JOUR), [CLES.accuseRetractation]: "re_1" });
+    stripe.remboursementEnPanne = true;
+    const { phases } = await lancer();
+    expect(phases.a_traiter).toMatchObject({ sansRemboursement: 1, listeEnvoyee: 1 });
+    expect(listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ")).toContain("Rétractations sans remboursement demandé : 1");
+  });
+
+  it("liste inchangée au second passage : pas de second e-mail ; liste modifiée : un second ; liste vide : rien", async () => {
+    const contestee = await payee(3 * JOUR);
+    stripe.contester(contestee.paiement.id);
+    await lancer();
+    expect(listes()).toHaveLength(1);
+    // Second passage du jour, même liste : même clé, même contenu, Resend ne renvoie rien.
+    horloge = new Date(MAINTENANT.getTime() + 12 * HEURE);
+    const second = await lancer();
+    expect(second.phases.a_traiter).toMatchObject({ contestations: 1, erreurs: 0 });
+    expect(listes()).toHaveLength(1);
+    // Une nouvelle commande à traiter le même jour : la liste change, et repart.
+    const autre = await payee(2 * JOUR);
+    stripe.contester(autre.paiement.id);
+    const troisieme = await lancer();
+    expect(troisieme.phases.a_traiter).toMatchObject({ contestations: 2, listeEnvoyee: 1 });
+    expect(listes()).toHaveLength(2);
+    expect(listes()[1]!.cle).not.toBe(listes()[0]!.cle);
+    // Le vendeur a répondu aux deux : la liste est vide, rien ne part.
+    marquer(contestee, { [CLES.examinee]: new Date().toISOString() });
+    marquer(autre, { [CLES.examinee]: new Date().toISOString() });
+    const vide = await lancer();
+    expect(vide.phases.a_traiter).toMatchObject({ contestations: 0, listeEnvoyee: 0, erreurs: 0 });
+    expect(listes()).toHaveLength(2);
+  });
+
+  it("une liste déjà envoyée chez Resend sous une clé en conflit (409) est comptée, pas tenue pour une erreur", async () => {
+    const contestee = await payee(3 * JOUR);
+    stripe.contester(contestee.paiement.id);
+    await lancer();
+    const [premiere] = listes();
+    // Une autre requête sous la même clé, au contenu différent : Resend répond 409.
+    emails.oublierLesCles();
+    await emails.envoyer({ ...premiere!.message, texte: "autre" }, premiere!.cle);
+    const { statut, phases } = await lancer();
+    expect(statut).toBe(200);
+    expect(phases.a_traiter).toMatchObject({ listeEnvoyee: 0, listeEnConflit: 1, erreurs: 0 });
+  });
+
+  it("écrit sa ligne de journal même quand elle échoue", async () => {
+    const contestee = await payee(3 * JOUR);
+    stripe.contester(contestee.paiement.id);
+    stripe.lirePaiement = async () => {
+      throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
+    };
+    const { statut, phases } = await lancer();
+    expect(statut).toBe(500);
+    expect(phases.a_traiter).toMatchObject({ erreurs: 1, listeEnvoyee: 0 });
+    expect(listes()).toHaveLength(0);
+  });
+});
+

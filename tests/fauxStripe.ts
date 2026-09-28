@@ -2,6 +2,7 @@ import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import type { Configuration } from "@/engine/types";
 import type { Dependances } from "@/vente/dependances";
 import type { Environnement } from "@/vente/environnement";
+import { rembourseEnTotalite } from "@/vente/remboursement";
 import type { ClientStripe, DebitLu, PaiementLu, ParametresSession, RemboursementLu, SessionLue } from "@/vente/stripe";
 import { configuration } from "./aide";
 
@@ -13,8 +14,14 @@ import { configuration } from "./aide";
  * sessions et les paiements. `payer()` simule un paiement abouti : le
  * paiement reçoit exactement les métadonnées que le site a confiées à la
  * session, comme chez Stripe. `rembourser()` suit les règles de Stripe : une
- * même clé d'idempotence rend le même remboursement, et un paiement n'est
- * jamais remboursé au-delà de son montant. `modifierMetadonnees()` rend,
+ * même clé d'idempotence rend le même remboursement (ou le même échec), et un
+ * paiement n'est jamais remboursé au-delà de son montant ; un remboursement
+ * naît `succeeded`, ou `pending` (`statutDesNouveauxRemboursements`), puis
+ * `reglerRemboursement()` le fait passer à `succeeded` ou `failed`.
+ * `panneAuProchainAppel` fait échouer l'appel suivant, quel qu'il soit : 500
+ * (gardé sous sa clé d'idempotence, comme chez Stripe), 500 alors que
+ * l'écriture s'est appliquée (réponse perdue), 429, ou coupure du réseau.
+ * `modifierMetadonnees()` rend,
  * comme Stripe, le paiement à jour, écritures précédentes comprises ; avec
  * une clé d'idempotence, elle suit aussi les règles de Stripe : la première
  * requête de chaque clé s'exécute et sa réponse est gardée, échec compris ;
@@ -40,9 +47,17 @@ export class FauxStripe implements ClientStripe {
   readonly demandesDeRemboursement: { id: string; cle: string; metadonnees: Record<string, string> }[] = [];
   /** Les remboursements réellement faits : un par paiement au plus. */
   readonly remboursements: { id: string; idPaiement: string }[] = [];
-  private readonly reponsesDeRemboursement = new Map<string, RemboursementLu>();
-  /** Quand c'est vrai, chaque remboursement échoue (carte fermée, par exemple). */
+  private readonly reponsesDeRemboursement = new Map<string, { reponse?: RemboursementLu; erreur?: unknown }>();
+  /** Quand c'est vrai, chaque demande de remboursement est refusée sur-le-champ (carte fermée, par exemple). */
   remboursementEnPanne = false;
+  /** L'état d'un remboursement à sa création : effectué aussitôt, ou en attente (paiement pas encore réglé, solde insuffisant). */
+  statutDesNouveauxRemboursements: "succeeded" | "pending" = "succeeded";
+  /** L'appel suivant, quel qu'il soit, échoue ainsi ; puis tout redevient normal. */
+  panneAuProchainAppel: PanneStripe | null = null;
+  /** Pannes attendues sur une clé d'idempotence précise : la première écriture qui la porte échoue ainsi. */
+  readonly pannesParCle = new Map<string, "500" | "500_appliquee">();
+  /** Appelée avant chaque écriture de métadonnées : un test peut y retenir une écriture précise, le temps d'en faire passer d'autres. */
+  avantEcriture: ((ecriture: { cle: string | null; metadonnees: Record<string, string> }) => Promise<void> | void) | null = null;
   /** Quand c'est vrai, chaque modification de métadonnées échoue. */
   metadonneesEnPanne = false;
   readonly sessions = new Map<string, SessionLue>();
@@ -73,11 +88,21 @@ export class FauxStripe implements ClientStripe {
   private readonly reponsesParCle = new Map<string, { parametres: string; reponse?: PaiementLu; erreur?: unknown }>();
   private compteur = 0;
 
-  private panne(): void {
-    if (this.enPanne) throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
-    if (this.debitLimite) {
-      throw Object.assign(new Error("trop de requêtes"), { type: "StripeRateLimitError", code: "rate_limit", statusCode: 429 });
-    }
+  /**
+   * Les pannes qui empêchent un appel de s'exécuter. Une écriture reçoit la
+   * panne injectée « 500 » ou « 500 appliquée » pour la traiter elle-même
+   * (Stripe garde le résultat d'une requête exécutée, échec compris) ; une
+   * lecture échoue aussitôt.
+   */
+  private panne(ecriture = false): "500" | "500_appliquee" | null {
+    if (this.enPanne) throw erreurDeConnexion();
+    if (this.debitLimite) throw erreurDeDebit();
+    const injectee = this.panneAuProchainAppel;
+    this.panneAuProchainAppel = null;
+    if (injectee === "connexion") throw erreurDeConnexion();
+    if (injectee === "429") throw erreurDeDebit();
+    if (injectee && !ecriture) throw erreur500();
+    return injectee;
   }
 
   async creerSession(parametres: ParametresSession, cleIdempotence: string): Promise<{ url: string }> {
@@ -105,8 +130,15 @@ export class FauxStripe implements ClientStripe {
   async paiementParReference(reference: string): Promise<PaiementLu | null> {
     this.panne();
     this.recherchesParReference.push(reference);
+    // Comme la requête du site : la référence, et la boutique.
     for (const paiement of this.paiements.values()) {
-      if (!this.nonIndexes.has(paiement.id) && paiement.metadonnees.ref === reference) return structuredClone(paiement);
+      if (
+        !this.nonIndexes.has(paiement.id) &&
+        paiement.metadonnees.ref === reference &&
+        (this.rechercheIgnoreLaBoutique || paiement.metadonnees.boutique === "mission-gateau")
+      ) {
+        return structuredClone(paiement);
+      }
     }
     return null;
   }
@@ -188,9 +220,19 @@ export class FauxStripe implements ClientStripe {
   }
 
   async modifierMetadonnees(id: string, metadonnees: Record<string, string>, cleIdempotence?: string): Promise<PaiementLu> {
-    this.panne();
+    let injectee = this.panne(true);
+    if (this.avantEcriture) await this.avantEcriture({ cle: cleIdempotence ?? null, metadonnees: { ...metadonnees } });
+    const parCle = cleIdempotence ? this.pannesParCle.get(cleIdempotence) : undefined;
+    if (parCle) {
+      this.pannesParCle.delete(cleIdempotence!);
+      injectee ??= parCle;
+    }
     this.demandesDeModification.push({ id, metadonnees: { ...metadonnees }, cle: cleIdempotence ?? null });
-    if (!cleIdempotence) return this.executerModification(id, metadonnees);
+    if (!cleIdempotence) {
+      if (injectee === "500_appliquee") this.executerModification(id, metadonnees);
+      if (injectee) throw erreur500();
+      return this.executerModification(id, metadonnees);
+    }
     if (this.clesDIdempotenceEnCours.has(cleIdempotence)) {
       throw Object.assign(new Error("requête concurrente de même clé"), {
         type: "StripeIdempotencyError",
@@ -212,6 +254,8 @@ export class FauxStripe implements ClientStripe {
       throw gardee.erreur;
     }
     try {
+      if (injectee === "500_appliquee") this.executerModification(id, metadonnees);
+      if (injectee) throw erreur500();
       const reponse = this.executerModification(id, metadonnees);
       this.reponsesParCle.set(cleIdempotence, { parametres, reponse: structuredClone(reponse) });
       return reponse;
@@ -223,9 +267,7 @@ export class FauxStripe implements ClientStripe {
   }
 
   private executerModification(id: string, metadonnees: Record<string, string>): PaiementLu {
-    if (this.metadonneesEnPanne || Object.keys(metadonnees).some((cle) => this.clesEnPanne.has(cle))) {
-      throw Object.assign(new Error("panne simulée"), { type: "StripeAPIError", statusCode: 500 });
-    }
+    if (this.metadonneesEnPanne || Object.keys(metadonnees).some((cle) => this.clesEnPanne.has(cle))) throw erreur500();
     const paiement = this.paiements.get(id);
     if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing", statusCode: 404 });
     this.modifications.push({ id, metadonnees: { ...metadonnees } });
@@ -238,6 +280,16 @@ export class FauxStripe implements ClientStripe {
   /** Stripe oublie les clés d'idempotence au bout de 24 heures. */
   oublierLesClesDIdempotence(): void {
     this.reponsesParCle.clear();
+    this.reponsesDeRemboursement.clear();
+  }
+
+  /**
+   * Une réponse 500 que Stripe garde sous cette clé, pour une requête aux
+   * paramètres inconnus : toute requête qui la porte ensuite est refusée
+   * (400), comme chez Stripe.
+   */
+  garderUnEchec(cle: string): void {
+    this.reponsesParCle.set(cle, { parametres: "(une requête passée)", erreur: erreur500() });
   }
 
   async modifierMetadonneesDuDebit(id: string, metadonnees: Record<string, string>): Promise<void> {
@@ -249,21 +301,48 @@ export class FauxStripe implements ClientStripe {
   }
 
   async rembourser(idPaiement: string, cle: string, metadonnees: Record<string, string>): Promise<RemboursementLu> {
-    this.panne();
+    const injectee = this.panne(true);
     this.demandesDeRemboursement.push({ id: idPaiement, cle, metadonnees: { ...metadonnees } });
     const deja = this.reponsesDeRemboursement.get(cle);
-    if (deja) return { ...deja };
+    if (deja) {
+      if (deja.reponse) return { ...deja.reponse };
+      throw deja.erreur;
+    }
     const paiement = this.paiements.get(idPaiement);
     if (!paiement) throw Object.assign(new Error("absent"), { code: "resource_missing" });
+    if (injectee === "500") {
+      // Stripe garde l'échec d'une requête exécutée sous sa clé.
+      const erreur = erreur500();
+      this.reponsesDeRemboursement.set(cle, { erreur });
+      throw erreur;
+    }
     if (this.remboursementEnPanne) throw Object.assign(new Error("refus simulé"), { type: "StripeCardError", code: "card_declined" });
     if (paiement.litige) throw Object.assign(new Error("litige"), { type: "StripeInvalidRequestError", code: "charge_disputed" });
-    // Comme le vrai client : un paiement déjà remboursé en totalité compte pour remboursé.
-    if (paiement.rembourseEnTotalite) return { id: "", statut: "succeeded" };
-    paiement.rembourseEnTotalite = true;
-    const remboursement = { id: `re_faux${this.remboursements.length + 1}`, statut: "succeeded" };
+    // Comme le vrai client : Stripe refuse un nouveau remboursement d'un paiement déjà remboursé en totalité, fait ou demandé.
+    if (rembourseEnTotalite(paiement)) return { id: "", statut: "deja_rembourse" };
+    const remboursement = { id: `re_faux${this.remboursements.length + 1}`, statut: this.statutDesNouveauxRemboursements };
+    paiement.remboursements.push({ id: remboursement.id, statut: remboursement.statut, montant: paiement.montant });
     this.remboursements.push({ id: remboursement.id, idPaiement });
-    this.reponsesDeRemboursement.set(cle, remboursement);
+    if (injectee === "500_appliquee") {
+      // Le remboursement est créé, mais la réponse se perd : Stripe garde l'échec sous la clé.
+      const erreur = erreur500();
+      this.reponsesDeRemboursement.set(cle, { erreur });
+      throw erreur;
+    }
+    this.reponsesDeRemboursement.set(cle, { reponse: remboursement });
     return { ...remboursement };
+  }
+
+  /** Un remboursement en attente se règle chez Stripe : effectué, ou en échec. */
+  reglerRemboursement(idRemboursement: string, statut: "succeeded" | "failed" | "canceled"): void {
+    for (const paiement of this.paiements.values()) {
+      const remboursement = paiement.remboursements.find((r) => r.id === idRemboursement);
+      if (remboursement) {
+        remboursement.statut = statut;
+        return;
+      }
+    }
+    throw new Error(`remboursement ${idRemboursement} inconnu`);
   }
 
   /** La dernière session créée par le site, et sa référence. */
@@ -293,6 +372,8 @@ export class FauxStripe implements ClientStripe {
       email?: string | null;
       /** L'e-mail de facturation du débit, s'il diffère. */
       emailDuDebit?: string | null;
+      /** Un paiement d'un autre produit du même compte Stripe : sans la métadonnée `boutique`. */
+      sansBoutique?: boolean;
     } = {},
   ): {
     sessionId: string;
@@ -313,10 +394,11 @@ export class FauxStripe implements ClientStripe {
       payeLe,
       montant: 1290,
       metadonnees: { ...metadonnees },
-      rembourseEnTotalite: false,
+      remboursements: [],
       litige: false,
       emailDuDebit: options.emailDuDebit === undefined ? email : options.emailDuDebit,
     };
+    if (options.sansBoutique) delete paiement.metadonnees.boutique;
     this.paiements.set(paiement.id, paiement);
     if (options.premiereTentative) {
       this.debits.set(`ch_faux${numero}_refuse`, { id: `ch_faux${numero}_refuse`, cree, metadonnees: { ...metadonnees } });
@@ -327,15 +409,33 @@ export class FauxStripe implements ClientStripe {
     return { sessionId: id, reference, paiement };
   }
 
-  /** Un remboursement fait hors du site, depuis le tableau de bord de Stripe. */
-  rembourserHorsSite(idPaiement: string): void {
-    this.paiements.get(idPaiement)!.rembourseEnTotalite = true;
+  /** Un remboursement fait hors du site, depuis le tableau de bord de Stripe : effectué, ou seulement demandé. */
+  rembourserHorsSite(idPaiement: string, statut: "succeeded" | "pending" = "succeeded"): string {
+    const paiement = this.paiements.get(idPaiement)!;
+    const id = `re_tableau${paiement.remboursements.length + 1}_${idPaiement}`;
+    paiement.remboursements.push({ id, statut, montant: paiement.montant });
+    return id;
   }
 
   /** Un litige ouvert par la banque de l'acheteur. */
   contester(idPaiement: string): void {
     this.paiements.get(idPaiement)!.litige = true;
   }
+}
+
+/** Les pannes que le faux Stripe sait injecter dans un appel. */
+export type PanneStripe = "500" | "500_appliquee" | "429" | "connexion";
+
+function erreur500(): Error {
+  return Object.assign(new Error("panne simulée"), { type: "StripeAPIError", statusCode: 500 });
+}
+
+function erreurDeDebit(): Error {
+  return Object.assign(new Error("trop de requêtes"), { type: "StripeRateLimitError", code: "rate_limit", statusCode: 429 });
+}
+
+function erreurDeConnexion(): Error {
+  return Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
 }
 
 /** L'adresse que l'acheteur saisit sur la page de paiement, dans les tests. */

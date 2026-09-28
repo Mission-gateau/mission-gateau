@@ -70,7 +70,17 @@ function parametres() {
   });
 }
 
-function paiement(statut: string, ref: string, rembourse = false, options: { litige?: boolean; email?: string | null } = {}) {
+/** Un remboursement tel que Stripe le rend dans `latest_charge.refunds`. */
+function remboursementStripe(status: string, id = "re_1") {
+  return { id, object: "refund", status, amount: 1290 };
+}
+
+function paiement(
+  statut: string,
+  ref: string,
+  rembourse = false,
+  options: { litige?: boolean; email?: string | null; remboursements?: ReturnType<typeof remboursementStripe>[] } = {},
+) {
   return {
     id: `pi_${ref.slice(0, 6)}`,
     object: "payment_intent",
@@ -78,13 +88,18 @@ function paiement(statut: string, ref: string, rembourse = false, options: { lit
     created: 1790000000,
     amount: 1290,
     amount_received: statut === "succeeded" ? 1290 : 0,
-    metadata: { ref },
+    metadata: { ref, boutique: "mission-gateau" },
     latest_charge: {
       id: "ch_1",
       object: "charge",
       created: 1790003600,
       refunded: rembourse,
       amount_refunded: rembourse ? 1290 : 0,
+      refunds: {
+        object: "list",
+        data: options.remboursements ?? (rembourse ? [remboursementStripe("succeeded")] : []),
+        has_more: false,
+      },
       disputed: options.litige ?? false,
       billing_details: { email: options.email === undefined ? "facturation@exemple.fr" : options.email },
     },
@@ -137,7 +152,7 @@ describe("client Stripe réel", () => {
     expect(marquesDans(decodeURIComponent(requete!.corps.replace(/\+/g, " ")))).toEqual([]);
   });
 
-  it("lit une session et le paiement qui l'accompagne, remboursement compris", async () => {
+  it("lit une session et le paiement qui l'accompagne, remboursements compris", async () => {
     let rembourse = false;
     const { client, vues } = reseau(() => ({
       json: {
@@ -161,16 +176,29 @@ describe("client Stripe réel", () => {
         // L'heure du paiement est celle du débit, pas celle de la première tentative.
         payeLe: 1790003600,
         montant: 1290,
-        metadonnees: { ref: REFERENCE },
-        rembourseEnTotalite: false,
+        metadonnees: { ref: REFERENCE, boutique: "mission-gateau" },
+        remboursements: [],
         litige: false,
         emailDuDebit: "facturation@exemple.fr",
       },
     });
     expect(vues[0]!.url.pathname).toBe("/v1/checkout/sessions/cs_test_1");
-    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["payment_intent.latest_charge"]);
+    // Les remboursements du débit ne viennent que développés.
+    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["payment_intent.latest_charge.refunds"]);
     rembourse = true;
-    expect((await client.lireSession("cs_test_1"))!.paiement!.rembourseEnTotalite).toBe(true);
+    expect((await client.lireSession("cs_test_1"))!.paiement!.remboursements).toEqual([
+      { id: "re_1", statut: "succeeded", montant: 1290 },
+    ]);
+  });
+
+  it("lit chaque remboursement tel quel, jamais le drapeau « refunded » du débit", async () => {
+    const remboursements = [remboursementStripe("failed", "re_1"), remboursementStripe("pending", "re_2")];
+    // Stripe peut dire le débit « remboursé » quand un remboursement est seulement demandé : le site ne lit que les remboursements.
+    const { client } = reseau(() => ({ json: paiement("succeeded", REFERENCE, true, { remboursements }) }));
+    expect((await client.lirePaiement("pi_AbCdEf"))!.remboursements).toEqual([
+      { id: "re_1", statut: "failed", montant: 1290 },
+      { id: "re_2", statut: "pending", montant: 1290 },
+    ]);
   });
 
   it("renvoie null pour une session inconnue", async () => {
@@ -189,22 +217,32 @@ describe("client Stripe réel", () => {
             json: {
               object: "search_result",
               // La recherche peut rendre des métadonnées périmées…
-              data: [paiement("succeeded", autre), { ...paiement("succeeded", REFERENCE), metadata: { ref: REFERENCE } }],
+              data: [
+                paiement("succeeded", autre),
+                // Un paiement d'un autre produit du même compte, sans `boutique` : jamais une commande.
+                { ...paiement("succeeded", REFERENCE), id: "pi_autre_produit", metadata: { ref: REFERENCE } },
+                { ...paiement("succeeded", REFERENCE), metadata: { ref: REFERENCE, boutique: "mission-gateau" } },
+              ],
               has_more: false,
               next_page: null,
             },
           }
         : // … la relecture par l'identifiant, elle, est à jour.
-          { json: { ...paiement("succeeded", REFERENCE), metadata: { ref: REFERENCE, confirmation: "2026-09-24T12:00:00.000Z" } } },
+          {
+            json: {
+              ...paiement("succeeded", REFERENCE),
+              metadata: { ref: REFERENCE, boutique: "mission-gateau", confirmation: "2026-09-24T12:00:00.000Z" },
+            },
+          },
     );
     const trouve = await client.paiementParReference(REFERENCE);
-    expect(trouve?.metadonnees).toEqual({ ref: REFERENCE, confirmation: "2026-09-24T12:00:00.000Z" });
+    expect(trouve?.metadonnees).toEqual({ ref: REFERENCE, boutique: "mission-gateau", confirmation: "2026-09-24T12:00:00.000Z" });
     const recherche = vues[0]!.url;
     expect(recherche.pathname).toBe("/v1/payment_intents/search");
-    expect(recherche.searchParams.get("query")).toBe(`metadata["ref"]:"${REFERENCE}"`);
+    expect(recherche.searchParams.get("query")).toBe(`metadata["ref"]:"${REFERENCE}" AND metadata["boutique"]:"mission-gateau"`);
     expect(recherche.searchParams.get("limit")).toBe("10");
     expect(vues[1]!.url.pathname).toBe("/v1/payment_intents/pi_AbCdEf");
-    expect(vues[1]!.url.searchParams.getAll("expand[0]")).toEqual(["latest_charge"]);
+    expect(vues[1]!.url.searchParams.getAll("expand[0]")).toEqual(["latest_charge.refunds"]);
     expect(vues).toHaveLength(2);
   });
 
@@ -213,7 +251,7 @@ describe("client Stripe réel", () => {
     expect(await client.lirePaiement("pi_AbCdEf")).toMatchObject({
       montant: 1290,
       litige: true,
-      rembourseEnTotalite: false,
+      remboursements: [],
       emailDuDebit: null,
     });
     const absent = reseau(() => ({
@@ -260,7 +298,7 @@ describe("client Stripe réel", () => {
     expect(vues[0]!.url.searchParams.get("query")).toBe(
       'status:"succeeded" AND created>1786000000 AND metadata["boutique"]:"mission-gateau"',
     );
-    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge"]);
+    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge.refunds"]);
     expect(requetePaiementsAboutisDepuis(1786000000.7)).toBe(
       'status:"succeeded" AND created>1786000000 AND metadata["boutique"]:"mission-gateau"',
     );
@@ -288,7 +326,8 @@ describe("client Stripe réel", () => {
       statut: 400,
       json: { error: { type: "invalid_request_error", code: "charge_already_refunded", message: "already refunded" } },
     }));
-    expect(await deja.client.rembourser("pi_AbCdEf", "cle", {})).toEqual({ id: "", statut: "succeeded" });
+    // Déjà remboursé en totalité, fait ou seulement demandé : Stripe ne dit pas lequel.
+    expect(await deja.client.rembourser("pi_AbCdEf", "cle", {})).toEqual({ id: "", statut: "deja_rembourse" });
     const litige = reseau(() => ({
       statut: 400,
       json: { error: { type: "invalid_request_error", code: "charge_disputed", message: "disputed" } },
@@ -312,7 +351,7 @@ describe("client Stripe réel", () => {
     expect(vues[0]!.url.pathname).toBe("/v1/payment_intents/search");
     expect(vues[0]!.url.searchParams.get("query")).toBe('metadata["config"]:"chiffree" AND created<1787400000');
     expect(vues[0]!.url.searchParams.get("limit")).toBe("100");
-    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge"]);
+    expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge.refunds"]);
     expect(vues[1]!.url.searchParams.get("page")).toBe("page_2");
     expect(premiere.paiements[0]!.payeLe).toBe(1790003600);
   });
@@ -361,7 +400,7 @@ describe("client Stripe réel", () => {
     const lu = await client.modifierMetadonnees("pi_1", { retractation: "2026-09-26T08:30:00.000Z" });
     // Le débit est développé dans la même requête : un seul aller-retour.
     expect(vues).toHaveLength(1);
-    expect(new URLSearchParams(vues[0]!.corps).getAll("expand[0]")).toEqual(["latest_charge"]);
+    expect(new URLSearchParams(vues[0]!.corps).getAll("expand[0]")).toEqual(["latest_charge.refunds"]);
     expect(lu).toMatchObject({
       id: "pi_AbCdEf",
       statut: "succeeded",
@@ -412,7 +451,7 @@ describe("client Stripe réel", () => {
   });
 
   it("forme des requêtes de recherche sans surprise", () => {
-    expect(requeteParReference(REFERENCE)).toBe(`metadata["ref"]:"${REFERENCE}"`);
+    expect(requeteParReference(REFERENCE)).toBe(`metadata["ref"]:"${REFERENCE}" AND metadata["boutique"]:"mission-gateau"`);
     expect(requeteConfigurationsAvant(1787400000.9)).toBe('metadata["config"]:"chiffree" AND created<1787400000');
   });
 });

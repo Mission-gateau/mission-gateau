@@ -29,8 +29,8 @@ export type SituationCommande =
       type: "retractee";
       date: string;
       heure: string;
-      /** Remboursé chez Stripe, pas encore, ou paiement contesté auprès de la banque. */
-      remboursement: "effectue" | "a_venir" | "litige";
+      /** Remboursement effectué, demandé, à venir, ou paiement contesté auprès de la banque. */
+      remboursement: "effectue" | "demande" | "a_venir" | "litige";
       montant: string;
     }
   | { type: "refus"; etat: Refus };
@@ -73,7 +73,7 @@ export async function situationDeLaCommande(etat: EtatCommande, deps: Dependance
         type: "retractee",
         date: dateAParis(etat.retracteeLe),
         heure: heureAParis(etat.retracteeLe),
-        remboursement: etat.rembourse ? "effectue" : etat.litige ? "litige" : "a_venir",
+        remboursement: etat.remboursement !== "a_venir" ? etat.remboursement : etat.litige ? "litige" : "a_venir",
         montant: formaterPrix(etat.montant),
       };
     default:

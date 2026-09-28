@@ -27,7 +27,17 @@ import { erreurDIdempotence, type ClientStripe, type PaiementLu } from "./stripe
  *   les deux marques existent, c'est `course` qui dit laquelle l'emporte ;
  *   sans `course` (son écriture a échoué), la commande est « à examiner » :
  *   ni livraison ni remboursement automatiques, le vendeur répond sous 7
- *   jours.
+ *   jours ;
+ * - seule exception : quand l'écriture de `retractation` échoue alors
+ *   qu'elle s'est appliquée (réponse perdue), la fonction de rétractation
+ *   décide sur une relecture du paiement, qui remplace cette réponse (voir
+ *   src/vente/retractation.ts).
+ *
+ * Deux hypothèses sur Stripe, que le faux Stripe des tests (qui applique
+ * chaque mise à jour d'un bloc) ne peut pas éprouver : la réponse de Stripe
+ * à une mise à jour d'un paiement contient les écritures concurrentes déjà
+ * appliquées ; une relecture par identifiant montre toutes les écritures
+ * déjà appliquées.
  */
 
 /** La marque qui l'emporte, « a_examiner » sans `course`, ou null si aucune n'est écrite. */
@@ -67,8 +77,21 @@ export function issueDUneRetractationBattue(recueLe: Date, telechargeLe: Date): 
   return recueLe.getTime() < telechargeLe.getTime() ? "simultanee" : "telechargee";
 }
 
-/** Nombre de clés d'idempotence essayées pour une marque, au cas où Stripe aurait gardé l'échec d'une tentative. */
-export const ESSAIS_DE_MARQUE = 3;
+/**
+ * Nombre de clés d'idempotence essayées pour une marque, au cas où Stripe
+ * aurait gardé l'échec d'une tentative : il faudrait dix réponses 500 gardées
+ * par Stripe sur une même commande pour bloquer l'écriture d'une marque
+ * pendant 24 heures.
+ */
+export const ESSAIS_DE_MARQUE = 10;
+
+/** Les clés d'une marque ont toutes servi à des tentatives restées sans effet : elle ne peut pas s'écrire avant que Stripe les oublie. */
+export class ClesDeMarqueEpuisees extends Error {
+  constructor() {
+    super("La marque n'a pas pu être écrite : toutes ses clés d'idempotence ont servi.");
+    this.name = "ClesDeMarqueEpuisees";
+  }
+}
 
 /** La clé d'idempotence de l'écriture d'une marque : la même pour toutes les requêtes qui l'écrivent. */
 export function cleDeMarque(marque: Marque, reference: string, essai: number): string {
@@ -89,7 +112,7 @@ export type EcritureDeMarque =
  * est refusée, et on relit alors le paiement. Si la marque n'y est pas, la
  * clé a servi à une tentative qui n'a rien écrit (Stripe garde aussi les
  * échecs) : on passe à la clé suivante. Une panne de Stripe se propage à
- * l'appelant.
+ * l'appelant ; quand toutes les clés ont servi, ClesDeMarqueEpuisees.
  */
 export async function ecrireLaMarque(
   client: ClientStripe,
@@ -110,5 +133,5 @@ export async function ecrireLaMarque(
       if (lireSuivi(frais.metadonnees)[marque] !== null) return { issue: "deja_ecrite", apres: frais };
     }
   }
-  throw new Error("La marque n'a pas pu être écrite.");
+  throw new ClesDeMarqueEpuisees();
 }

@@ -10,10 +10,11 @@ import { chiffrer, dechiffrer, decouper } from "./chiffrement";
  * identifiant chez Resend), celle du premier téléchargement, celle de la
  * rétractation (avec l'empreinte de la déclaration qui l'a enregistrée et
  * l'identifiant de son accusé de réception), la marque qui l'a emporté quand
- * téléchargement et rétractation se sont croisés, et le nombre des autres
- * accusés de réception envoyés. Chiffrée : la configuration complète, découpée
- * en morceaux pour tenir dans les limites de Stripe. Aucune donnée saisie par
- * le parent n'y figure en clair.
+ * téléchargement et rétractation se sont croisés, le nombre des autres
+ * accusés de réception envoyés, et l'heure à laquelle le vendeur a répondu
+ * au client d'une commande qu'il a dû examiner. Chiffrée : la configuration
+ * complète, découpée en morceaux pour tenir dans les limites de Stripe. Aucune
+ * donnée saisie par le parent n'y figure en clair.
  *
  * C'est tout l'état d'une commande : le site n'a pas de base de données.
  */
@@ -61,6 +62,13 @@ export const CLES = {
   course: "course",
   /** Nombre des accusés de réception envoyés aux autres déclarations (3 au plus). */
   accuses: "accuses",
+  /**
+   * Écrite à la main par le vendeur, date et heure ISO 8601 complètes, après
+   * avoir répondu au client d'une commande « arrivée en même temps » ou d'un
+   * paiement contesté : la commande quitte ces rubriques de la liste
+   * quotidienne des commandes à traiter (voir src/vente/aTraiter.ts).
+   */
+  examinee: "examinee",
 } as const;
 
 /**
@@ -77,6 +85,7 @@ export const CLES_APRES_PAIEMENT = [
   CLES.accuseRetractation,
   CLES.course,
   CLES.accuses,
+  CLES.examinee,
 ] as const;
 
 const PREFIXE_MORCEAU = "config_";
@@ -146,6 +155,14 @@ export function depassementsDeMetadonnees(metadonnees: Record<string, string>): 
   return problemes;
 }
 
+/**
+ * Un paiement de cette boutique, qui porte cette référence : un paiement
+ * d'un autre produit du même compte Stripe n'est jamais une commande.
+ */
+export function estUneCommande(metadonnees: Record<string, string>, reference: string): boolean {
+  return metadonnees[CLES.reference] === reference && metadonnees[CLES.boutique] === BOUTIQUE;
+}
+
 /** Relit la partie en clair d'une commande. Null si une clé manque. */
 export function lireCommande(metadonnees: Record<string, string>): Commande | null {
   const commande: Commande = {
@@ -179,12 +196,17 @@ export interface Suivi {
   course: Marque | null;
   /** Accusés de réception envoyés aux autres déclarations. */
   accuses: number;
+  /** Réponse du vendeur au client d'une commande qu'il a dû examiner. */
+  examinee: Date | null;
 }
 
 /**
- * Une heure écrite par le site (ISO 8601) ou, pour une rétractation reçue par
- * e-mail ou par courrier, par le vendeur dans le tableau de bord de Stripe
- * (une date ISO suffit). Une valeur illisible compte comme absente.
+ * Une heure écrite par le site, ou par le vendeur dans le tableau de bord de
+ * Stripe (rétractation reçue par e-mail ou par courrier, réponse à une
+ * commande examinée) : toujours la date et l'heure complètes, ISO 8601 avec
+ * le fuseau (par exemple `2026-10-02T09:15:00+02:00`), jamais une date seule,
+ * qui se lirait minuit UTC et fausserait la comparaison avec le premier
+ * téléchargement. Une valeur illisible compte comme absente.
  */
 function lireHeure(valeur: string | undefined): Date | null {
   if (!valeur) return null;
@@ -208,6 +230,7 @@ export function lireSuivi(metadonnees: Record<string, string>): Suivi {
     accuseRetractation: metadonnees[CLES.accuseRetractation] || null,
     course: course === "telechargement" || course === "retractation" ? course : null,
     accuses: lireCompteur(metadonnees[CLES.accuses]),
+    examinee: lireHeure(metadonnees[CLES.examinee]),
   };
 }
 

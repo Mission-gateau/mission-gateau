@@ -20,7 +20,7 @@ export interface Dependances {
 /**
  * Lu à chaque requête, jamais au build. En production, sans clé Stripe réelle,
  * aucun client Stripe n'est créé : rien ne peut alors toucher un paiement de
- * test (voir stripePermis).
+ * test, ni hors production avec une clé réelle (voir stripePermis).
  */
 export function dependancesReelles(): Dependances {
   const env = lireEnvironnement();

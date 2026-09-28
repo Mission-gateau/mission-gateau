@@ -262,11 +262,13 @@ describe("page d'une commande", () => {
   const MAINTENANT = new Date("2026-09-24T12:00:00.000Z");
 
   /** Une commande payée la veille, et sa confirmation enregistrée ou non. */
-  async function commandePayee(options: { confirmee?: boolean; env?: ReturnType<typeof environnement>; payeLe?: Date } = {}) {
+  async function commandePayee(
+    options: { confirmee?: boolean; env?: ReturnType<typeof environnement>; payeLe?: Date; sansBoutique?: boolean } = {},
+  ) {
     const stripe = new FauxStripe();
     etat.deps = dependances(stripe, { env: options.env ?? environnement(), maintenant: () => MAINTENANT });
     await commanderRoute(requeteJson("http://localhost/api/commande", corpsDeCommande()));
-    const reglee = stripe.payer({ payeLe: options.payeLe ?? new Date("2026-09-23T12:00:00.000Z") });
+    const reglee = stripe.payer({ payeLe: options.payeLe ?? new Date("2026-09-23T12:00:00.000Z"), sansBoutique: options.sansBoutique });
     if (options.confirmee !== false) {
       stripe.paiements.get(reglee.paiement.id)!.metadonnees[CLES.confirmation] = "2026-09-23T12:00:05.000Z";
     }
@@ -363,9 +365,31 @@ describe("page d'une commande", () => {
     expect(html).toContain("Votre rétractation a été enregistrée le 24 septembre 2026 à 10 h 30.");
     expect(html).toContain("Remboursement : pas encore effectué");
     expect(html).not.toContain("Télécharger mon jeu");
-    stripe.rembourserHorsSite(paiement.id);
+    // Demandé, pas encore réglé : « demandé », lu sur le remboursement lui-même.
+    const remboursement = stripe.rembourserHorsSite(paiement.id, "pending");
+    html = (await pageDeCommande(reference)).replace(/[\u00a0\u202f]/g, " ");
+    expect(html).toContain(
+      "Remboursement demandé : 12,90 €, sur la carte utilisée pour le paiement ; il apparaît sur votre compte selon les délais de votre banque.",
+    );
+    expect(html).not.toContain("pas encore effectué");
+    stripe.reglerRemboursement(remboursement, "succeeded");
     html = (await pageDeCommande(reference)).replace(/\u00a0/g, " ");
     expect(html).toContain("Remboursement : 12,90 € remboursés par Stripe sur la carte utilisée pour le paiement.");
+    // Un remboursement en échec ne compte pas : de nouveau « pas encore effectué ».
+    stripe.reglerRemboursement(remboursement, "failed");
+    html = (await pageDeCommande(reference)).replace(/\u00a0/g, " ");
+    expect(html).toContain("Remboursement : pas encore effectué");
+  });
+
+  it("un paiement sans boutique, par sa référence puis par sa session : « Commande introuvable »", async () => {
+    const { reference, sessionId, stripe } = await commandePayee({ sansBoutique: true });
+    stripe.rechercheIgnoreLaBoutique = true;
+    for (const session of [undefined, sessionId]) {
+      const html = await pageDeCommande(reference, session);
+      expect(html, String(session)).toContain("Commande introuvable");
+      expect(html, String(session)).not.toContain("Télécharger mon jeu");
+      expect(html, String(session)).not.toContain("Merci pour votre commande");
+    }
   });
 
   it("rétractée puis contestée auprès de la banque : plus aucune promesse de remboursement sous 14 jours", async () => {

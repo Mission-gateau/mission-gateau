@@ -95,6 +95,8 @@ function texteDe(message: MessageEmail): string {
 function visibleDuHtml(html: string): string {
   return html
     .replace(/<title>[\s\S]*?<\/title>/, " ")
+    // Un lien fait partie de sa phrase : sa balise ne la coupe pas.
+    .replace(/<\/?a\b[^>]*>/g, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
@@ -405,13 +407,13 @@ describe("contenu de la confirmation", () => {
       expect(message.piecesJointes).toHaveLength(1);
       expect(message.piecesJointes[0]!.nom).toBe(nom);
       expect(message.piecesJointes[0]!.type).toBe("application/pdf");
-      expect(texteDe(message)).toContain(`Pièce jointe : nos conditions générales de vente, version du 27 septembre 2026 (fichier ${nom}).`);
+      expect(texteDe(message)).toContain(`Pièce jointe : nos conditions générales de vente, version du 28 septembre 2026 (fichier ${nom}).`);
       expect(texteDe(message)).toContain("Nos conditions générales de vente, dans la version que vous avez acceptée, y sont jointes en PDF.");
     }
     const [a, b] = [premiere, seconde].map(({ message }) => message.piecesJointes[0]!.contenu);
     expect(Buffer.compare(a!, b!)).toBe(0);
     const pdf = texteDuPdf(a!).replace(/[  ]/g, " ");
-    expect(pdf).toContain("Version du 27 septembre 2026");
+    expect(pdf).toContain("Version du 28 septembre 2026");
     expect(pdf).toContain("Le jeu complet coûte 12,90 €");
     expect(pdf).toContain("11. Médiation de la consommation");
     expect(pdf).toContain("8. Droit de rétractation");
@@ -449,11 +451,13 @@ describe("contenu de la confirmation", () => {
       .map((ligne) => resserre(ligne.replace(/^- /, "").replace(/ \(https?:\/\/[^)]+\)/g, "")));
     for (const ligne of lignes) expect(visible, ligne).toContain(ligne);
     expect(visible.length).toBeLessThanOrEqual(lignes.join(" ").length + 5);
-    // Les liens du HTML sont ceux du texte, vers le site.
+    // Les liens du HTML sont ceux du texte : vers le site, puis vers le site du médiateur et sa page de demande de médiation.
     const liens = [...message.html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
     expect(liens).toEqual([
       `https://mission-gateau.vercel.app/commande/${reference}`,
       `https://mission-gateau.vercel.app/renoncer?ref=${reference}`,
+      "https://www.mediateur-consommation-smp.fr",
+      "https://www.mediateur-consommation-smp.fr/demander-une-mediation/",
     ]);
     for (const lien of liens) expect(message.texte).toContain(lien);
     // Aucune ressource distante : ni image, ni feuille de style, ni police, ni script.
