@@ -124,6 +124,11 @@ export const COMMANDE = typographier({
     titre: "Commande remboursée",
     texte: "Cette commande a été remboursée en totalité : le jeu n'est plus disponible au téléchargement.",
   },
+  remboursementDemande: {
+    titre: "Remboursement demandé",
+    texte:
+      "Le remboursement de cette commande est demandé : il apparaît sur votre compte selon les délais de votre banque. Le jeu n'est plus disponible au téléchargement.",
+  },
   retractee: {
     titre: "Commande rétractée",
     texte: "Vous avez renoncé à cette commande : le jeu n'est plus disponible au téléchargement.",

@@ -381,6 +381,20 @@ describe("page d'une commande", () => {
     expect(html).toContain("Remboursement : pas encore effectué");
   });
 
+  it("remboursée hors rétractation : « Remboursement demandé », puis « Commande remboursée », jamais le bouton", async () => {
+    const { reference, paiement, stripe } = await commandePayee();
+    const remboursement = stripe.rembourserHorsSite(paiement.id, "pending");
+    let html = (await pageDeCommande(reference)).replace(/[\u00a0\u202f]/g, " ");
+    expect(html).toContain("Remboursement demandé");
+    expect(html).toContain("Le remboursement de cette commande est demandé : il apparaît sur votre compte selon les délais de votre banque.");
+    expect(html).not.toContain("remboursée en totalité");
+    expect(html).not.toContain("Télécharger mon jeu");
+    stripe.reglerRemboursement(remboursement, "succeeded");
+    html = await pageDeCommande(reference);
+    expect(html).toContain("Commande remboursée");
+    expect(html).not.toContain("Télécharger mon jeu");
+  });
+
   it("un paiement sans boutique, par sa référence puis par sa session : « Commande introuvable »", async () => {
     const { reference, sessionId, stripe } = await commandePayee({ sansBoutique: true });
     stripe.rechercheIgnoreLaBoutique = true;

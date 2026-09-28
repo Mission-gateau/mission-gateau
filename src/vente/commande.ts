@@ -54,6 +54,8 @@ export type EtatCommande =
   | { etat: "introuvable" }
   | { etat: "expiree" }
   | { etat: "remboursee" }
+  /** Remboursé hors rétractation, remboursement demandé mais pas encore réglé chez Stripe. */
+  | { etat: "remboursement_demande" }
   | { etat: "autre_version" }
   | { etat: "illisible" }
   | { etat: "indisponible" };
@@ -139,8 +141,11 @@ export function etatDuPaiement(
     };
   }
   if (paiement.litige) return { etat: "litige" };
-  // Remboursé hors rétractation (depuis le tableau de bord de Stripe), fait ou seulement demandé : plus rien n'est livré.
-  if (rembourseEnTotalite(paiement)) return { etat: "remboursee" };
+  // Remboursé hors rétractation (depuis le tableau de bord de Stripe), fait ou seulement demandé : plus rien n'est livré ;
+  // seul l'affichage distingue les deux.
+  if (rembourseEnTotalite(paiement)) {
+    return { etat: etatDuRemboursement(paiement) === "effectue" ? "remboursee" : "remboursement_demande" };
+  }
 
   // Les 30 jours courent à partir du débit réussi, pas de la première tentative.
   const payeeLe = new Date(paiement.payeLe * 1000);

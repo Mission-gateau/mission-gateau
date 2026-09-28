@@ -445,7 +445,10 @@ développé à chaque lecture), jamais sur le drapeau `refunded` du débit :
 lancement, Stripe met en attente un remboursement demandé juste après le
 paiement : c'est un cas normal) ; aucun, `failed` ou `canceled` → à venir.
 Les accusés et la page de la commande disent « remboursement demandé » ou
-« effectué » selon le cas (`src/vente/remboursement.ts`).
+« effectué » selon le cas (`src/vente/remboursement.ts`). Un paiement
+remboursé hors rétractation (depuis le tableau de bord de Stripe), dont les
+remboursements faits ou demandés couvrent le montant, n'est plus livré ni
+confirmé ; la page dit « Remboursement demandé » ou « Commande remboursée ».
 
 L'accusé de réception reprend la déclaration (champs normalisés, référence
 extraite), la date et l'heure de son envoi (heure de Paris), et la suite

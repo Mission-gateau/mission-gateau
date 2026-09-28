@@ -183,6 +183,7 @@ const STATUTS: Record<Refus, number> = {
   introuvable: 404,
   expiree: 410,
   remboursee: 410,
+  remboursement_demande: 410,
   retractee: 410,
   a_examiner: 409,
   litige: 409,

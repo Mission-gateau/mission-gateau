@@ -245,7 +245,9 @@ async function confirmerLesOubliees(
       }
       const etat = etatDuPaiement(frais, reference, cleStripe, maintenant);
       if (etat.etat !== "payee") {
-        if (["retractee", "remboursee", "litige", "a_examiner"].includes(etat.etat)) bilan.confirmationsExclues += 1;
+        if (["retractee", "remboursee", "remboursement_demande", "litige", "a_examiner"].includes(etat.etat)) {
+          bilan.confirmationsExclues += 1;
+        }
         else bilan.confirmationsImpossibles += 1;
         continue;
       }

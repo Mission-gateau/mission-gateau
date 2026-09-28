@@ -972,7 +972,7 @@ describe("l'état réel du remboursement, lu sur les remboursements eux-mêmes",
       { params: Promise.resolve({ ref: reference }) },
     );
     expect(confirmation.status).toBe(409);
-    expect(await confirmation.json()).toEqual({ etat: "remboursee" });
+    expect(await confirmation.json()).toEqual({ etat: "remboursement_demande" });
     expect((await telecharger(reference)).status).toBe(410);
     const bilan = await tacheQuotidienne(deps());
     expect(bilan.confirmations.confirmationsEnvoyees).toBe(0);
