@@ -1,13 +1,21 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ApercusDuKit } from "@/composants/Apercus";
 import { EnTeteSite, PiedDeSite } from "@/composants/Chrome";
 import { remplir } from "@/engine/texte";
 import { SITE } from "@/contenu/site";
+import { GUIDES } from "@/contenu/guides";
 import { LISTE_THEMES } from "@/contenu/themes";
 import { VENDEUR } from "@/contenu/vendeur";
 import { venteOuverteMaintenant } from "@/vente/ouverture";
 import { PRIX_AFFICHE } from "@/vente/prix";
+import { metadonneesDePage } from "@/site/referencement";
+
+/** Titre, description, adresse canonique, Open Graph ; visible des moteurs en production seulement. */
+export function generateMetadata(): Metadata {
+  return metadonneesDePage("/");
+}
 
 function Section({
   titre,
@@ -143,6 +151,27 @@ export default function Accueil() {
               </li>
             ))}
           </ul>
+        </Section>
+
+        <Section titre={SITE.titreGuides} id="guides">
+          <p className="mb-5 max-w-prose text-sm leading-relaxed text-encre-douce">{SITE.texteGuides}</p>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {GUIDES.map((guide) => (
+              <li key={guide.adresse}>
+                <Link
+                  href={`/guides/${guide.adresse}`}
+                  className="block h-full rounded-xl border border-bordure bg-white p-4 text-sm font-bold text-accent hover:border-accent"
+                >
+                  {guide.titre}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm">
+            <Link href="/guides" className="underline underline-offset-4 hover:text-accent">
+              {SITE.tousLesGuides}
+            </Link>
+          </p>
         </Section>
 
         <div className="mx-auto grid max-w-5xl gap-5 px-5 pb-6 sm:grid-cols-2">

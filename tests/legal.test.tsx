@@ -75,7 +75,7 @@ describe("mentions légales", () => {
       "992 667 006 00017",
       "7 impasse des Bosquets, 34670 Baillargues, France",
       "+33 6 32 57 69 77",
-      "quentin.courtois090+missiongateau@gmail.com",
+      "contact@missiongateau.com",
       "Directeur de la publication Quentin Courtois",
       "TVA non applicable, article 293 B du CGI",
       "Vercel Inc.",
@@ -83,7 +83,7 @@ describe("mentions légales", () => {
       "+1 951 383 6898",
       "vercel.com",
       "Stripe Payments Europe, Limited, 1 Grand Canal Street Lower, Grand Canal Dock, Dublin, D02 H210, Irlande",
-      "Mise à jour le 27 septembre 2026",
+      "Mise à jour le 11 octobre 2026",
     ]) {
       expect(texte, attendu).toContain(attendu);
     }
@@ -217,7 +217,7 @@ describe("conditions générales de vente", () => {
     expect(paragraphes).toEqual(
       FORMULAIRE_OFFICIEL.replace(
         "[le professionnel insère ici son nom, son adresse géographique et son adresse électronique]",
-        "Quentin Courtois EI, 7 impasse des Bosquets, 34670 Baillargues, France, quentin.courtois090+missiongateau@gmail.com",
+        "Quentin Courtois EI, 7 impasse des Bosquets, 34670 Baillargues, France, contact@missiongateau.com",
       ).split("\n"),
     );
   });
@@ -231,7 +231,7 @@ describe("conditions générales de vente", () => {
         { libelle: "Vendeur", valeur: ["Quentin Courtois EI"] },
         { libelle: "Adresse", valeur: ["7 impasse des Bosquets, 34670 Baillargues, France"] },
         { libelle: "Téléphone", valeur: ["+33 6 32 57 69 77"] },
-        { libelle: "E-mail", valeur: ["quentin.courtois090+missiongateau@gmail.com"] },
+        { libelle: "E-mail", valeur: ["contact@missiongateau.com"] },
       ],
     });
   });
@@ -293,12 +293,12 @@ describe("politique de confidentialité", () => {
       "Votre adresse e-mail, votre nom et votre adresse de facturation",
       "dix ans (article L123-22 du Code de commerce)",
       // Les copies des e-mails gardées par le vendeur.
-      "Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie, hébergée par Google (voir « Destinataires »), comme preuve de leur envoi pendant cinq ans",
+      "Le vendeur en reçoit une copie cachée, à contact@missiongateau.com : elle lui est transmise par ImprovMX vers sa messagerie, hébergée par Google (voir « Destinataires »), où il la garde comme preuve de leur envoi pendant cinq ans",
       "Votre déclaration de rétractation",
       "L'exécution du contrat (article 6, paragraphe 1, b du RGPD)",
       "L'obligation légale (article 6, paragraphe 1, c du RGPD)",
       "L'intérêt légitime du vendeur (article 6, paragraphe 1, f du RGPD)",
-      "Mise à jour le 28 septembre 2026",
+      "Mise à jour le 11 octobre 2026",
       // La déclaration de rétractation : ce qui s'ajoute à la trace de la commande, et ce qui reste d'une déclaration non transmise.
       "une empreinte de la déclaration qui l'a enregistrée",
       "le nombre d'accusés de réception envoyés pour la commande",
@@ -326,7 +326,19 @@ describe("politique de confidentialité", () => {
       "page de Resend sur le RGPD , consultée le 26 septembre 2026",
       "accord de traitement des données de Resend , mis à jour le 31 décembre 2025",
       // Google, qui héberge la messagerie du vendeur, tel qu'il se déclare lui-même, sans accord de traitement avec le vendeur.
-      "Google (Gmail), qui héberge la messagerie du vendeur, un compte Gmail personnel : il reçoit et conserve les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez.",
+      // ImprovMX, qui fait suivre contact@ et commandes@, tel qu'il se déclare lui-même (lot 8, § 6).
+      "ImprovMX Incorporated (ImprovMX), à Dover, dans le Delaware, aux États-Unis, qui fait suivre les messages adressés à contact@missiongateau.com et à commandes@missiongateau.com vers deux messageries Gmail personnelles du vendeur",
+      "ImprovMX déclare ne jamais enregistrer le contenu des messages qu'il fait suivre",
+      "sans préciser de durée maximale",
+      "gardé 7 jours puis supprimé automatiquement",
+      "ImprovMX déclare suivre les principes du cadre de protection des données UE–États-Unis, sans y être certifié ; il ne précise pas d'autre mécanisme",
+      "Google (Gmail), qui héberge les deux messageries du vendeur, des comptes Gmail personnels : il reçoit et conserve, par ImprovMX, les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez.",
+      // Vercel Web Analytics, tel que Vercel le déclare (lot 8, § 5).
+      "Vercel Web Analytics, l'outil de mesure d'audience du même hébergeur",
+      "celle d'une page de commande sans sa référence ni aucun paramètre",
+      "Vercel déclare ne pas employer de cookies tiers, identifier un visiteur par une empreinte calculée à partir de la requête, abandonnée au bout de 24 heures",
+      "documentation de Vercel sur la confidentialité de Web Analytics , mise à jour le 26 juin 2026",
+      "l'âge fêté et la durée choisis, jamais le prénom ni un détail de la fête",
       "Google n'est lié au vendeur par aucun accord de traitement des données",
       "Google Ireland Limited comme responsable du traitement pour les utilisateurs établis dans l'Espace économique européen",
       "Google déclare disposer de serveurs dans le monde entier",
@@ -350,6 +362,9 @@ describe("politique de confidentialité", () => {
     expect(html).toContain('href="https://resend.com/legal/dpa"');
     expect(html).toContain('href="https://vercel.com/legal/privacy-notice"');
     expect(html).toContain('href="https://vercel.com/docs/logs/runtime"');
+    expect(html).toContain('href="https://improvmx.com/transparency/privacy-policy"');
+    expect(html).toContain('href="https://improvmx.com/transparency/what-do-we-log"');
+    expect(html).toContain('href="https://vercel.com/docs/analytics/privacy-policy"');
     // Les règles de Google, dans leur version pour la France (sans « gl=FR », un visiteur hors de l'Espace économique européen en voit une autre).
     expect(html).toContain('href="https://policies.google.com/privacy?hl=fr&amp;gl=FR"');
     expect(html).toContain('href="https://policies.google.com/privacy/frameworks?hl=fr&amp;gl=FR"');
@@ -358,8 +373,11 @@ describe("politique de confidentialité", () => {
     expect(html).not.toContain("vercel.com/legal/privacy-policy");
   });
 
-  it("ne promet aucun cookie ni traceur, et dit le rôle du sessionStorage pendant le paiement", () => {
-    expect(texte).toContain("ne déposent aucun cookie et n'emploient aucun traceur");
+  it("ne promet aucun cookie ni traceur publicitaire, nomme la mesure d'audience, et dit le rôle du sessionStorage pendant le paiement", () => {
+    expect(texte).toContain("ne déposent aucun cookie, n'emploient aucun traceur publicitaire et ne chargent aucune ressource depuis un autre domaine");
+    expect(texte).toContain("Elles mesurent leur audience avec Vercel Web Analytics");
+    // « aucun traceur » tout court serait faux depuis la mesure d'audience.
+    expect(texte).not.toMatch(/aucun traceur(?! publicitaire)/);
     expect(texte).toContain("sessionStorage");
     expect(texte).toContain("Pendant le paiement seulement");
   });
@@ -368,7 +386,7 @@ describe("politique de confidentialité", () => {
     for (const droit of ["d'accès", "de rectification", "d'effacement", "de limitation", "d'opposition", "de portabilité"]) {
       expect(texte, droit).toContain(droit);
     }
-    expect(texte).toContain("écrivez à quentin.courtois090+missiongateau@gmail.com");
+    expect(texte).toContain("écrivez à contact@missiongateau.com");
     expect(texte).toContain("CNIL");
     expect(html).toContain('href="https://www.cnil.fr"');
   });

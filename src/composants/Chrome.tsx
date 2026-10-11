@@ -52,11 +52,18 @@ export function PiedDeSite({ venteOuverte }: { venteOuverte?: boolean } = {}) {
   return (
     <footer className="mt-16 border-t border-bordure bg-creme-fonce">
       <div className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-8 text-sm text-encre-douce sm:flex-row sm:items-start sm:justify-between">
-        <p>
-          {ouverte
-            ? remplir(SITE.piedDePageOuvert, { nomCommercial: VENDEUR.nomCommercial, vendeur: denomination(VENDEUR) })
-            : SITE.piedDePage}
-        </p>
+        <div>
+          <p>
+            {ouverte
+              ? remplir(SITE.piedDePageOuvert, { nomCommercial: VENDEUR.nomCommercial, vendeur: denomination(VENDEUR) })
+              : SITE.piedDePage}
+          </p>
+          <nav aria-label={SITE.navigationGuides} className="mt-2">
+            <Link href="/guides" className="underline underline-offset-4 hover:text-accent">
+              {SITE.lienGuides}
+            </Link>
+          </nav>
+        </div>
         <nav aria-label={SITE.navigationLegale}>
           <ul className="flex flex-wrap gap-x-5 gap-y-2">
             {LIENS_LEGAUX.map((lien) => (

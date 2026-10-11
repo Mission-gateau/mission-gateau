@@ -107,7 +107,7 @@ describe("formulaire type de rétractation", () => {
   it("remplace le crochet par le nom, l'adresse géographique et l'adresse électronique du vendeur", () => {
     const rempli = formulaireRempli(VENDEUR).map((ligne) => ligne.replace(/[  ]/g, " "));
     expect(rempli[2]).toBe(
-      "A l'attention de Quentin Courtois EI, 7 impasse des Bosquets, 34670 Baillargues, France, quentin.courtois090+missiongateau@gmail.com :",
+      "A l'attention de Quentin Courtois EI, 7 impasse des Bosquets, 34670 Baillargues, France, contact@missiongateau.com :",
     );
     expect(rempli.join("\n")).not.toContain("[");
     expect(rempli.filter((_, i) => i !== 2)).toEqual(MODELE_FORMULAIRE.filter((_, i) => i !== 2));

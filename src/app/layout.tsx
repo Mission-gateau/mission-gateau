@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { MesureDAudience } from "@/composants/MesureDAudience";
+import { productionMaintenant } from "@/site/referencement";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,7 +10,8 @@ export const metadata: Metadata = {
   },
   description:
     "Choisissez un thème, l'âge et les cachettes de votre maison : Mission Gâteau compose aussitôt un kit de jeu d'anniversaire complet, à imprimer en A4.",
-  // Le site reste invisible des moteurs pendant ce lot.
+  // Par défaut, invisible des moteurs : seules les pages publiques, en
+  // production, demandent l'indexation (src/site/referencement.ts).
   robots: { index: false, follow: false, nocache: true },
 };
 
@@ -41,6 +44,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Aller au contenu
         </a>
         {children}
+        {/* La mesure d'audience, en production seulement : lue à chaque requête, jamais au build. */}
+        {productionMaintenant() ? <MesureDAudience /> : null}
       </body>
     </html>
   );

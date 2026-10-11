@@ -29,8 +29,7 @@ const nextConfig: NextConfig = {
       {
         source: "/:chemin*",
         headers: [
-          // Le site reste invisible des moteurs pendant ce lot.
-          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          // `X-Robots-Tag` dépend de l'environnement, lu à l'exécution : src/proxy.ts le pose.
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "same-origin" },
         ],

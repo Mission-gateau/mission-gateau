@@ -228,6 +228,22 @@ interface ReponseDeclaration {
   issue: string;
   accuse?: DocumentCourriel;
   envoi?: { etat: string };
+  mailto?: string | null;
+}
+
+/**
+ * Toute réponse sans e-mail parti porte le bouton d'e-mail (lot 8, § 1) :
+ * déclaration non transmise, « en cours », ou accusé affiché sans être
+ * parti. Seuls l'accusé parti et l'accusé déjà parti (réaffiché) s'en passent.
+ */
+function verifierLesRecours(issue: Issue, ici: string): void {
+  for (const { acteur, reponse } of issue.declarations) {
+    const parti = reponse.issue === "deja_accusee" || (reponse.issue === "accuse" && reponse.envoi?.etat === "envoye");
+    if (parti) continue;
+    expect(reponse.mailto ?? "", `${ici} — ${acteur.nom} « ${reponse.issue}${reponse.envoi ? ` ${reponse.envoi.etat}` : ""} » sans bouton d'e-mail`).toMatch(
+      /^mailto:/,
+    );
+  }
 }
 
 interface Issue {
@@ -412,6 +428,7 @@ const declaration = (le: Date, declarant = CAMILLE, nom = "rétractation"): Acte
  */
 function verifierLaCourse(scenario: Scenario, issue: Issue): void {
   const ici = decrire(issue);
+  verifierLesRecours(issue, ici);
   expect(issue.pdf && issue.rembourse, ici).toBe(false);
   expect(issue.apresLaTache.pdf && issue.apresLaTache.rembourse, ici).toBe(false);
   expect(issue.pdf && issue.apresLaTache.rembourse, ici).toBe(false);
@@ -583,6 +600,7 @@ describe("premier téléchargement et rétractation en même temps", () => {
  * cette déclaration.
  */
 function verifierSousPanne(issue: Issue, ici: string): void {
+  verifierLesRecours(issue, ici);
   expect(issue.pdf && issue.rembourse, ici).toBe(false);
   expect(issue.pdf && issue.apresLaTache.rembourse, ici).toBe(false);
   expect(issue.apresLaTache.pdf && issue.apresLaTache.rembourse, ici).toBe(false);
@@ -719,6 +737,7 @@ describe("déclarations qui n'enregistrent rien, en même temps", () => {
       const attendus = Math.min(2, 3 - deja);
       for (const issue of issues) {
         const ici = `${scenario.nom} — ${decrire(issue)} — compteurs ${issue.compteurs.join(",")}`;
+        verifierLesRecours(issue, ici);
         expect(issue.accusesAnnoncesNonPartis, ici).toBe(0);
         expect(issue.rembourse || issue.pdf, ici).toBe(false);
         // Les valeurs écrites ne font que monter, et le compteur final compte les accusés partis.
@@ -749,8 +768,10 @@ describe("la règle, écrite une fois", () => {
     expect(marqueGagnante({ ...deux, course: "telechargement" })).toBe("telechargement");
     expect(marqueGagnante({ ...deux, course: "retractation" })).toBe("retractation");
     expect(marqueGagnante({ ...deux, course: "n'importe quoi" })).toBe("a_examiner");
-    // Une marque illisible compte comme absente.
-    expect(marqueGagnante({ telechargement: "pas une date", retractation: "2026-09-26" })).toBe("retractation");
+    // Pour la course, une marque illisible compte comme absente ; une date seule n'est plus lisible (lot 8). La livraison,
+    // elle, refuse le kit tant qu'une marque est présente et illisible (tests/livraison.test.ts).
+    expect(marqueGagnante({ telechargement: "pas une date", retractation: "2026-09-26T08:30:00+02:00" })).toBe("retractation");
+    expect(marqueGagnante({ telechargement: "pas une date", retractation: "2026-09-26" })).toBeNull();
   });
 
   it("chaque route décide sur le paiement renvoyé par sa propre écriture, pas sur les heures", () => {

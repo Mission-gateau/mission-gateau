@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { rembourseEnTotalite } from "@/vente/remboursement";
+import { etatDuRemboursement, rembourseEnTotalite } from "@/vente/remboursement";
 import type { Dependances } from "@/vente/dependances";
 
 /**
@@ -295,7 +295,8 @@ describe("la tâche entière", () => {
     expect(statut).toBe(500);
     expect(phases.effacement).toMatchObject({ paiementsEffaces: 1, debitsEffaces: 1, erreurs: 0 });
     expect(phases.confirmations).toMatchObject({ paiementsAboutisExamines: 0, erreurs: 1 });
-    expect(phases.remboursements).toMatchObject({ retractationsExaminees: 0, erreurs: 0 });
+    // Sans la recherche, aucune rétractation n'a pu être examinée : la phase des remboursements compte l'erreur (lot 8).
+    expect(phases.remboursements).toMatchObject({ retractationsExaminees: 0, erreurs: 1 });
   });
 
   it("les lignes des phases déjà faites sont écrites avant la fin : un dépassement de durée ne les perd pas", async () => {
@@ -440,9 +441,10 @@ describe("la liste quotidienne des commandes à traiter", () => {
     ]) {
       expect(corps).toContain(titre);
     }
-    expect(corps).not.toContain("Rétractations sans remboursement demandé");
+    expect(corps).not.toContain("Rétractations dont le montant payé n'est pas entièrement remboursé");
+    expect(corps).not.toContain("Liste incomplète");
     // Chaque commande : sa référence, la date du paiement, ses marques à l'heure de Paris, et ce qu'il faut faire.
-    expect(corps).toContain(`${simultanee.reference} — payée le 21 septembre 2026 à 5 h 00 ; premier téléchargement le 22 septembre 2026 à 5 h 00 ; rétractation reçue le 22 septembre 2026 à 5 h 00 ; course gagnée par le premier téléchargement ; accusé de la rétractation parti ; aucun remboursement demandé`);
+    expect(corps).toContain(`${simultanee.reference} — payée le 21 septembre 2026 à 5 h 00 ; premier téléchargement le 22 septembre 2026 à 5 h 00 ; rétractation reçue le 22 septembre 2026 à 5 h 00 ; course gagnée par le premier téléchargement ; accusé de la rétractation parti ; montant payé pas entièrement remboursé`);
     expect(corps).toContain("Voir le README, section « La liste quotidienne des commandes à traiter ».");
     // Jamais un nom, jamais une adresse e-mail.
     expect(marquesDans(message.texte + message.html)).toEqual([]);
@@ -456,7 +458,7 @@ describe("la liste quotidienne des commandes à traiter", () => {
     stripe.remboursementEnPanne = true;
     const { phases } = await lancer();
     expect(phases.a_traiter).toMatchObject({ sansRemboursement: 1, listeAcceptee: 1 });
-    expect(listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ")).toContain("Rétractations sans remboursement demandé : 1");
+    expect(listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ")).toContain("Rétractations dont le montant payé n'est pas entièrement remboursé : 1");
   });
 
   it("liste inchangée au second passage : pas de second e-mail ; liste modifiée : un second ; liste vide : rien", async () => {
@@ -498,7 +500,7 @@ describe("la liste quotidienne des commandes à traiter", () => {
     expect(phases.a_traiter).toMatchObject({ listeAcceptee: 0, listeEnConflit: 1, erreurs: 0 });
   });
 
-  it("écrit sa ligne de journal même quand elle échoue", async () => {
+  it("relectures en échec : la liste part quand même, avec en tête la ligne « Liste incomplète », et la phase compte ses erreurs", async () => {
     const contestee = await payee(3 * JOUR);
     stripe.contester(contestee.paiement.id);
     stripe.lirePaiement = async () => {
@@ -506,8 +508,104 @@ describe("la liste quotidienne des commandes à traiter", () => {
     };
     const { statut, phases } = await lancer();
     expect(statut).toBe(500);
-    expect(phases.a_traiter).toMatchObject({ erreurs: 1, listeAcceptee: 0 });
-    expect(listes()).toHaveLength(0);
+    expect(phases.a_traiter).toMatchObject({ erreurs: 1, listeAcceptee: 1 });
+    expect(listes()).toHaveLength(1);
+    const texte = listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ");
+    // La ligne fixe, en tête, sans aucune donnée personnelle, et comprise dans l'empreinte de la liste.
+    expect(texte.startsWith("Liste incomplète : la recherche ou la relecture de 1 commande(s) a échoué ; elle sera refaite au prochain passage.\n")).toBe(true);
+    expect(texte).not.toContain(contestee.reference);
+    expect(texte).not.toContain("@");
+  });
+
+  it("recherche des paiements en échec : la liste part quand même en le disant ; la phase des remboursements compte une erreur", async () => {
+    await payee(3 * JOUR);
+    stripe.paiementsAboutisDepuis = async () => {
+      throw Object.assign(new Error("panne simulée"), { type: "StripeConnectionError" });
+    };
+    const { phases } = await lancer();
+    expect(phases.remboursements).toMatchObject({ erreurs: 1 });
+    expect(phases.a_traiter).toMatchObject({ erreurs: 1, listeAcceptee: 1 });
+    expect(listes()).toHaveLength(1);
+    const texte = listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ");
+    expect(texte.startsWith("Liste incomplète : la recherche des commandes a échoué ; elle sera refaite au prochain passage.\n")).toBe(true);
+    // Une liste complète du même jour n'a pas la même empreinte : elle repart une fois la recherche revenue.
+    const incomplete = listes()[0]!.cle;
+    const contestee = await payee(2 * JOUR);
+    stripe.contester(contestee.paiement.id);
+    stripe.paiementsAboutisDepuis = FauxStripe.prototype.paiementsAboutisDepuis.bind(stripe);
+    await lancer();
+    expect(listes()).toHaveLength(2);
+    expect(listes()[1]!.cle).not.toBe(incomplete);
+  });
+
+  it("une commande contestée puis rétractée n'est jamais « sans remboursement » : la rubrique des contestations la couvre", async () => {
+    const contestee = await payee(3 * JOUR);
+    marquer(contestee, { [CLES.retractation]: il(2 * JOUR), [CLES.accuseRetractation]: "re_1" });
+    stripe.contester(contestee.paiement.id);
+    const { phases } = await lancer();
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    expect(phases.a_traiter).toMatchObject({ sansRemboursement: 0, contestations: 1 });
+    const texte = listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ");
+    expect(texte).not.toContain("Rétractations dont le montant payé n'est pas entièrement remboursé");
+    expect(texte).toContain("Paiements contestés : 1");
+  });
+
+  it("une heure écrite à la main hors ISO 8601 complet : rubrique « heures illisibles », jamais remboursée automatiquement", async () => {
+    const francaise = await payee(3 * JOUR);
+    marquer(francaise, { [CLES.retractation]: "02/10/2026 09:15", [CLES.accuseRetractation]: "manuel" });
+    const dateSeule = await payee(3 * JOUR);
+    marquer(dateSeule, { [CLES.telechargement]: "2026-09-22" });
+    const { phases } = await lancer();
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    expect(phases.a_traiter).toMatchObject({ heuresIllisibles: 2 });
+    const texte = listes()[0]!.message.texte.replace(/[\u00a0\u202f]/g, " ");
+    expect(texte).toContain("Commandes dont une heure est illisible : 2");
+    expect(texte).toContain(`${francaise.reference} — payée le`);
+    expect(texte).toContain("heure illisible dans retractation");
+    expect(texte).toContain("heure illisible dans telechargement");
   });
 });
 
+describe("remboursements partiels (lot 8, § 2)", () => {
+  function marquer(reglee: { paiement: { id: string } }, metadonnees: Record<string, string>) {
+    Object.assign(stripe.paiements.get(reglee.paiement.id)!.metadonnees, metadonnees);
+  }
+
+  it("une rétractation gagnante sur un paiement remboursé de 5,00 € : la tâche rembourse le reste, sous la clé du jour", async () => {
+    const retractee = await payee(3 * JOUR);
+    marquer(retractee, { [CLES.retractation]: new Date(MAINTENANT.getTime() - 2 * JOUR).toISOString(), [CLES.accuseRetractation]: "re_1" });
+    stripe.rembourserHorsSite(retractee.paiement.id, "succeeded", 500);
+    stripe.statutDesNouveauxRemboursements = "pending";
+    const { phases } = await lancer();
+    expect(phases.remboursements).toMatchObject({ remboursementsRetentes: 1, remboursementsDemandes: 1, erreurs: 0 });
+    expect(stripe.demandesDeRemboursement.map(({ cle }) => cle)).toEqual([`retractation-${retractee.reference}-2026-09-24`]);
+    const paiement = stripe.paiements.get(retractee.paiement.id)!;
+    expect(paiement.remboursements.map(({ statut, montant }) => [statut, montant])).toEqual([
+      ["succeeded", 500],
+      ["pending", 790],
+    ]);
+    expect(etatDuRemboursement(paiement)).toBe("demande");
+    // Rien de plus au passage suivant : faits et demandés couvrent le montant.
+    horloge = new Date(MAINTENANT.getTime() + 12 * HEURE);
+    await lancer();
+    expect(stripe.demandesDeRemboursement).toHaveLength(1);
+    stripe.reglerRemboursement(paiement.remboursements[1]!.id, "succeeded");
+    expect(etatDuRemboursement(stripe.paiements.get(retractee.paiement.id)!)).toBe("effectue");
+  });
+
+  it("5,00 € effectués et 7,90 € en attente, hors rétractation : « remboursement demandé », pas « remboursée » ; ni kit ni confirmation", () => {
+    const paiement = {
+      montant: 1290,
+      remboursements: [
+        { id: "re_1", statut: "succeeded", montant: 500 },
+        { id: "re_2", statut: "pending", montant: 790 },
+      ],
+    };
+    expect(etatDuRemboursement(paiement)).toBe("demande");
+    expect(rembourseEnTotalite(paiement)).toBe(true);
+    // 5,00 € seulement : rien n'est couvert.
+    const partiel = { montant: 1290, remboursements: [{ id: "re_1", statut: "succeeded", montant: 500 }] };
+    expect(etatDuRemboursement(partiel)).toBe("a_venir");
+    expect(rembourseEnTotalite(partiel)).toBe(false);
+  });
+});

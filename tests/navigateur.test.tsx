@@ -23,6 +23,9 @@ const routeur = vi.hoisted(() => ({
   },
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => routeur }));
+// La mesure d'audience : chaque appel de `track`, tel que le formulaire le fait.
+const mesure = vi.hoisted(() => ({ evenements: [] as unknown[][] }));
+vi.mock("@vercel/analytics", () => ({ track: (...args: unknown[]) => mesure.evenements.push(args) }));
 
 import { Confirmation } from "@/composants/Confirmation";
 import { Formulaire } from "@/composants/Formulaire";
@@ -143,6 +146,15 @@ function casesAcocher(): HTMLInputElement[] {
 }
 
 describe("de l'aperçu au paiement", () => {
+  it("l'aperçu affiché est compté une fois, avec l'âge et la durée, jamais le prénom ni un détail de la fête (lot 8, § 5)", async () => {
+    mesure.evenements = [];
+    await rendre(<Formulaire vente={OFFRE} />);
+    await composerUnApercu();
+    expect(texte()).toContain("Votre aperçu est prêt");
+    expect(mesure.evenements).toEqual([["apercu", { age: 8, duree: 45 }]]);
+    expect(JSON.stringify(mesure.evenements)).not.toContain("Zéphyrine");
+  });
+
   it("le bloc d'achat apparaît après l'aperçu et achète exactement sa configuration et sa graine", async () => {
     await rendre(<Formulaire vente={OFFRE} />);
     expect(texte()).not.toContain("Commander et payer");
@@ -584,7 +596,7 @@ describe("formulaire de rétractation", () => {
   it("au-delà de trois accusés : affiche l'accusé et dit pourquoi il n'est pas renvoyé par e-mail", async () => {
     await envoyerUneDeclaration(() => Response.json({ ...ACCUSE, envoi: { etat: "plafond" } }));
     expect(espaces(texte())).toContain(
-      `Cet accusé de réception s'affiche ici sans être renvoyé par e-mail : trois accusés sont déjà partis pour cette commande. Pour toute question, écrivez au vendeur à ${VENDEUR_AFFICHE.email}.`,
+      `Cet accusé de réception s'affiche ici sans être renvoyé par e-mail : trois accusés ont déjà été envoyés ou tentés pour cette commande. Pour toute question, écrivez au vendeur à ${VENDEUR_AFFICHE.email}.`,
     );
     expect(texte()).not.toContain("vous a été envoyé par e-mail");
     expect(texte()).toContain("Accusé de réception de votre rétractation — Mission Gâteau");
@@ -648,6 +660,84 @@ describe("formulaire de rétractation", () => {
     expect(accuse).toBeGreaterThan(rappel);
     expect(texte()).not.toContain("Renvoyer l'accusé de réception");
     expect(appels).toHaveLength(1);
+  });
+
+  describe("un accusé qui ne part pas : jamais une page sans recours (lot 8, § 1)", () => {
+    const MAILTO = "mailto:service@exemple.fr?subject=R%C3%A9tractation&body=D%C3%A9claration%20faite%20le%2026%20septembre";
+    const lienEmail = () => [...conteneur.querySelectorAll("a")].find((a) => a.textContent === "Envoyer ma déclaration par e-mail");
+
+    it("plafond, échec, envoi impossible à compter, envoi incertain : l'accusé, son texte et le bouton d'e-mail", async () => {
+      for (const [etat, attendu] of [
+        ["plafond", "trois accusés ont déjà été envoyés ou tentés pour cette commande"],
+        ["echec", "L'accusé de réception n'a pas pu partir pour le moment."],
+        ["non_envoye", "L'accusé de réception n'a pas pu être envoyé par e-mail. Vous pouvez envoyer votre déclaration au vendeur avec le bouton ci-dessous."],
+        ["incertain", `Cet accusé vous a peut-être déjà été envoyé ; sinon, écrivez au vendeur à ${VENDEUR_AFFICHE.email} en reprenant ce texte.`],
+      ] as const) {
+        await rendre(<></>);
+        await envoyerUneDeclaration(() => Response.json({ ...ACCUSE, envoi: { etat }, mailto: MAILTO, droitAPreserver: false }));
+        expect(espaces(texte()), etat).toContain(attendu);
+        expect(texte(), etat).toContain("Accusé de réception de votre rétractation — Mission Gâteau");
+        expect(lienEmail()?.getAttribute("href"), etat).toBe(MAILTO);
+        expect(texte(), etat).not.toContain("vous a été envoyé par e-mail à");
+        // « incertain » ne dit jamais « échec ».
+        if (etat === "incertain") expect(texte()).not.toContain("n'a pas pu partir");
+      }
+    });
+
+    it("déclaration « arrivée en même temps » dont l'accusé ne part pas : l'inviter à l'envoyer au vendeur, sans « Réessayer » ni « Renvoyer »", async () => {
+      for (const etat of ["echec", "plafond", "non_envoye"]) {
+        await rendre(<></>);
+        await envoyerUneDeclaration(() => Response.json({ ...ACCUSE, envoi: { etat }, mailto: MAILTO, droitAPreserver: true }));
+        expect(espaces(texte()), etat).toContain("Pour préserver votre droit, envoyez-la dès maintenant au vendeur par e-mail avec le bouton ci-dessous");
+        expect(lienEmail()?.getAttribute("href"), etat).toBe(MAILTO);
+        expect(texte(), etat).not.toContain("Renvoyer l'accusé de réception");
+        expect(texte(), etat).not.toContain("Réessayer");
+      }
+    });
+
+    it("« en cours de traitement » : le bouton d'e-mail est proposé aussi", async () => {
+      await envoyerUneDeclaration(() => Response.json({ issue: "en_cours", message: "x", mailto: MAILTO }, { status: 202 }));
+      expect(espaces(texte())).toContain("Votre déclaration est en cours de traitement");
+      expect(lienEmail()?.getAttribute("href")).toBe(MAILTO);
+    });
+
+    it("après une écriture impossible : « Réessayer » reste grisé 60 secondes, compte à rebours affiché", async () => {
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+      try {
+        await envoyerUneDeclaration(() =>
+          Response.json(
+            { issue: "non_transmise", cause: "indisponible", date: "26 septembre 2026", heure: "10 h 30", mailto: MAILTO, attente: 60 },
+            { status: 503 },
+          ),
+        );
+        const reessayer = () => [...conteneur.querySelectorAll("button")].find((b) => espaces(b.textContent ?? "").startsWith("Réessayer"))!;
+        expect(espaces(reessayer().textContent ?? "")).toBe("Réessayer dans 60 s");
+        expect(reessayer().disabled).toBe(true);
+        await act(async () => {
+          vi.advanceTimersByTime(30_000);
+        });
+        expect(espaces(reessayer().textContent ?? "")).toBe("Réessayer dans 30 s");
+        expect(reessayer().disabled).toBe(true);
+        await cliquer(reessayer());
+        expect(appels).toHaveLength(1);
+        await act(async () => {
+          vi.advanceTimersByTime(30_000);
+        });
+        expect(reessayer().textContent).toBe("Réessayer");
+        expect(reessayer().disabled).toBe(false);
+        await cliquer(reessayer());
+        expect(appels).toHaveLength(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("sans attente demandée (autre panne), « Réessayer » est aussitôt utilisable", async () => {
+      await envoyerUneDeclaration(() =>
+        Response.json({ issue: "non_transmise", cause: "indisponible", date: "26 septembre 2026", heure: "10 h 30", mailto: MAILTO, attente: 0 }, { status: 503 }),
+      );
+      expect(bouton("Réessayer").disabled).toBe(false);
+    });
   });
 
   it("ne tronque jamais un nom que le serveur accepte : 4 × 60 caractères avant normalisation", async () => {

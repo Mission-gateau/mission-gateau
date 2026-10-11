@@ -83,7 +83,7 @@ export const VENDEUR: FicheVendeur = {
     pays: "France",
   },
   telephone: "+33 6 32 57 69 77",
-  email: "quentin.courtois090+missiongateau@gmail.com",
+  email: "contact@missiongateau.com",
   tva: "TVA non applicable, article 293 B du CGI",
   mediateur: {
     nom: "Société Médiation Professionnelle",

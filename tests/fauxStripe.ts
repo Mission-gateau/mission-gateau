@@ -2,7 +2,7 @@ import { VENDEUR, type FicheVendeur } from "@/contenu/vendeur";
 import type { Configuration } from "@/engine/types";
 import type { Dependances } from "@/vente/dependances";
 import type { Environnement } from "@/vente/environnement";
-import { rembourseEnTotalite } from "@/vente/remboursement";
+import { rembourseEnTotalite, resteARembourser } from "@/vente/remboursement";
 import type { ClientStripe, DebitLu, PaiementLu, ParametresSession, RemboursementLu, SessionLue } from "@/vente/stripe";
 import { configuration } from "./aide";
 
@@ -187,10 +187,12 @@ export class FauxStripe implements ClientStripe {
   ): Promise<{ paiements: PaiementLu[]; pageSuivante: string | null }> {
     this.panne();
     this.recherchesAEffacer.push({ avant, page });
+    // Comme la requête du site : configuration chiffrée, assez ancienne, et de cette boutique.
     const trouves = [...this.paiements.values()].filter(
       (paiement) =>
         (this.rechercheIgnoreLEtat || paiement.metadonnees.config === "chiffree") &&
-        (this.rechercheIgnoreLaDate || paiement.cree < avant),
+        (this.rechercheIgnoreLaDate || paiement.cree < avant) &&
+        (this.rechercheIgnoreLaBoutique || paiement.metadonnees.boutique === "mission-gateau"),
     );
     const debut = page ? Number(page) : 0;
     const suite = debut + this.taillePage;
@@ -209,7 +211,8 @@ export class FauxStripe implements ClientStripe {
     const trouves = [...this.debits.values()].filter(
       (debit) =>
         (this.rechercheIgnoreLEtat || debit.metadonnees.config === "chiffree") &&
-        (this.rechercheIgnoreLaDate || debit.cree < avant),
+        (this.rechercheIgnoreLaDate || debit.cree < avant) &&
+        (this.rechercheIgnoreLaBoutique || debit.metadonnees.boutique === "mission-gateau"),
     );
     const debut = page ? Number(page) : 0;
     const suite = debut + this.taillePage;
@@ -320,8 +323,9 @@ export class FauxStripe implements ClientStripe {
     if (paiement.litige) throw Object.assign(new Error("litige"), { type: "StripeInvalidRequestError", code: "charge_disputed" });
     // Comme le vrai client : Stripe refuse un nouveau remboursement d'un paiement déjà remboursé en totalité, fait ou demandé.
     if (rembourseEnTotalite(paiement)) return { id: "", statut: "deja_rembourse" };
+    // Comme Stripe, sans montant donné : le reste, ce que les remboursements faits ou demandés ne couvrent pas encore.
     const remboursement = { id: `re_faux${this.remboursements.length + 1}`, statut: this.statutDesNouveauxRemboursements };
-    paiement.remboursements.push({ id: remboursement.id, statut: remboursement.statut, montant: paiement.montant });
+    paiement.remboursements.push({ id: remboursement.id, statut: remboursement.statut, montant: resteARembourser(paiement) });
     this.remboursements.push({ id: remboursement.id, idPaiement });
     if (injectee === "500_appliquee") {
       // Le remboursement est créé, mais la réponse se perd : Stripe garde l'échec sous la clé.
@@ -409,11 +413,15 @@ export class FauxStripe implements ClientStripe {
     return { sessionId: id, reference, paiement };
   }
 
-  /** Un remboursement fait hors du site, depuis le tableau de bord de Stripe : effectué, ou seulement demandé. */
-  rembourserHorsSite(idPaiement: string, statut: "succeeded" | "pending" = "succeeded"): string {
+  /**
+   * Un remboursement fait hors du site, depuis le tableau de bord de Stripe :
+   * effectué, ou seulement demandé ; de tout le montant, ou d'une partie
+   * (`montant`, en centimes).
+   */
+  rembourserHorsSite(idPaiement: string, statut: "succeeded" | "pending" = "succeeded", montant?: number): string {
     const paiement = this.paiements.get(idPaiement)!;
     const id = `re_tableau${paiement.remboursements.length + 1}_${idPaiement}`;
-    paiement.remboursements.push({ id, statut, montant: paiement.montant });
+    paiement.remboursements.push({ id, statut, montant: montant ?? paiement.montant });
     return id;
   }
 

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
+import { metadonneesDePage } from "@/site/referencement";
 import { EnTeteSite, PiedDeSite } from "@/composants/Chrome";
 import { CREDITS } from "@/contenu/site";
 
-export const metadata: Metadata = {
-  title: "Crédits et licences",
-  description: "Les polices, les icônes et les textes utilisés par Mission Gâteau, et leurs licences.",
-  robots: { index: false, follow: false },
-};
+/** Titre, description, adresse canonique, Open Graph ; visible des moteurs en production seulement. */
+export function generateMetadata(): Metadata {
+  return metadonneesDePage("/credits");
+}
 
 export default function Credits() {
   return (

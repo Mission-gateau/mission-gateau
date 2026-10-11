@@ -204,14 +204,30 @@ export interface Suivi {
  * Une heure écrite par le site, ou par le vendeur dans le tableau de bord de
  * Stripe (rétractation reçue par e-mail ou par courrier, réponse à une
  * commande examinée) : toujours la date et l'heure complètes, ISO 8601 avec
- * le fuseau (par exemple `2026-10-02T09:15:00+02:00`), jamais une date seule,
- * qui se lirait minuit UTC et fausserait la comparaison avec le premier
- * téléchargement. Une valeur illisible compte comme absente.
+ * le fuseau (par exemple `2026-10-02T09:15:00+02:00`). Une date seule se
+ * lirait minuit UTC, et JavaScript lit de travers une date écrite à la
+ * française (« 02/10/2026 09:15 » devient le 10 février, à l'heure du
+ * serveur) : tout ce qui n'est pas ISO 8601 complet est donc illisible.
  */
+const MOTIF_HEURE_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
 function lireHeure(valeur: string | undefined): Date | null {
-  if (!valeur) return null;
-  const heure = new Date(valeur);
+  if (!valeur || !MOTIF_HEURE_ISO.test(valeur.trim())) return null;
+  const heure = new Date(valeur.trim());
   return Number.isNaN(heure.getTime()) ? null : heure;
+}
+
+/** Les marques dont l'heure peut être écrite à la main, et doit donc être relue avec soin. */
+export const MARQUES_HORODATEES = [CLES.retractation, CLES.telechargement, CLES.examinee] as const;
+
+/**
+ * Les marques présentes mais illisibles (heure hors ISO 8601 complet). Une
+ * telle marque ne compte pas comme absente : tant qu'il en reste une, le kit
+ * n'est pas livré (« à examiner »), aucun remboursement automatique n'est
+ * fait, et la liste quotidienne la signale (rubrique `heures_illisibles`).
+ */
+export function heuresIllisibles(metadonnees: Record<string, string>): (typeof MARQUES_HORODATEES)[number][] {
+  return MARQUES_HORODATEES.filter((cle) => Boolean(metadonnees[cle]?.trim()) && lireHeure(metadonnees[cle]) === null);
 }
 
 /** Un compteur écrit par le site : un entier positif, sinon zéro. */

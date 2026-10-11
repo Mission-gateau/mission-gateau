@@ -1,6 +1,8 @@
 import { CONSIGNES, MESSAGES_FINAUX, SOLUTIONS, TITRES } from "@/contenu/consignes";
 import { DEVINETTES } from "@/contenu/devinettes";
 import { GUIDE } from "@/contenu/guide";
+import { GUIDES, TEXTES_GUIDES } from "@/contenu/guides";
+import { PAGES_PUBLIQUES } from "@/contenu/referencement";
 import { GABARITS_INDICES, INDICES_CACHETTES } from "@/contenu/indices";
 import { GABARITS_LOGIQUE } from "@/contenu/logique";
 import { FORMULAIRE } from "@/contenu/formulaire";
@@ -92,6 +94,9 @@ export function tousLesTextes(): TexteRepere[] {
     ["emailConfirmation", CONFIRMATION],
     ["emailAccuse", ACCUSE],
     ["emailATraiter", A_TRAITER],
+    ["guides", GUIDES],
+    ["textesGuides", TEXTES_GUIDES],
+    ["pagesPubliques", PAGES_PUBLIQUES],
   ];
   for (const [nom, valeur] of sources) parcourir(valeur, nom, resultat);
   return resultat;
@@ -107,6 +112,8 @@ export function textesDeProse(): TexteRepere[] {
       !/\.(id|cle|icone|icones|lien|lienLicence|codePoint|court|personnages|type)\b/.test(chemin) &&
       // Les adresses postales de la fiche du vendeur sont des données, pas de la prose.
       !/^vendeur\.(adresse\.|\w+\.adresse$)/.test(chemin) &&
+      // L'adresse d'un guide est un segment d'URL, sans accents : pas de la prose.
+      !/^guides\[\d+\]\.(adresse|modifieLe)$/.test(chemin) &&
       !/^https?:/.test(texte) &&
       texte.trim().length > 0,
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { metadonneesDePage } from "@/site/referencement";
 import { EnTeteSite, PiedDeSite } from "@/composants/Chrome";
 import { Formulaire } from "@/composants/Formulaire";
 import { FORMULAIRE } from "@/contenu/formulaire";
@@ -7,11 +8,10 @@ import { mediateurCite } from "@/vente/fiche";
 import { venteOuverteMaintenant } from "@/vente/ouverture";
 import { PRIX_AFFICHE } from "@/vente/prix";
 
-export const metadata: Metadata = {
-  title: "Créer mon jeu",
-  description: "Composez votre jeu d'anniversaire en six questions et voyez aussitôt un aperçu gratuit.",
-  robots: { index: false, follow: false },
-};
+/** Titre, description, adresse canonique, Open Graph ; visible des moteurs en production seulement. */
+export function generateMetadata(): Metadata {
+  return metadonneesDePage("/creer");
+}
 
 /** Le prix et le bloc d'achat ne partent vers le navigateur que si la vente est ouverte. */
 export default function Creer() {

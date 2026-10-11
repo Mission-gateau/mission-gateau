@@ -447,6 +447,28 @@ describe("route du kit", () => {
     expect(((await ensuite.json()) as { etat: string; erreur: string }).erreur).toContain("le vendeur examine votre commande");
   });
 
+  for (const [cle, valeur] of [
+    [CLES.retractation, "02/10/2026 09:15"],
+    [CLES.telechargement, "2026-10-02"],
+    [CLES.examinee, "le 2 octobre"],
+  ] as const) {
+    it(`une heure illisible (${cle} = « ${valeur} ») ne compte pas comme absente : le kit est refusé, « à examiner » (lot 8, § 2)`, async () => {
+      const { reference, paiement } = await commandeConfirmee();
+      stripe.paiements.get(paiement.id)!.metadonnees[cle] = valeur;
+      expect((await etat(reference)).etat).toBe("a_examiner");
+      const reponse = await telecharger(reference);
+      expect(reponse.status).toBe(409);
+      expect(await estUnPdf(reponse)).toBe(false);
+      // Récrite en ISO 8601 complet, l'heure redevient lisible.
+      stripe.paiements.get(paiement.id)!.metadonnees[cle] = "2026-10-02T09:15:00+02:00";
+      expect((await etat(reference)).etat).not.toBe("a_examiner");
+    });
+  }
+
+  it("JavaScript lit « 02/10/2026 09:15 » de travers (le 10 février) : d'où l'exigence du format ISO complet", () => {
+    expect(new Date("02/10/2026 09:15").getMonth()).toBe(1);
+  });
+
   it("un téléchargement qui a gagné la course continue d'être livré, même avec une rétractation battue", async () => {
     const { reference, paiement } = await commandeConfirmee();
     expect((await telecharger(reference)).status).toBe(200);
