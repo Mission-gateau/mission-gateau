@@ -44,6 +44,13 @@ export const LISTE_BLANCHE = new Set(
     // responsable du traitement dans l'Union (Google Ireland Limited), citées
     // dans la politique de confidentialité.
     "Gmail", "Ireland",
+    // Le service qui fait suivre les messages de contact@ et commandes@
+    // (ImprovMX Incorporated, Dover, Delaware) et ses hébergeurs, tels qu'il
+    // les nomme, cités dans la politique de confidentialité.
+    "ImprovMX", "Incorporated", "Dover", "Scaleway", "PhoenixNAP",
+    // L'outil de mesure d'audience (Vercel Web Analytics) et le paramètre
+    // utm_source, cités dans la politique de confidentialité et le README.
+    "Analytics", "utm",
     // Sigles juridiques : entrepreneur individuel, Code général des impôts,
     // registre du commerce, règlement général sur la protection des données.
     "EI", "CGI", "RCS", "RGPD",

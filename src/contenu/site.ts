@@ -81,7 +81,7 @@ export const SITE = typographier({
 
   titreDonnees: "Vos réponses ne servent qu'à votre jeu",
   donneesTexte:
-    "L'aperçu ne conserve rien : rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers, et le prénom de l'enfant disparaît avec la requête. Si vous achetez le jeu complet, vos réponses sont gardées chiffrées chez notre prestataire de paiement pendant 30 jours, le temps de vous livrer, puis effacées : la politique de confidentialité détaille ce qui est conservé. Aucun cookie, aucun traceur, aucune ressource chargée depuis un autre domaine.",
+    "L'aperçu ne conserve rien : rien n'est enregistré, rien n'est journalisé, rien n'est transmis à un tiers, et le prénom de l'enfant disparaît avec la requête. Si vous achetez le jeu complet, vos réponses sont gardées chiffrées chez notre prestataire de paiement pendant 30 jours, le temps de vous livrer, puis effacées : la politique de confidentialité détaille ce qui est conservé. Aucun cookie, aucun traceur publicitaire, aucune ressource chargée depuis un autre domaine ; la mesure d'audience, sans cookie, passe par notre propre domaine.",
 
   /** Affichés seulement quand la vente est ouverte. */
   prixAccueil: "L'aperçu est gratuit ; le jeu complet coûte {prix}.",

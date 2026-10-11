@@ -18,8 +18,8 @@ export { ENCADRE_GARANTIE } from "./garantie";
 export { VERSION_CGV, conditionsGenerales } from "./cgv";
 
 /** Date de mise à jour de chaque page. */
-export const MISE_A_JOUR_MENTIONS = "27 septembre 2026";
-export const MISE_A_JOUR_CONFIDENTIALITE = "28 septembre 2026";
+export const MISE_A_JOUR_MENTIONS = "11 octobre 2026";
+export const MISE_A_JOUR_CONFIDENTIALITE = "11 octobre 2026";
 
 // ---------------------------------------------------------------------------
 // Mentions légales
@@ -162,7 +162,7 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
             "Vos coordonnées de facturation. Votre adresse e-mail, votre nom et votre adresse de facturation, que vous saisissez sur la page de paiement de Stripe, ainsi que la facture, restent chez Stripe au titre de nos obligations comptables : dix ans (article L123-22 du Code de commerce).",
           ],
           [
-            "Nos e-mails. L'e-mail de confirmation de votre commande et, si vous vous rétractez, l'accusé de réception de votre déclaration vous sont envoyés par Resend, notre prestataire d'envoi d'e-mails. Le vendeur en reçoit une copie cachée, qu'il garde dans sa messagerie, hébergée par Google (voir « Destinataires »), comme preuve de leur envoi pendant cinq ans, le délai pendant lequel une action en justice sur la commande reste possible (article 2224 du Code civil). Les messages que vous nous écrivez y arrivent aussi.",
+            `Nos e-mails. L'e-mail de confirmation de votre commande et, si vous vous rétractez, l'accusé de réception de votre déclaration vous sont envoyés par Resend, notre prestataire d'envoi d'e-mails. Le vendeur en reçoit une copie cachée, à ${fiche.email} : elle lui est transmise par ImprovMX vers sa messagerie, hébergée par Google (voir « Destinataires »), où il la garde comme preuve de leur envoi pendant cinq ans, le délai pendant lequel une action en justice sur la commande reste possible (article 2224 du Code civil). Les messages que vous nous écrivez y arrivent par le même chemin.`,
           ],
           [
             "Votre déclaration de rétractation. Si vous utilisez la fonction « Renoncer au contrat ici », seule la référence de votre commande sert à la retrouver (avec, si vous venez de la page de votre commande, l'identifiant de la session de paiement Stripe que porte son lien) ; vos nom et prénom et l'adresse e-mail que vous indiquez servent à traiter votre déclaration et à vous en accuser réception : ils ne sont gardés que dans cet accusé de réception et dans sa copie. À la trace de la commande chez Stripe s'ajoutent seulement l'heure de votre rétractation, une empreinte de la déclaration qui l'a enregistrée (un code calculé à partir de ces quatre champs, qui sert à reconnaître une déclaration identique sans les garder en clair) et le nombre d'accusés de réception envoyés pour la commande. Si aucune commande payée ne correspond à la référence indiquée, ou si votre commande ne peut pas être vérifiée, votre déclaration n'est ni transmise ni gardée : le site n'écrit alors dans le journal de son hébergeur que la référence de la commande et l'heure de votre demande, jamais votre nom ni votre adresse e-mail (voir « Destinataires »).",
@@ -206,7 +206,14 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
             ", mis à jour le 31 décembre 2025).",
           ],
           [
-            "Google (Gmail), qui héberge la messagerie du vendeur, un compte Gmail personnel : il reçoit et conserve les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez. Google n'est lié au vendeur par aucun accord de traitement des données : il traite ces messages selon ses propres règles de confidentialité, qui désignent Google Ireland Limited comme responsable du traitement pour les utilisateurs établis dans l'Espace économique européen, comme le vendeur. Google déclare disposer de serveurs dans le monde entier, si bien que ces données peuvent être traitées hors de l'Union européenne, et encadrer ces transferts par les décisions d'adéquation de la Commission européenne, par le cadre de protection des données UE–États-Unis, auquel Google LLC déclare adhérer, et par les clauses contractuelles types lorsqu'aucune décision d'adéquation ne s'applique (",
+            "ImprovMX Incorporated (ImprovMX), à Dover, dans le Delaware, aux États-Unis, qui fait suivre les messages adressés à contact@missiongateau.com et à commandes@missiongateau.com vers deux messageries Gmail personnelles du vendeur : les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez. ImprovMX déclare ne jamais enregistrer le contenu des messages qu'il fait suivre : il les garde en file d'attente le temps de les remettre et les supprime dès qu'ils sont remis ou définitivement refusés, sans préciser de durée maximale. Il déclare enregistrer, pour chaque message, un journal d'envoi (expéditeur, adresse de destination, objet, date, serveurs et réponse), gardé 7 jours puis supprimé automatiquement. Il déclare héberger la plus grande part de son infrastructure de messagerie dans des centres de données d'Amazon Web Services situés dans l'Union européenne, et une partie chez Scaleway (Union européenne), PhoenixNAP et Servers.com (États-Unis), si bien que ces messages peuvent être traités aux États-Unis. Pour les transferts hors de l'Union européenne, ImprovMX déclare suivre les principes du cadre de protection des données UE–États-Unis, sans y être certifié ; il ne précise pas d'autre mécanisme (",
+            lien("sa politique de confidentialité", "https://improvmx.com/transparency/privacy-policy"),
+            " et ",
+            lien("sa page sur ce qu'il enregistre", "https://improvmx.com/transparency/what-do-we-log"),
+            ", sans date de mise à jour, consultées le 11 octobre 2026). ImprovMX n'est lié au vendeur par aucun accord de traitement des données signé.",
+          ],
+          [
+            "Google (Gmail), qui héberge les deux messageries du vendeur, des comptes Gmail personnels : il reçoit et conserve, par ImprovMX, les copies cachées des confirmations de commande et des accusés de réception, ainsi que les messages que vous nous écrivez. Google n'est lié au vendeur par aucun accord de traitement des données : il traite ces messages selon ses propres règles de confidentialité, qui désignent Google Ireland Limited comme responsable du traitement pour les utilisateurs établis dans l'Espace économique européen, comme le vendeur. Google déclare disposer de serveurs dans le monde entier, si bien que ces données peuvent être traitées hors de l'Union européenne, et encadrer ces transferts par les décisions d'adéquation de la Commission européenne, par le cadre de protection des données UE–États-Unis, auquel Google LLC déclare adhérer, et par les clauses contractuelles types lorsqu'aucune décision d'adéquation ne s'applique (",
             lien("règles de confidentialité de Google", "https://policies.google.com/privacy?hl=fr&gl=FR"),
             ", en vigueur depuis le 2 avril 2026, et ",
             lien("cadres légaux de Google pour les transferts de données", "https://policies.google.com/privacy/frameworks?hl=fr&gl=FR"),
@@ -219,6 +226,13 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
             lien("avis de confidentialité de Vercel", "https://vercel.com/legal/privacy-notice"),
             ", en vigueur depuis le 1er juin 2026).",
           ],
+          [
+            "Vercel Web Analytics, l'outil de mesure d'audience du même hébergeur, sur les pages du site seulement (jamais dans nos e-mails) : à chaque page vue, il enregistre l'heure, l'adresse de la page (celle d'une page de commande sans sa référence ni aucun paramètre), le site d'où vous venez, certains paramètres de l'adresse (comme utm_source, qui dit d'où vient un lien), votre pays, votre région et votre ville déduits de la requête, votre système et votre navigateur avec leurs versions, et le type d'appareil (ordinateur, tablette ou téléphone). Vercel déclare ne pas employer de cookies tiers, identifier un visiteur par une empreinte calculée à partir de la requête, abandonnée au bout de 24 heures, et ne recueillir aucun identifiant qui permette de suivre une personne d'un site à l'autre (",
+            lien("documentation de Vercel sur la confidentialité de Web Analytics", "https://vercel.com/docs/analytics/privacy-policy"),
+            ", mise à jour le 26 juin 2026). Il montre ces statistiques un mois avec l'offre gratuite, douze mois avec l'offre Pro, et déclare pouvoir les garder plus longtemps (",
+            lien("limites et tarifs de Web Analytics", "https://vercel.com/docs/analytics/limits-and-pricing"),
+            ", mise à jour le 25 août 2026). Le site lui envoie aussi, quand un aperçu s'affiche, l'âge fêté et la durée choisis, jamais le prénom ni un détail de la fête.",
+          ],
         ),
         p("Aucune donnée n'est vendue, ni transmise à qui que ce soit d'autre, sauf au médiateur de la consommation si vous le saisissez."),
       ],
@@ -227,7 +241,7 @@ export function politiqueDeConfidentialite(fiche: FicheVendeur): DocumentLegal {
       titre: "Cookies et traceurs",
       blocs: [
         p(
-          "Nos pages ne déposent aucun cookie et n'emploient aucun traceur ; elles ne chargent aucune ressource depuis un autre domaine. Nos e-mails ne contiennent ni image ni ressource à télécharger.",
+          "Nos pages ne déposent aucun cookie, n'emploient aucun traceur publicitaire et ne chargent aucune ressource depuis un autre domaine. Elles mesurent leur audience avec Vercel Web Analytics (voir « Destinataires ») : son script est servi par notre propre domaine, et n'enregistre rien dans votre navigateur. Nos e-mails ne contiennent ni image ni ressource à télécharger.",
         ),
         p(
           "Pendant le paiement seulement, l'onglet de votre navigateur garde vos réponses et votre aperçu dans son stockage de session (sessionStorage), pour que vous retrouviez votre jeu si vous revenez de la page de paiement sans payer. Rien n'en sort de votre navigateur ; tout est effacé une fois la commande payée, quand vous composez un autre jeu, ou à la fermeture de l'onglet.",
