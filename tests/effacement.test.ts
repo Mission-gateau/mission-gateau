@@ -154,6 +154,24 @@ describe("effacement à 30 jours", () => {
     expect(stripe.modifications.map((m) => m.id)).toEqual([vieux.id]);
   });
 
+  it("ne touche jamais un paiement ni un débit d'un autre produit, même porteur de config=chiffree et rendu par la recherche (lot 8, § 2)", async () => {
+    await commanderRoute(requeteJson("http://localhost/api/commande", corpsDeCommande()));
+    const autre = stripe.payer({ payeLe: ilYa(40), sansBoutique: true }).paiement;
+    for (const debit of debitsDe(autre)) delete debit.metadonnees[CLES.boutique];
+    const notre = await payeeIlYa(40);
+    // La recherche exige la boutique ; même si Stripe rendait l'autre paiement, il serait revérifié et laissé.
+    const { bilan } = await lancer();
+    expect(stripe.recherchesAEffacer[0]).toBeDefined();
+    expect(bilan).toMatchObject({ paiementsEffaces: 1, debitsEffaces: 1, autresProduits: 0 });
+    stripe.rechercheIgnoreLaBoutique = true;
+    const second = await lancer();
+    expect(second.bilan).toMatchObject({ paiementsEffaces: 0, debitsEffaces: 0, autresProduits: 2 });
+    expect(configurationPresente(stripe.paiements.get(autre.id)!.metadonnees)).toBe(true);
+    expect(debitsDe(autre).every((debit) => configurationPresente(debit.metadonnees))).toBe(true);
+    expect(stripe.modifications.map((m) => m.id)).toEqual([notre.id]);
+    expect(stripe.modificationsDeDebits.every((m) => !m.id.startsWith(autre.id.replace("pi_", "ch_")))).toBe(true);
+  });
+
   it("peut tourner plusieurs fois sans dégât", async () => {
     await payeeIlYa(45);
     await payeeIlYa(2);

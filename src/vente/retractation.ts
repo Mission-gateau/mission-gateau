@@ -28,7 +28,7 @@ import type { Dependances } from "./dependances";
 import { adresseDEnvoi, sansDoublon } from "./envoi";
 import { codesErreur, journal } from "./journal";
 import { CLES, estUneCommande, lireSuivi } from "./metadonnees";
-import { etatDUnRemboursementCree, etatDuRemboursement, type EtatDuRemboursement } from "./remboursement";
+import { etatApresUnRemboursement, etatDuRemboursement, remboursementEchoue, type EtatDuRemboursement } from "./remboursement";
 import { limiteDeDebit, type ClientStripe, type PaiementLu } from "./stripe";
 
 /**
@@ -82,21 +82,53 @@ export type CauseDuJournal = "introuvable" | "ecriture_impossible" | "stripe_lim
 export type EnvoiAccuse =
   | { etat: "envoye"; adresse: string; saisie: string; remplacee: boolean }
   | { etat: "echec" }
-  /** Trois accusés sont déjà partis pour cette commande : celui-ci s'affiche sans partir. */
-  | { etat: "plafond" };
+  /** Trois accusés ont déjà été envoyés ou tentés pour cette commande : celui-ci s'affiche sans partir. */
+  | { etat: "plafond" }
+  /**
+   * L'accusé n'est pas parti, et rien ne garantit qu'il puisse partir sans
+   * dépasser le plafond (écriture du compteur incertaine, clé en cours chez
+   * Resend) : il s'affiche sans partir.
+   */
+  | { etat: "non_envoye" }
+  /**
+   * Resend a déjà reçu, sous la clé de cet accusé, une requête au contenu
+   * différent (un accusé parti, ou un envoi en échec, avant que la suite
+   * change) : cet accusé a peut-être déjà été envoyé.
+   */
+  | { etat: "incertain" };
+
+/** Pause imposée avant « Réessayer » après une écriture impossible, en secondes. */
+export const ATTENTE_APRES_ECRITURE_IMPOSSIBLE = 60;
 
 export type ReponseRetractation =
   /** Aucune commande payée retrouvée, ou Stripe en panne avant l'enregistrement : rien n'est envoyé. */
-  | { issue: "non_transmise"; cause: CauseNonTransmise; message: string; date: string; heure: string; mailto: string }
-  | { issue: "accuse"; accuse: DocumentCourriel; envoi: EnvoiAccuse }
+  | {
+      issue: "non_transmise";
+      cause: CauseNonTransmise;
+      message: string;
+      date: string;
+      heure: string;
+      mailto: string;
+      /** Secondes pendant lesquelles « Réessayer » reste grisé : 60 après une écriture impossible, sinon 0. */
+      attente: number;
+    }
+  /**
+   * L'accusé, parti ou non. Quand il n'est pas parti, `mailto` ouvre la
+   * messagerie de la personne avec sa déclaration, à l'heure de réception
+   * d'origine ; `droitAPreserver` est vrai pour une déclaration « arrivée en
+   * même temps » que le premier téléchargement que rien d'autre ne garde :
+   * la page l'invite à l'envoyer au vendeur, sans proposer de nouvel essai
+   * (qui la referait à une heure nouvelle).
+   */
+  | { issue: "accuse"; accuse: DocumentCourriel; envoi: EnvoiAccuse; mailto: string | null; droitAPreserver: boolean }
   /**
    * Déclaration identique à celle qui a enregistré la rétractation, dont
    * l'accusé est déjà parti : l'accusé parti, sans nouvel e-mail ; null s'il a
    * été envoyé à la main par le vendeur (son contenu n'est pas connu).
    */
   | { issue: "deja_accusee"; date: string; heure: string; accuse: DocumentCourriel | null }
-  /** Resend traite déjà la même clé, et rien n'est encore enregistré. */
-  | { issue: "en_cours"; message: string };
+  /** Resend traite déjà la même clé, et rien n'est encore enregistré : le bouton d'e-mail reste proposé. */
+  | { issue: "en_cours"; message: string; mailto: string };
 
 /**
  * L'empreinte d'une déclaration : les 16 premiers caractères hexadécimaux du
@@ -285,6 +317,8 @@ function nonTransmise(cause: CauseDuJournal, declaration: Declaration, recueLe: 
     date: dateAParis(recueLe),
     heure: heureAParis(recueLe),
     mailto: lienDeDeclarationParEmail(declaration, recueLe, fiche),
+    // Dix tentatives pendant une même panne d'écriture épuiseraient les dix clés de la marque pour 24 heures.
+    attente: cause === "ecriture_impossible" ? ATTENTE_APRES_ECRITURE_IMPOSSIBLE : 0,
   };
 }
 
@@ -390,28 +424,35 @@ function suiteDUneRetractationBattue(recueLe: Date, telechargeLe: Date): SuiteDo
 }
 
 /**
- * Rembourse la totalité du paiement (clé `retractation-<référence>`), sauf
- * s'il est déjà remboursé ou en cours de remboursement, s'il est contesté, ou
- * si un remboursement a déjà échoué (la tâche quotidienne le retente, sous
- * une autre clé).
+ * Rembourse ce qui reste du paiement (clé `retractation-<référence>`) : tout,
+ * ou le reste d'un remboursement partiel fait hors rétractation. Rien s'il
+ * est déjà remboursé en totalité, fait ou demandé, s'il est contesté (Stripe
+ * n'accepte aucun remboursement hors de la procédure de contestation), ou si
+ * un remboursement a déjà échoué (la tâche quotidienne le retente, sous une
+ * autre clé). L'accusé donne le montant payé, et ne dit « effectué » qu'une
+ * fois tout le montant remboursé.
  */
 async function suiteDuRemboursement(c: Contexte, paiement: PaiementLu): Promise<Extract<SuiteDonnee, { type: "retractee" }>> {
   const montant = paiement.montant;
   const affiche = remboursementAffiche(paiement);
-  if (affiche !== "a_venir" || paiement.remboursements.length > 0) {
+  if (affiche !== "a_venir" || remboursementEchoue(paiement)) {
     return { type: "retractee", remboursement: affiche, montant };
   }
   const fait = await rembourserSansPanne(c.deps, paiement, cleDeRemboursement(c.reference));
   return { type: "retractee", remboursement: fait, montant };
 }
 
-/** Rembourse la totalité du paiement ; rend l'état du remboursement créé (à venir s'il a échoué). */
+/**
+ * Rembourse ce qui reste du paiement : Stripe, sans montant donné, rembourse
+ * le montant qui n'est pas encore remboursé. Rend l'état du paiement après ce
+ * remboursement (à venir s'il a échoué).
+ */
 export async function rembourserSansPanne(deps: Dependances, paiement: PaiementLu, cle: string): Promise<EtatDuRemboursement> {
   if (!deps.client) return "a_venir";
   const reference = paiement.metadonnees[CLES.reference] ?? "";
   try {
     const resultat = await deps.client.rembourser(paiement.id, cle, { [CLES.reference]: reference, motif: "retractation" });
-    return etatDUnRemboursementCree(resultat.statut);
+    return etatApresUnRemboursement(paiement, resultat);
   } catch (erreur) {
     journal({ route: "retractation", evenement: "remboursement_impossible", ...codesErreur(erreur) });
     return "a_venir";
@@ -510,10 +551,28 @@ async function emailSansPanne(deps: Dependances, paiement: PaiementLu): Promise<
   }
 }
 
-/** Rien de sûr n'est enregistré, et l'accusé n'est pas parti : « en cours de traitement », et la référence au journal. */
-function enCours(c: Contexte, code: string): ReponseRetractation {
-  journal({ route: "retractation", evenement: "accuse_non_envoye", code, reference: c.reference });
-  return { issue: "en_cours", message: RETRACTATION.enCours };
+/**
+ * Resend traite en ce moment une requête de même clé : « en cours de
+ * traitement », avec le bouton d'e-mail à l'heure de réception d'origine, et
+ * la référence au journal.
+ */
+function enCours(c: Contexte, recueLe: Date): ReponseRetractation {
+  journal({ route: "retractation", evenement: "accuse_non_envoye", code: "en_cours", reference: c.reference });
+  return { issue: "en_cours", message: RETRACTATION.enCours, mailto: lienDeDeclarationParEmail(c.declaration, recueLe, c.deps.fiche) };
+}
+
+/**
+ * L'accusé qui n'est pas parti : affiché tel quel, avec le bouton d'e-mail à
+ * l'heure de réception d'origine de cette déclaration. Aucun e-mail de plus.
+ */
+function accuseNonParti(
+  c: Contexte,
+  accuse: DocumentCourriel,
+  envoi: Exclude<EnvoiAccuse, { etat: "envoye" }>,
+  recueLe: Date,
+  droitAPreserver = false,
+): ReponseRetractation {
+  return { issue: "accuse", accuse, envoi, mailto: lienDeDeclarationParEmail(c.declaration, recueLe, c.deps.fiche), droitAPreserver };
 }
 
 /** L'accusé déjà parti, reconstruit à l'identique d'après la suite gardée dans `retractation_accuse`. */
@@ -546,12 +605,13 @@ async function accuserLaRetractation(c: Contexte, paiement: PaiementLu): Promise
     } catch {
       journal({ route: "retractation", evenement: "accuse_non_enregistre", reference: c.reference });
     }
-    return { issue: "accuse", accuse, envoi: resultat.envoi };
+    return { issue: "accuse", accuse, envoi: resultat.envoi, mailto: null, droitAPreserver: false };
   }
-  if (resultat.type === "echec") return { issue: "accuse", accuse, envoi: { etat: "echec" } };
-  // 409 : la même clé est en cours chez Resend, ou a déjà servi. On relit le
-  // paiement : si l'accusé y est enregistré, la page le réaffiche ; sinon
-  // (ou si la relecture échoue), rien d'autre ne part.
+  if (resultat.type === "echec") return accuseNonParti(c, accuse, { etat: "echec" }, retracteeLe);
+  // 409 : la même clé est en cours chez Resend, ou a déjà servi à un autre
+  // contenu. On relit le paiement : si l'accusé y est enregistré, la page le
+  // réaffiche ; sinon, rien d'autre ne part, et la page affiche l'accusé
+  // recalculé avec le bouton d'e-mail.
   try {
     const frais = await c.client.lirePaiement(paiement.id);
     const relu = frais ? lireSuivi(frais.metadonnees) : null;
@@ -559,9 +619,13 @@ async function accuserLaRetractation(c: Contexte, paiement: PaiementLu): Promise
       return dejaAccusee(c, frais, retracteeLe, relu.accuseRetractation);
     }
   } catch {
-    // Rien de sûr : la déclaration est en cours de traitement.
+    // Rien de sûr : la suite dépend de ce que Resend a répondu.
   }
-  return enCours(c, "en_cours");
+  if (resultat.raison === "en_cours") return enCours(c, retracteeLe);
+  // La clé a servi à un autre contenu (un envoi en échec avant que la suite change, ou un accusé parti sans
+  // que `retractation_accuse` s'écrive) : l'accusé est peut-être parti, jamais « échec ».
+  journal({ route: "retractation", evenement: "accuse_non_envoye", code: "incertain", reference: c.reference });
+  return accuseNonParti(c, accuse, { etat: "incertain" }, retracteeLe);
 }
 
 /**
@@ -574,33 +638,37 @@ async function accuserLaRetractation(c: Contexte, paiement: PaiementLu): Promise
  * sûrement pris la clé de cette écriture : succès (ou réponse rejouée), ou
  * réponse 500, que Stripe garde sous la clé. Toute autre réponse (429, 409
  * d'une requête de même clé encore en cours, autre erreur 5xx, réseau coupé)
- * ne le garantit pas : la déclaration est alors « en cours de traitement », et
- * rien d'autre ne part. La valeur n est ainsi toujours écrite, ou sa clé
+ * ne le garantit pas : l'accusé s'affiche alors sans partir, avec le bouton
+ * d'e-mail, et rien d'autre ne part. La valeur n est ainsi toujours écrite, ou sa clé
  * prise, avant que n + 1 puisse l'être : une écriture en retard est rejouée
  * sans effet, et le compteur ne recule pas.
  */
 async function accuserUneAutreDeclaration(c: Contexte, paiement: PaiementLu): Promise<ReponseRetractation> {
-  const accuse = accuseDeReception({
-    declaration: c.declaration,
-    recueLe: c.recueLe,
-    suite: suiteDUneAutreDeclaration(paiement, c.recueLe),
-    fiche: c.deps.fiche,
-  });
+  const suite = suiteDUneAutreDeclaration(paiement, c.recueLe);
+  const accuse = accuseDeReception({ declaration: c.declaration, recueLe: c.recueLe, suite, fiche: c.deps.fiche });
+  // Reçue avant le début du premier téléchargement, mais lue après son écriture : rien ne la garde chez Stripe.
+  // Si son accusé ne part pas, la page invite à l'envoyer au vendeur, sans nouvel essai (il serait à une heure nouvelle).
+  const droitAPreserver = suite.type === "simultanee";
+  const nonParti = (envoi: Exclude<EnvoiAccuse, { etat: "envoye" }>) => accuseNonParti(c, accuse, envoi, c.recueLe, droitAPreserver);
   for (let numero = lireSuivi(paiement.metadonnees).accuses + 1; ; numero += 1) {
     if (numero > PLAFOND_ACCUSES) {
       journal({ route: "retractation", evenement: "accuse_au_plafond" });
-      return { issue: "accuse", accuse, envoi: { etat: "plafond" } };
+      return nonParti({ etat: "plafond" });
     }
     const resultat = await envoyer(c, accuse, cleDAccuseNumero(c.reference, numero));
     if (resultat.type === "envoye") {
       await compterLAccuse(c, paiement.id, numero);
       journal({ route: "retractation", evenement: "accuse_envoye", numero });
-      return { issue: "accuse", accuse, envoi: resultat.envoi };
+      return { issue: "accuse", accuse, envoi: resultat.envoi, mailto: null, droitAPreserver: false };
     }
-    if (resultat.type === "echec") return { issue: "accuse", accuse, envoi: { etat: "echec" } };
-    if (resultat.raison === "en_cours") return enCours(c, "en_cours");
+    if (resultat.type === "echec") return nonParti({ etat: "echec" });
+    if (resultat.raison === "en_cours") return droitAPreserver ? nonParti({ etat: "non_envoye" }) : enCours(c, c.recueLe);
     // Ce numéro est déjà parti pour une autre requête : il compte, et l'on passe au suivant, sa clé prise.
-    if (!(await compterLAccuse(c, paiement.id, numero))) return enCours(c, "compteur_non_ecrit");
+    // Sinon (l'écart du lot 7, gardé), l'accusé s'affiche sans partir, sans décision de plus sur le compteur.
+    if (!(await compterLAccuse(c, paiement.id, numero))) {
+      journal({ route: "retractation", evenement: "accuse_non_envoye", code: "compteur_non_ecrit", reference: c.reference });
+      return nonParti({ etat: "non_envoye" });
+    }
   }
 }
 

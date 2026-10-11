@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { EXPEDITEUR } from "../contenu/emails";
-import { candidatALaListe, cleDeLaListe, courrielDeLaListe, listeATraiter, tailleDeLaListe } from "./aTraiter";
+import { candidatALaListe, cleDeLaListe, courrielDeLaListe, listeATraiter, listeIncomplete, tailleDeLaListe } from "./aTraiter";
 import { etatDuPaiement } from "./commande";
 import { envoyerLaConfirmation } from "./confirmation";
 import { courrielEnHtml, courrielEnTexte } from "./courriels";
@@ -10,8 +10,8 @@ import { bilanVide, effacerLesConfigurationsAnciennes, toutesLesPages, type Bila
 import { adresseDEnvoi } from "./envoi";
 import type { Environnement } from "./environnement";
 import { journal } from "./journal";
-import { BOUTIQUE, CLES, estUneCommande, lireSuivi } from "./metadonnees";
-import { rembourseEnTotalite, remboursementExistant } from "./remboursement";
+import { BOUTIQUE, CLES, estUneCommande, heuresIllisibles, lireSuivi } from "./metadonnees";
+import { rembourseEnTotalite } from "./remboursement";
 import { cleDeRemboursement, rembourserSansPanne } from "./retractation";
 import type { ClientStripe, PaiementLu } from "./stripe";
 
@@ -27,12 +27,13 @@ import type { ClientStripe, PaiementLu } from "./stripe";
  *    ou à examiner — pour l'acheteur qui n'est pas revenu sur le site, sans
  *    jamais en envoyer deux (voir src/vente/confirmation.ts) ;
  * 3. `remboursements` : le remboursement des rétractations qui l'ont emporté
- *    (voir src/vente/course.ts) et dont aucun remboursement n'est demandé ni
- *    fait (un remboursement `failed` ou `canceled` est retenté), hors
- *    litige ;
+ *    (voir src/vente/course.ts) et dont les remboursements faits ou demandés
+ *    ne couvrent pas le montant payé (Stripe rembourse alors le reste ; un
+ *    remboursement `failed` ou `canceled` est retenté), hors litige ;
  * 4. `a_traiter` : la liste des commandes qui attendent une action du
  *    vendeur, envoyée par e-mail au vendeur s'il y en a au moins une (voir
- *    src/vente/aTraiter.ts).
+ *    src/vente/aTraiter.ts). Si la recherche ou une relecture a échoué, la
+ *    liste part quand même, une ligne en tête disant qu'elle est incomplète.
  *
  * Les phases 2 à 4 ne voient que les paiements de cette boutique
  * (`boutique` = `mission-gateau`, exigé dans la recherche puis revérifié).
@@ -75,6 +76,7 @@ export interface BilanATraiter {
   sansRemboursement: number;
   remboursementEnAttente: number;
   contestations: number;
+  heuresIllisibles: number;
   /**
    * 1 si Resend a accepté la liste à ce passage : envoyée, ou déjà envoyée
    * sous la même clé (même liste, le même jour), auquel cas Resend rejoue sa
@@ -125,6 +127,7 @@ export function bilanTacheVide(): BilanTache {
       sansRemboursement: 0,
       remboursementEnAttente: 0,
       contestations: 0,
+      heuresIllisibles: 0,
       listeAcceptee: 0,
       listeEnConflit: 0,
       erreurs: 0,
@@ -189,15 +192,17 @@ export async function tacheQuotidienne(deps: Dependances): Promise<BilanTache> {
   }
 
   try {
+    // Sans la recherche, aucune rétractation n'a pu être examinée : la phase le compte comme une erreur.
+    if (!recherche) bilan.remboursements.erreurs += 1;
     await rembourserLesRetractations(paiements, deps, client, maintenant, bilan.remboursements);
   } finally {
     noter("remboursements", bilan.remboursements);
   }
 
   try {
-    // Sans la recherche, la liste serait vide à tort : la phase le compte comme une erreur.
+    // Sans la recherche, la liste est incomplète : elle part quand même, en le disant, et la phase compte l'erreur.
     if (!recherche) bilan.aTraiter.erreurs += 1;
-    else await signalerLesCommandesATraiter(paiements, deps, client, maintenant, bilan.aTraiter);
+    await signalerLesCommandesATraiter(paiements, deps, client, maintenant, bilan.aTraiter, !recherche);
   } finally {
     noter("a_traiter", bilan.aTraiter);
   }
@@ -274,11 +279,15 @@ async function confirmerLesOubliees(
 /**
  * Les rétractations à rembourser, relues à jour avant tout remboursement : la
  * recherche peut rendre des métadonnées périmées, et seule une rétractation
- * qui l'a emporté se rembourse (voir src/vente/course.ts). Aucun
- * remboursement n'est créé s'il en existe déjà un demandé ou fait (`pending`,
- * `requires_action`, `succeeded`) ; un remboursement `failed` ou `canceled`
- * est retenté. Une tentative par jour et par commande : la clé d'idempotence
- * porte le jour, et Stripe ne rembourse jamais au-delà du montant payé.
+ * qui l'a emporté se rembourse (voir src/vente/course.ts). Un remboursement
+ * n'est créé que si les remboursements faits ou demandés (`pending`,
+ * `requires_action`, `succeeded`) ne couvrent pas le montant payé : Stripe
+ * rembourse alors le reste (un remboursement partiel fait depuis le tableau
+ * de bord est complété) ; un remboursement `failed` ou `canceled` est
+ * retenté. Une commande dont une marque est illisible n'est jamais
+ * remboursée ici. Une tentative par jour et par commande : la clé
+ * d'idempotence porte le jour, et Stripe ne rembourse jamais au-delà du
+ * montant payé.
  */
 async function rembourserLesRetractations(
   paiements: PaiementLu[],
@@ -292,14 +301,14 @@ async function rembourserLesRetractations(
     if (!lireSuivi(paiement.metadonnees).retractation) continue;
     bilan.retractationsExaminees += 1;
     try {
-      if (remboursementExistant(paiement) || paiement.litige) continue;
+      if (rembourseEnTotalite(paiement) || paiement.litige) continue;
       const frais = await client.lirePaiement(paiement.id);
       if (!frais) {
         bilan.erreurs += 1;
         continue;
       }
-      if (remboursementExistant(frais) || frais.litige) continue;
-      if (marqueGagnante(frais.metadonnees) !== "retractation") {
+      if (rembourseEnTotalite(frais) || frais.litige) continue;
+      if (marqueGagnante(frais.metadonnees) !== "retractation" || heuresIllisibles(frais.metadonnees).length > 0) {
         bilan.remboursementsExclus += 1;
         continue;
       }
@@ -328,28 +337,33 @@ async function signalerLesCommandesATraiter(
   client: ClientStripe,
   maintenant: Date,
   bilan: BilanATraiter,
+  rechercheEchouee = false,
 ): Promise<void> {
   const frais: PaiementLu[] = [];
+  let relecturesEchouees = 0;
   for (const paiement of paiements) {
     if (!candidatALaListe(paiement)) continue;
     const reference = paiement.metadonnees[CLES.reference]!;
     try {
       const relu = await client.lirePaiement(paiement.id);
       bilan.commandesRelues += 1;
-      if (!relu) bilan.erreurs += 1;
+      if (!relu) relecturesEchouees += 1;
       else if (relu.statut === "succeeded" && estUneCommande(relu.metadonnees, reference)) frais.push(relu);
     } catch {
-      bilan.erreurs += 1;
+      relecturesEchouees += 1;
     }
   }
-  const liste = listeATraiter(frais, maintenant);
+  bilan.erreurs += relecturesEchouees;
+  const liste = listeATraiter(frais, maintenant, { rechercheEchouee, relecturesEchouees });
   bilan.aExaminer = liste.a_examiner.length;
   bilan.simultanees = liste.simultanees.length;
   bilan.accuseManquant = liste.accuse_manquant.length;
   bilan.sansRemboursement = liste.sans_remboursement.length;
   bilan.remboursementEnAttente = liste.remboursement_en_attente.length;
   bilan.contestations = liste.contestations.length;
-  if (tailleDeLaListe(liste) === 0) return;
+  bilan.heuresIllisibles = liste.heures_illisibles.length;
+  // Une liste vide mais incomplète part quand même : rien ne dit qu'il n'y a rien à traiter.
+  if (tailleDeLaListe(liste) === 0 && !listeIncomplete(liste)) return;
 
   const { email, env, fiche } = deps;
   if (!email) {

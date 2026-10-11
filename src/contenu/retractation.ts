@@ -58,11 +58,13 @@ export const RETRACTATION = typographier({
       "À défaut, rétractez-vous par e-mail à {email} ou par courrier à {adresse}, avec le formulaire type en annexe des conditions générales de vente ou par toute autre déclaration dénuée d'ambiguïté.",
     ],
     indisponible:
-      "Nous ne pouvons pas vérifier votre commande pour le moment : votre déclaration n'a pas été transmise. Réessayez dans quelques minutes, ou envoyez-la dès maintenant par e-mail : une déclaration envoyée avant la fin du délai de rétractation préserve votre droit.",
+      "Nous ne pouvons pas vérifier votre commande pour le moment : votre déclaration n'a pas été transmise. Réessayez dans quelques minutes, ou envoyez-la dès maintenant par e-mail : une déclaration envoyée avant la fin du délai de rétractation préserve votre droit. Si vous avez déjà reçu un accusé de réception pour cette déclaration, il reste valable.",
     boutonEmail: "Envoyer ma déclaration par e-mail",
     aideEmail:
       "Ce bouton ouvre votre messagerie avec votre déclaration déjà écrite, adressée au vendeur : aucun e-mail ne part de notre site, et vous gardez la preuve de votre envoi.",
     corriger: "Corriger ma déclaration",
+    /** Après une écriture impossible chez Stripe : « Réessayer » reste grisé une minute. */
+    reessayerDans: "Réessayer dans {secondes} s",
   },
   /** L'e-mail que le bouton prépare dans la messagerie de la personne. */
   courriel: {
@@ -83,7 +85,18 @@ export const RETRACTATION = typographier({
   essai:
     "Exemplaire d'essai : hors production, les e-mails ne partent qu'aux adresses de test de notre prestataire d'envoi ; l'accusé est parti à {test} au lieu de {adresse}.",
   plafond:
-    "Cet accusé de réception s'affiche ici sans être renvoyé par e-mail : trois accusés sont déjà partis pour cette commande. Pour toute question, écrivez au vendeur à {email}.",
+    "Cet accusé de réception s'affiche ici sans être renvoyé par e-mail : trois accusés ont déjà été envoyés ou tentés pour cette commande. Pour toute question, écrivez au vendeur à {email}.",
+  /** L'accusé n'a pas pu partir, et rien ne garantit qu'un nouvel envoi resterait dans le plafond : il s'affiche sans partir. */
+  nonEnvoye:
+    "L'accusé de réception n'a pas pu être envoyé par e-mail. Vous pouvez envoyer votre déclaration au vendeur avec le bouton ci-dessous.",
+  /** Resend a déjà reçu un autre contenu sous la clé de cet accusé : il est peut-être parti. */
+  incertain: "Cet accusé vous a peut-être déjà été envoyé ; sinon, écrivez au vendeur à {email} en reprenant ce texte.",
+  /**
+   * Déclaration reçue avant le début du premier téléchargement, lue après son
+   * écriture, dont l'accusé n'est pas parti : rien d'autre ne la garde.
+   */
+  preserver:
+    "Votre déclaration est arrivée presque en même temps que le premier téléchargement, et son accusé de réception n'a pas pu vous être envoyé par e-mail. Pour préserver votre droit, envoyez-la dès maintenant au vendeur par e-mail avec le bouton ci-dessous : elle porte l'heure à laquelle nous l'avons reçue.",
   accuseEchec: "L'accusé de réception n'a pas pu partir pour le moment.",
   renvoyer: "Renvoyer l'accusé de réception",
   renvoiEnCours: "Nouvel envoi de l'accusé de réception…",
@@ -93,6 +106,7 @@ export const RETRACTATION = typographier({
   dejaAccusee: "Votre déclaration du {date} à {heure} est déjà enregistrée, et son accusé de réception vous a été envoyé par e-mail.",
   titreEnCours: "Votre déclaration",
   enCours: "Votre déclaration est en cours de traitement : rechargez la page dans quelques instants.",
+  aideEnCours: "Vous pouvez aussi envoyer dès maintenant votre déclaration au vendeur par e-mail.",
   reessayer: "Réessayer",
   nouvelleDeclaration: "Faire une autre déclaration",
 } as const);

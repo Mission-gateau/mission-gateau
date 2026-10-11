@@ -21,13 +21,15 @@ type Saisie = Record<ChampDeclaration, string>;
 type Envoi =
   | { etat: "envoye"; adresse: string; saisie: string; remplacee: boolean }
   | { etat: "echec" }
-  | { etat: "plafond" };
+  | { etat: "plafond" }
+  | { etat: "non_envoye" }
+  | { etat: "incertain" };
 
 type Reponse =
-  | { issue: "accuse"; accuse: DocumentCourriel; envoi: Envoi }
-  | { issue: "non_transmise"; cause: "introuvable" | "indisponible"; date: string; heure: string; mailto: string }
+  | { issue: "accuse"; accuse: DocumentCourriel; envoi: Envoi; mailto: string | null; droitAPreserver: boolean }
+  | { issue: "non_transmise"; cause: "introuvable" | "indisponible"; date: string; heure: string; mailto: string; attente: number }
   | { issue: "deja_accusee"; date: string; heure: string; accuse: DocumentCourriel | null }
-  | { issue: "en_cours" };
+  | { issue: "en_cours"; mailto: string };
 
 type Etape = "saisie" | "recapitulatif" | "resultat";
 
@@ -317,6 +319,46 @@ function ProblemeDEnvoi({ probleme }: { probleme: string | null }) {
   ) : null;
 }
 
+/** Le bouton qui ouvre la messagerie de la personne avec sa déclaration, à l'heure de réception d'origine. */
+function BoutonEmail({ mailto }: { mailto: string }) {
+  const { nonTransmise } = RETRACTATION;
+  return (
+    <>
+      <p className="mt-5">
+        <a href={mailto} className={`inline-block ${CLASSE_BOUTON}`}>
+          {nonTransmise.boutonEmail}
+        </a>
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-encre-douce">{nonTransmise.aideEmail}</p>
+    </>
+  );
+}
+
+/**
+ * « Réessayer », grisé pendant `attente` secondes, compte à rebours affiché :
+ * après une écriture impossible chez Stripe, dix clics pendant une même panne
+ * épuiseraient pour 24 heures les dix clés de la marque.
+ */
+function BoutonReessayer({ attente, envoi, renvoyer }: { attente: number; envoi: boolean; renvoyer: () => void }) {
+  const [restant, setRestant] = useState(attente);
+  useEffect(() => {
+    if (attente <= 0) return;
+    const fin = Date.now() + attente * 1000;
+    setRestant(attente);
+    const minuterie = setInterval(() => {
+      const secondes = Math.max(0, Math.ceil((fin - Date.now()) / 1000));
+      setRestant(secondes);
+      if (secondes === 0) clearInterval(minuterie);
+    }, 250);
+    return () => clearInterval(minuterie);
+  }, [attente]);
+  return (
+    <button type="button" disabled={envoi || restant > 0} onClick={renvoyer} className={CLASSE_BOUTON_SECONDAIRE}>
+      {restant > 0 ? remplir(RETRACTATION.nonTransmise.reessayerDans, { secondes: restant }) : RETRACTATION.reessayer}
+    </button>
+  );
+}
+
 /** Ce que la page dit une fois la déclaration envoyée : elle ne dit jamais qu'un accusé est parti quand il n'est pas parti. */
 function Resultat({
   reponse,
@@ -352,21 +394,14 @@ function Resultat({
               ))}
             </ul>
           ) : null}
-          <p className="mt-5">
-            <a href={reponse.mailto} className={`inline-block ${CLASSE_BOUTON}`}>
-              {nonTransmise.boutonEmail}
-            </a>
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-encre-douce">{nonTransmise.aideEmail}</p>
+          <BoutonEmail mailto={reponse.mailto} />
           <p className="mt-5">
             {reponse.cause === "introuvable" ? (
               <button type="button" onClick={corriger} className={CLASSE_BOUTON_SECONDAIRE}>
                 {nonTransmise.corriger}
               </button>
             ) : (
-              <button type="button" disabled={envoi} onClick={renvoyer} className={CLASSE_BOUTON_SECONDAIRE}>
-                {RETRACTATION.reessayer}
-              </button>
+              <BoutonReessayer key={reponse.date + reponse.heure} attente={reponse.attente ?? 0} envoi={envoi} renvoyer={renvoyer} />
             )}
           </p>
           <ProblemeDEnvoi probleme={probleme} />
@@ -388,6 +423,8 @@ function Resultat({
           <p role="status" className="mt-3 rounded-xl bg-creme-fonce p-4 leading-relaxed">
             {RETRACTATION.enCours}
           </p>
+          <p className="mt-3 leading-relaxed">{RETRACTATION.aideEnCours}</p>
+          <BoutonEmail mailto={reponse.mailto} />
           <p className="mt-4">
             <button type="button" disabled={envoi} onClick={renvoyer} className={CLASSE_BOUTON_SECONDAIRE}>
               {RETRACTATION.reessayer}
@@ -401,7 +438,7 @@ function Resultat({
       return (
         <>
           <TitreDEtape cible={titre}>
-            {envoiAccuse.etat === "echec" ? RETRACTATION.titreEchec : RETRACTATION.titreResultat}
+            {envoiAccuse.etat === "envoye" || envoiAccuse.etat === "plafond" ? RETRACTATION.titreResultat : RETRACTATION.titreEchec}
           </TitreDEtape>
           {envoiAccuse.etat === "envoye" ? (
             <>
@@ -415,23 +452,68 @@ function Resultat({
                 <p className="mt-2 leading-relaxed">{RETRACTATION.copie}</p>
               )}
             </>
-          ) : envoiAccuse.etat === "plafond" ? (
-            <p className="mt-3 rounded-xl border border-bordure bg-white p-4 leading-relaxed">
-              {remplir(RETRACTATION.plafond, vendeur)}
-            </p>
           ) : (
-            <div role="alert" className="mt-3 rounded-xl border-2 border-brique bg-white p-4">
-              <p className="font-bold text-brique">{RETRACTATION.accuseEchec}</p>
-              <button type="button" disabled={envoi} onClick={renvoyer} className={`mt-3 ${CLASSE_BOUTON_SECONDAIRE}`}>
-                {envoi ? RETRACTATION.renvoiEnCours : RETRACTATION.renvoyer}
-              </button>
-              <ProblemeDEnvoi probleme={probleme} />
-              <p className="mt-3 text-sm leading-relaxed">{remplir(RETRACTATION.accuseEchecSuite, vendeur)}</p>
-            </div>
+            <NonParti reponse={reponse} vendeur={vendeur} envoi={envoi} probleme={probleme} renvoyer={renvoyer} />
           )}
           <VueCourriel document={reponse.accuse} />
         </>
       );
     }
   }
+}
+
+/**
+ * L'accusé qui n'est pas parti : la page le dit, sans jamais rester vide, et
+ * propose le bouton d'e-mail. « Renvoyer » n'est proposé qu'après un échec
+ * d'envoi, et jamais pour une déclaration « arrivée en même temps » que le
+ * premier téléchargement (un nouvel essai la referait à une heure nouvelle).
+ */
+function NonParti({
+  reponse,
+  vendeur,
+  envoi,
+  probleme,
+  renvoyer,
+}: {
+  reponse: Extract<Reponse, { issue: "accuse" }>;
+  vendeur: { email: string; adresse: string };
+  envoi: boolean;
+  probleme: string | null;
+  renvoyer: () => void;
+}) {
+  const etat = reponse.envoi.etat;
+  const bouton = reponse.mailto ? <BoutonEmail mailto={reponse.mailto} /> : null;
+  if (reponse.droitAPreserver) {
+    return (
+      <div role="alert" className="mt-3 rounded-xl border-2 border-brique bg-white p-4">
+        <p className="font-bold text-brique">{RETRACTATION.preserver}</p>
+        {bouton}
+      </div>
+    );
+  }
+  if (etat === "echec") {
+    return (
+      <div role="alert" className="mt-3 rounded-xl border-2 border-brique bg-white p-4">
+        <p className="font-bold text-brique">{RETRACTATION.accuseEchec}</p>
+        <button type="button" disabled={envoi} onClick={renvoyer} className={`mt-3 ${CLASSE_BOUTON_SECONDAIRE}`}>
+          {envoi ? RETRACTATION.renvoiEnCours : RETRACTATION.renvoyer}
+        </button>
+        <ProblemeDEnvoi probleme={probleme} />
+        <p className="mt-3 text-sm leading-relaxed">{remplir(RETRACTATION.accuseEchecSuite, vendeur)}</p>
+        {bouton}
+      </div>
+    );
+  }
+  const texte =
+    etat === "plafond"
+      ? remplir(RETRACTATION.plafond, vendeur)
+      : etat === "incertain"
+        ? remplir(RETRACTATION.incertain, vendeur)
+        : RETRACTATION.nonEnvoye;
+  return (
+    <div className="mt-3 rounded-xl border border-bordure bg-white p-4">
+      <p className="leading-relaxed">{texte}</p>
+      {bouton}
+    </div>
+  );
 }

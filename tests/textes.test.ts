@@ -156,6 +156,10 @@ describe("gabarits", () => {
       "demande", "dateDeclaration", "heureDeclaration",
       // Liste quotidienne des commandes à traiter.
       "titre", "nombre", "action", "section", "libelle", "gagnante",
+      // Compte à rebours de « Réessayer » sur la page de rétractation.
+      "secondes",
+      // Liste quotidienne : les métadonnées dont l'heure est illisible.
+      "cles",
     ]);
     const inconnues = new Set<string>();
     for (const { texte } of textesDeProse()) {

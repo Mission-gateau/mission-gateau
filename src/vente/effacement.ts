@@ -1,5 +1,5 @@
 import { DUREE_DE_VALIDITE_MS } from "./commande";
-import { configurationPresente, metadonneesDEffacement } from "./metadonnees";
+import { BOUTIQUE, CLES, configurationPresente, metadonneesDEffacement } from "./metadonnees";
 import type { ClientStripe } from "./stripe";
 
 /** Ce que la tâche d'effacement écrit dans les journaux : des compteurs, rien d'autre. */
@@ -14,6 +14,8 @@ export interface BilanEffacement {
   debitsEffaces: number;
   debitsRecents: number;
   debitsDejaEffaces: number;
+  /** Paiements et débits d'un autre produit du même compte Stripe (sans `boutique` = `mission-gateau`) : jamais touchés. */
+  autresProduits: number;
   erreurs: number;
 }
 
@@ -27,6 +29,7 @@ export function bilanVide(): BilanEffacement {
     debitsEffaces: 0,
     debitsRecents: 0,
     debitsDejaEffaces: 0,
+    autresProduits: 0,
     erreurs: 0,
   };
 }
@@ -63,6 +66,11 @@ export async function toutesLesPages<T extends { id: string }>(
  * facture, référence, accords, heures de la confirmation, du premier
  * téléchargement et de la rétractation — reste chez Stripe.
  *
+ * Seuls les paiements et les débits de cette boutique sont touchés : la
+ * recherche exige `boutique` = `mission-gateau`, et chaque objet rendu est
+ * revérifié avant d'écrire — un paiement d'un autre produit du même compte
+ * Stripe, même porteur d'une métadonnée `config`, n'est jamais modifié.
+ *
  * Un objet plus récent n'est jamais touché, même si la recherche de Stripe le
  * renvoyait par erreur : son âge est revérifié ici, à partir du débit réussi
  * pour un paiement. Un objet déjà effacé est simplement compté. La tâche peut
@@ -85,6 +93,10 @@ export async function effacerLesConfigurationsAnciennes(
     });
     for (const paiement of paiements) {
       bilan.paiementsExamines += 1;
+      if (paiement.metadonnees[CLES.boutique] !== BOUTIQUE) {
+        bilan.autresProduits += 1;
+        continue;
+      }
       if (paiement.payeLe >= limite || paiement.cree >= limite) {
         bilan.paiementsRecents += 1;
         continue;
@@ -111,6 +123,10 @@ export async function effacerLesConfigurationsAnciennes(
     });
     for (const debit of debits) {
       bilan.debitsExamines += 1;
+      if (debit.metadonnees[CLES.boutique] !== BOUTIQUE) {
+        bilan.autresProduits += 1;
+        continue;
+      }
       if (debit.cree >= limite) {
         bilan.debitsRecents += 1;
         continue;

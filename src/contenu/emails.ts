@@ -145,6 +145,13 @@ export const A_TRAITER = typographier({
   objet: "Commandes à traiter — Mission Gâteau",
   intro:
     "Voici, au {date}, les commandes qui attendent une action de votre part. Retrouvez chacune dans le tableau de bord de Stripe par sa référence (métadonnée ref) ; les dates et les heures sont celles de Paris. Cette liste ne contient ni nom ni adresse e-mail. Elle repart le jour même si elle change, et plus du tout quand il ne reste rien à traiter.",
+  /**
+   * En tête de la liste quand la recherche des paiements ou la relecture
+   * d'une commande a échoué : la liste part quand même. Sans donnée
+   * personnelle ; comprise dans l'empreinte de la liste.
+   */
+  incomplete: "Liste incomplète : la recherche ou la relecture de {nombre} commande(s) a échoué ; elle sera refaite au prochain passage.",
+  incompleteRecherche: "Liste incomplète : la recherche des commandes a échoué ; elle sera refaite au prochain passage.",
   titre: "{titre} : {nombre}",
   action: "À faire : {action} Voir le README, section « {section} ».",
   section: "La liste quotidienne des commandes à traiter",
@@ -162,9 +169,10 @@ export const A_TRAITER = typographier({
     remboursement: {
       effectue: "remboursement effectué",
       demande: "remboursement demandé",
-      a_venir: "aucun remboursement demandé",
+      a_venir: "montant payé pas entièrement remboursé",
     },
     litige: "paiement contesté",
+    illisible: "heure illisible dans {cles}",
   },
   rubriques: {
     a_examiner: {
@@ -183,9 +191,9 @@ export const A_TRAITER = typographier({
         "envoyez au client, à l'adresse de la commande, l'accusé de réception de sa déclaration, puis écrivez retractation_accuse = manuel.",
     },
     sans_remboursement: {
-      titre: "Rétractations sans remboursement demandé",
+      titre: "Rétractations dont le montant payé n'est pas entièrement remboursé",
       action:
-        "la tâche n'a pas pu rembourser. Vérifiez le paiement dans Stripe et remboursez-le au plus tard 14 jours après la rétractation.",
+        "la tâche n'a pas pu rembourser, ou seulement en partie. Vérifiez le paiement dans Stripe et remboursez ce qui reste au plus tard 14 jours après la rétractation.",
     },
     remboursement_en_attente: {
       titre: "Remboursements en attente depuis plus de 5 jours",
@@ -195,7 +203,12 @@ export const A_TRAITER = typographier({
     contestations: {
       titre: "Paiements contestés",
       action:
-        "répondez à la contestation dans le tableau de bord de Stripe et au client, puis écrivez examinee avec la date et l'heure de votre réponse.",
+        "répondez à la contestation dans le tableau de bord de Stripe et au client, puis écrivez examinee avec la date et l'heure de votre réponse. Tant qu'elle est ouverte, Stripe n'accepte aucun remboursement hors de la procédure de contestation : une rétractation de ce paiement se règle par elle.",
+    },
+    heures_illisibles: {
+      titre: "Commandes dont une heure est illisible",
+      action:
+        "une métadonnée retractation, telechargement ou examinee n'est pas une date et une heure ISO 8601 complètes (par exemple 2026-10-02T09:15:00+02:00). Récrivez-la dans ce format : tant qu'elle reste illisible, le jeu n'est pas livré et rien n'est remboursé automatiquement.",
     },
   },
 } as const);

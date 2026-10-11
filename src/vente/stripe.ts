@@ -147,8 +147,9 @@ export function requeteParReference(reference: string): string {
   return `metadata["${CLES.reference}"]:"${reference}" AND metadata["${CLES.boutique}"]:"${BOUTIQUE}"`;
 }
 
+/** Les paiements et les débits de cette boutique, configuration encore chiffrée, créés avant `avant`. */
 export function requeteConfigurationsAvant(avant: number): string {
-  return `metadata["${CLES.etatConfiguration}"]:"${CONFIGURATION_CHIFFREE}" AND created<${Math.floor(avant)}`;
+  return `metadata["${CLES.etatConfiguration}"]:"${CONFIGURATION_CHIFFREE}" AND created<${Math.floor(avant)} AND metadata["${CLES.boutique}"]:"${BOUTIQUE}"`;
 }
 
 export function requetePaiementsAboutisDepuis(depuis: number): string {

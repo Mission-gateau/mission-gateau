@@ -5,8 +5,8 @@ import { courrielEnTexte, type BlocCourriel, type DocumentCourriel } from "./cou
 import { marqueGagnante } from "./course";
 import { dateAParis, heureAParis } from "./dates";
 import { jourAParis, jourIso } from "./delai";
-import { CLES, lireSuivi } from "./metadonnees";
-import { etatDuRemboursement, remboursementExistant } from "./remboursement";
+import { CLES, heuresIllisibles, lireSuivi } from "./metadonnees";
+import { etatDuRemboursement, rembourseEnTotalite } from "./remboursement";
 import type { PaiementLu } from "./stripe";
 
 /**
@@ -15,17 +15,24 @@ import type { PaiementLu } from "./stripe";
  * journaux de l'offre Hobby de Vercel ne sont gardés qu'une heure : c'est
  * elle, et non leur lecture, qui dit au vendeur ce qui l'attend.
  *
- * Six rubriques, lues sur les paiements aboutis de la boutique, relus à jour :
+ * Sept rubriques, lues sur les paiements aboutis de la boutique, relus à jour :
  * - `a_examiner` : les deux marques, sans `course` ;
  * - `simultanees` : `course` = `telechargement` et une rétractation reçue
  *   avant le premier téléchargement — leur accusé promet une réponse du
  *   vendeur sous 7 jours ;
  * - `accuse_manquant` : `retractation` sans `retractation_accuse` ;
- * - `sans_remboursement` : la rétractation l'a emporté, et aucun
- *   remboursement n'est demandé ni fait ;
+ * - `sans_remboursement` : la rétractation l'a emporté, et les
+ *   remboursements faits ou demandés ne couvrent pas le montant payé — sauf
+ *   un paiement contesté, que Stripe ne laisse rembourser que par la
+ *   procédure de contestation (la rubrique `contestations` le couvre) ;
  * - `remboursement_en_attente` : un remboursement toujours en attente cinq
  *   jours après l'heure de la rétractation (le délai légal est de 14 jours) ;
- * - `contestations` : le paiement fait l'objet d'une contestation.
+ * - `contestations` : le paiement fait l'objet d'une contestation ;
+ * - `heures_illisibles` : une marque horodatée (`retractation`,
+ *   `telechargement`, `examinee`) est présente mais illisible.
+ *
+ * Si la recherche des paiements ou la relecture d'une commande a échoué, la
+ * liste part quand même, avec en tête une ligne fixe qui le dit.
  *
  * Les rubriques `simultanees` et `contestations` ne montrent plus une
  * commande qui porte `examinee` (la réponse du vendeur). La liste ne contient
@@ -39,11 +46,18 @@ export const RUBRIQUES = [
   "sans_remboursement",
   "remboursement_en_attente",
   "contestations",
+  "heures_illisibles",
 ] as const;
 
 export type Rubrique = (typeof RUBRIQUES)[number];
 
-export type ListeATraiter = Record<Rubrique, PaiementLu[]>;
+/** Ce qui a manqué à la liste : la recherche des paiements, ou la relecture de certaines commandes. */
+export interface Incompletude {
+  rechercheEchouee: boolean;
+  relecturesEchouees: number;
+}
+
+export type ListeATraiter = Record<Rubrique, PaiementLu[]> & { incompletude: Incompletude };
 
 /** Cinq jours après la rétractation, un remboursement encore en attente est signalé. */
 export const ATTENTE_SIGNALEE_MS = 5 * 24 * 60 * 60 * 1000;
@@ -53,11 +67,18 @@ export const ATTENTE_SIGNALEE_MS = 5 * 24 * 60 * 60 * 1000;
  * contestation : la tâche ne relit que ces paiements-là.
  */
 export function candidatALaListe(paiement: PaiementLu): boolean {
-  return lireSuivi(paiement.metadonnees).retractation !== null || paiement.litige;
+  return lireSuivi(paiement.metadonnees).retractation !== null || paiement.litige || heuresIllisibles(paiement.metadonnees).length > 0;
 }
 
-export function listeATraiter(paiements: PaiementLu[], maintenant: Date): ListeATraiter {
-  const liste = Object.fromEntries(RUBRIQUES.map((rubrique) => [rubrique, [] as PaiementLu[]])) as ListeATraiter;
+export function listeATraiter(
+  paiements: PaiementLu[],
+  maintenant: Date,
+  incompletude: Incompletude = { rechercheEchouee: false, relecturesEchouees: 0 },
+): ListeATraiter {
+  const liste = {
+    ...Object.fromEntries(RUBRIQUES.map((rubrique) => [rubrique, [] as PaiementLu[]])),
+    incompletude,
+  } as ListeATraiter;
   const tries = [...paiements].sort((a, b) =>
     (a.metadonnees[CLES.reference] ?? "").localeCompare(b.metadonnees[CLES.reference] ?? ""),
   );
@@ -75,7 +96,7 @@ export function listeATraiter(paiements: PaiementLu[], maintenant: Date): ListeA
       liste.simultanees.push(paiement);
     }
     if (suivi.retractation && !suivi.accuseRetractation) liste.accuse_manquant.push(paiement);
-    if (gagnante === "retractation" && !remboursementExistant(paiement)) liste.sans_remboursement.push(paiement);
+    if (gagnante === "retractation" && !rembourseEnTotalite(paiement) && !paiement.litige) liste.sans_remboursement.push(paiement);
     if (
       suivi.retractation &&
       etatDuRemboursement(paiement) === "demande" &&
@@ -84,8 +105,14 @@ export function listeATraiter(paiements: PaiementLu[], maintenant: Date): ListeA
       liste.remboursement_en_attente.push(paiement);
     }
     if (paiement.litige && !suivi.examinee) liste.contestations.push(paiement);
+    if (heuresIllisibles(paiement.metadonnees).length > 0) liste.heures_illisibles.push(paiement);
   }
   return liste;
+}
+
+/** La liste est-elle incomplète (recherche ou relecture en échec) ? */
+export function listeIncomplete(liste: ListeATraiter): boolean {
+  return liste.incompletude.rechercheEchouee || liste.incompletude.relecturesEchouees > 0;
 }
 
 export function tailleDeLaListe(liste: ListeATraiter): number {
@@ -112,14 +139,19 @@ function ligneDeCommande(paiement: PaiementLu): string {
   if (suivi.retractation || paiement.remboursements.length > 0) parties.push(marques.remboursement[etatDuRemboursement(paiement)]);
   if (paiement.litige) parties.push(marques.litige);
   marque(marques.examinee, suivi.examinee);
+  const illisibles = heuresIllisibles(paiement.metadonnees);
+  if (illisibles.length > 0) parties.push(remplir(marques.illisible, { cles: illisibles.join(", ") }));
   return `${paiement.metadonnees[CLES.reference] ?? ""} — ${parties.join(" ; ")}`;
 }
 
 /** L'e-mail de la liste. Il ne dépend que de la liste et du jour : deux passages le même jour, liste inchangée, écrivent le même. */
 export function courrielDeLaListe(liste: ListeATraiter, maintenant: Date): DocumentCourriel {
-  const blocs: BlocCourriel[] = [
-    { type: "paragraphe", morceaux: [remplir(A_TRAITER.intro, { date: dateAParis(maintenant) })] },
-  ];
+  const blocs: BlocCourriel[] = [];
+  if (liste.incompletude.rechercheEchouee) blocs.push({ type: "paragraphe", morceaux: [A_TRAITER.incompleteRecherche] });
+  else if (liste.incompletude.relecturesEchouees > 0) {
+    blocs.push({ type: "paragraphe", morceaux: [remplir(A_TRAITER.incomplete, { nombre: liste.incompletude.relecturesEchouees })] });
+  }
+  blocs.push({ type: "paragraphe", morceaux: [remplir(A_TRAITER.intro, { date: dateAParis(maintenant) })] });
   for (const rubrique of RUBRIQUES) {
     const commandes = liste[rubrique];
     if (commandes.length === 0) continue;

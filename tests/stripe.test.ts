@@ -349,7 +349,7 @@ describe("client Stripe réel", () => {
     const seconde = await client.paiementsAvecConfiguration(1787400000, "page_2");
     expect(seconde.pageSuivante).toBeNull();
     expect(vues[0]!.url.pathname).toBe("/v1/payment_intents/search");
-    expect(vues[0]!.url.searchParams.get("query")).toBe('metadata["config"]:"chiffree" AND created<1787400000');
+    expect(vues[0]!.url.searchParams.get("query")).toBe('metadata["config"]:"chiffree" AND created<1787400000 AND metadata["boutique"]:"mission-gateau"');
     expect(vues[0]!.url.searchParams.get("limit")).toBe("100");
     expect(vues[0]!.url.searchParams.getAll("expand[0]")).toEqual(["data.latest_charge.refunds"]);
     expect(vues[1]!.url.searchParams.get("page")).toBe("page_2");
@@ -370,7 +370,7 @@ describe("client Stripe réel", () => {
       pageSuivante: null,
     });
     expect(vues[0]!.url.pathname).toBe("/v1/charges/search");
-    expect(vues[0]!.url.searchParams.get("query")).toBe('metadata["config"]:"chiffree" AND created<1787400000');
+    expect(vues[0]!.url.searchParams.get("query")).toBe('metadata["config"]:"chiffree" AND created<1787400000 AND metadata["boutique"]:"mission-gateau"');
   });
 
   it("efface la copie d'un débit en lui envoyant des valeurs vides", async () => {
@@ -452,6 +452,6 @@ describe("client Stripe réel", () => {
 
   it("forme des requêtes de recherche sans surprise", () => {
     expect(requeteParReference(REFERENCE)).toBe(`metadata["ref"]:"${REFERENCE}" AND metadata["boutique"]:"mission-gateau"`);
-    expect(requeteConfigurationsAvant(1787400000.9)).toBe('metadata["config"]:"chiffree" AND created<1787400000');
+    expect(requeteConfigurationsAvant(1787400000.9)).toBe('metadata["config"]:"chiffree" AND created<1787400000 AND metadata["boutique"]:"mission-gateau"');
   });
 });

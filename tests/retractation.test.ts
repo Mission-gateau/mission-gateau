@@ -91,9 +91,18 @@ interface Reponse {
   envoi?: { etat: string; adresse?: string; saisie?: string; remplacee?: boolean };
   cause?: string;
   message?: string;
-  mailto?: string;
+  mailto?: string | null;
+  droitAPreserver?: boolean;
+  attente?: number;
   date?: string;
   heure?: string;
+}
+
+/** Le corps de l'e-mail que prépare le bouton « Envoyer ma déclaration par e-mail ». */
+function corpsDuMailto(reponse: Reponse): string {
+  const url = new URL(reponse.mailto!);
+  expect(url.protocol).toBe("mailto:");
+  return url.searchParams.get("body")!.replace(/[\u00a0\u202f]/g, " ");
 }
 
 async function renoncer(corps: Record<string, unknown>): Promise<{ statut: number; reponse: Reponse }> {
@@ -266,6 +275,37 @@ describe("rétractation valable", () => {
     const { reponse } = await renoncer(declaration(reference));
     expect(stripe.demandesDeRemboursement).toHaveLength(0);
     expect(texte(reponse.accuse!)).toContain("Statut : rétractation enregistrée — remboursement effectué");
+  });
+
+  it("remboursée en partie (5,00 €) hors rétractation : la route rembourse le reste sous sa clé ; « demandé », puis « effectué » une fois tout remboursé (lot 8, § 2)", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.rembourserHorsSite(paiement.id, "succeeded", 500);
+    stripe.statutDesNouveauxRemboursements = "pending";
+    const { reponse } = await renoncer(declaration(reference));
+    expect(stripe.demandesDeRemboursement.map(({ cle }) => cle)).toEqual([`retractation-${reference}`]);
+    const remboursements = stripe.paiements.get(paiement.id)!.remboursements;
+    expect(remboursements.map(({ statut, montant }) => [statut, montant])).toEqual([
+      ["succeeded", 500],
+      ["pending", 790],
+    ]);
+    // Le montant payé, et jamais « effectué » tant que le reste n'est pas réglé.
+    expect(texte(reponse.accuse!)).toContain("Statut : rétractation enregistrée — remboursement demandé");
+    expect(texte(reponse.accuse!)).toContain("12,90 €");
+    // Une fois le reste réglé, une nouvelle déclaration lit « effectué » ; la tâche n'en crée pas d'autre.
+    stripe.reglerRemboursement(remboursements[1]!.id, "succeeded");
+    horloge = new Date(RECUE_LE.getTime() + 3_600_000);
+    const autre = await renoncer(declaration(reference, { prenom: "Dominique" }));
+    expect(texte(autre.reponse.accuse!)).toContain("remboursement effectué");
+    await tacheQuotidienne(deps({ maintenant: () => new Date(RECUE_LE.getTime() + 86_400_000) }));
+    expect(stripe.demandesDeRemboursement).toHaveLength(1);
+  });
+
+  it("remboursée en partie, sans aucun autre remboursement possible : « à venir », jamais « effectué »", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.rembourserHorsSite(paiement.id, "succeeded", 500);
+    stripe.remboursementEnPanne = true;
+    const { reponse } = await renoncer(declaration(reference));
+    expect(texte(reponse.accuse!)).toContain("Statut : rétractation enregistrée — remboursement à venir");
   });
 
   it("litige en cours : aucun remboursement automatique, le vendeur répond sous 7 jours", async () => {
@@ -511,7 +551,10 @@ describe("les autres déclarations : trois accusés par e-mail au plus", () => {
     expect(reponse).toEqual({
       issue: "en_cours",
       message: "Votre déclaration est en cours de traitement : rechargez la page dans quelques instants.",
+      mailto: expect.stringMatching(/^mailto:/),
     });
+    // Le bouton d'e-mail porte cette déclaration-ci (lot 8, § 1.5).
+    expect(corpsDuMailto(reponse)).toContain("Prénom : Seconde");
     expect((await lente).reponse.envoi?.etat).toBe("envoye");
     expect(accuses()).toHaveLength(1);
     // L'accusé qui n'est pas parti laisse la référence au journal.
@@ -605,7 +648,7 @@ describe("déclaration non transmise : rien n'est enregistré ni envoyé", () =>
       expect(reponse.issue).toBe("non_transmise");
       expect(reponse.cause).toBe("indisponible");
       expect(reponse.message!.replace(/[\u00a0\u202f]/g, " ")).toBe(
-        "Nous ne pouvons pas vérifier votre commande pour le moment : votre déclaration n'a pas été transmise. Réessayez dans quelques minutes, ou envoyez-la dès maintenant par e-mail : une déclaration envoyée avant la fin du délai de rétractation préserve votre droit.",
+        "Nous ne pouvons pas vérifier votre commande pour le moment : votre déclaration n'a pas été transmise. Réessayez dans quelques minutes, ou envoyez-la dès maintenant par e-mail : une déclaration envoyée avant la fin du délai de rétractation préserve votre droit. Si vous avez déjà reçu un accusé de réception pour cette déclaration, il reste valable.",
       );
       sansTrace(avant);
       expect(lignesDuJournal()).toContainEqual({
@@ -650,7 +693,7 @@ describe("déclaration non transmise : rien n'est enregistré ni envoyé", () =>
 
 describe("commande retrouvée, puis Stripe échoue avant l'enregistrement : rien ne part", () => {
   const MESSAGE_DE_PANNE =
-    "Nous ne pouvons pas vérifier votre commande pour le moment : votre déclaration n'a pas été transmise. Réessayez dans quelques minutes, ou envoyez-la dès maintenant par e-mail : une déclaration envoyée avant la fin du délai de rétractation préserve votre droit.";
+    "Nous ne pouvons pas vérifier votre commande pour le moment : votre déclaration n'a pas été transmise. Réessayez dans quelques minutes, ou envoyez-la dès maintenant par e-mail : une déclaration envoyée avant la fin du délai de rétractation préserve votre droit. Si vous avez déjà reçu un accusé de réception pour cette déclaration, il reste valable.";
 
   it("26 déclarations différentes pendant que les écritures échouent : aucun e-mail, 26 réponses 503 avec le bouton d'e-mail", async () => {
     const { reference, paiement } = await commandeConfirmee();
@@ -754,7 +797,7 @@ describe("commande retrouvée, puis Stripe échoue avant l'enregistrement : rien
 describe("Resend répond 409", () => {
   const DEJA_PARTI = { de: "x", a: ["y@resend.dev"], copieCachee: [], repondreA: "x", objet: "Accusé de réception", texte: "x", html: "x", piecesJointes: [] };
 
-  it("sur l'accusé de la déclaration qui enregistre, relecture en échec : « en cours de traitement », et rien d'autre ne part", async () => {
+  it("sur l'accusé de la déclaration qui enregistre, relecture en échec : l'accusé recalculé, « incertain », avec le bouton d'e-mail ; rien d'autre ne part", async () => {
     const { reference } = await commandeConfirmee();
     // La clé de son accusé a déjà servi à un autre contenu.
     await emails.envoyer(DEJA_PARTI, `accuse-${reference}`);
@@ -763,13 +806,181 @@ describe("Resend répond 409", () => {
     };
     const avant = emails.appels.length;
     const { statut, reponse } = await renoncer(declaration(reference));
-    expect(statut).toBe(202);
-    expect(reponse.message!.replace(/[\u00a0\u202f]/g, " ")).toBe(
-      "Votre déclaration est en cours de traitement : rechargez la page dans quelques instants.",
-    );
+    expect(statut).toBe(200);
+    expect(reponse.issue).toBe("accuse");
+    expect(reponse.envoi).toEqual({ etat: "incertain" });
+    expect(texte(reponse.accuse!)).toContain("Statut : rétractation enregistrée");
+    expect(corpsDuMailto(reponse)).toContain("Déclaration faite le 26 septembre 2026 à 10 h 30 (heure de Paris).");
     // Un seul appel à Resend, sous la clé de l'accusé : aucune autre clé.
     expect(emails.appels.slice(avant).map(({ cle }) => cle)).toEqual([`accuse-${reference}`]);
-    expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "accuse_non_envoye", code: "en_cours", reference });
+    expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "accuse_non_envoye", code: "incertain", reference });
+  });
+});
+
+describe("un accusé qui ne part pas : jamais une réponse vide (lot 8, § 1)", () => {
+  const DEJA_PARTI = { de: "x", a: ["y@resend.dev"], copieCachee: [], repondreA: "x", objet: "Accusé de réception", texte: "x", html: "x", piecesJointes: [] };
+  const RECUE = "Déclaration faite le 26 septembre 2026 à 10 h 30 (heure de Paris).";
+
+  it("échec de Resend sur l'accusé de la déclaration qui enregistre : l'accusé, l'échec, le bouton d'e-mail à l'heure enregistrée", async () => {
+    const { reference } = await commandeConfirmee();
+    emails.panneAuProchainEnvoi = true;
+    const { reponse } = await renoncer(declaration(reference));
+    expect(reponse.issue).toBe("accuse");
+    expect(reponse.envoi).toEqual({ etat: "echec" });
+    expect(reponse.droitAPreserver).toBe(false);
+    expect(corpsDuMailto(reponse)).toContain(RECUE);
+    // « Réessayer » plus tard : la déclaration identique garde l'heure d'origine, dans l'accusé comme dans le bouton.
+    emails.panneAuProchainEnvoi = true;
+    horloge = new Date(RECUE_LE.getTime() + 10 * 60_000);
+    const reessai = await renoncer(declaration(reference));
+    expect(reessai.reponse.envoi).toEqual({ etat: "echec" });
+    expect(corpsDuMailto(reessai.reponse)).toContain(RECUE);
+    expect(accuses()).toHaveLength(0);
+  });
+
+  it("échec de Resend sur une autre déclaration : le bouton d'e-mail porte l'heure de réception de cette déclaration", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = "2026-09-25T14:05:00.000Z";
+    emails.panneAuProchainEnvoi = true;
+    const { reponse } = await renoncer(declaration(reference));
+    expect(reponse.envoi).toEqual({ etat: "echec" });
+    expect(reponse.droitAPreserver).toBe(false);
+    expect(corpsDuMailto(reponse)).toContain(RECUE);
+  });
+
+  describe("déclaration « arrivée en même temps », lue après l'écriture du premier téléchargement", () => {
+    /** Le premier téléchargement a commencé une minute après la réception de la déclaration, et il est déjà écrit quand elle est lue. */
+    async function simultanee() {
+      const reglee = await commandeConfirmee();
+      stripe.paiements.get(reglee.paiement.id)!.metadonnees[CLES.telechargement] = new Date(RECUE_LE.getTime() + 60_000).toISOString();
+      return reglee;
+    }
+
+    function preservee(reponse: Reponse, etat: string) {
+      expect(reponse.issue).toBe("accuse");
+      expect(reponse.envoi?.etat).toBe(etat);
+      expect(reponse.droitAPreserver).toBe(true);
+      expect(texte(reponse.accuse!)).toContain("Statut : déclaration arrivée en même temps que le premier téléchargement");
+      // L'heure d'origine : envoyée au vendeur, elle garde le droit que « Réessayer » éteindrait (heure nouvelle).
+      expect(corpsDuMailto(reponse)).toContain(RECUE);
+    }
+
+    it("échec de Resend : l'accusé, l'échec et le bouton d'e-mail à l'heure d'origine", async () => {
+      const { reference } = await simultanee();
+      emails.panneAuProchainEnvoi = true;
+      preservee((await renoncer(declaration(reference))).reponse, "echec");
+      expect(accuses()).toHaveLength(0);
+    });
+
+    it("plafond atteint : l'accusé sans envoi, le bouton d'e-mail, aucun e-mail", async () => {
+      const { reference, paiement } = await simultanee();
+      stripe.paiements.get(paiement.id)!.metadonnees[CLES.accuses] = "3";
+      const avant = emails.appels.length;
+      preservee((await renoncer(declaration(reference))).reponse, "plafond");
+      expect(emails.appels).toHaveLength(avant);
+    });
+
+    it("409 de Resend, même clé en cours : l'accusé sans envoi, jamais « en cours » sans recours", async () => {
+      const { reference } = await simultanee();
+      emails.delai = 40;
+      const lente = renoncer(declaration(reference, { prenom: "Premiere" }));
+      await new Promise((resoudre) => setTimeout(resoudre, 5));
+      preservee((await renoncer(declaration(reference))).reponse, "non_envoye");
+      expect((await lente).reponse.envoi?.etat).toBe("envoye");
+      expect(accuses()).toHaveLength(1);
+    });
+
+    it("409 de Resend, clé déjà servie, et compteur non écrit : l'accusé sans envoi, le bouton d'e-mail", async () => {
+      const { reference } = await simultanee();
+      await emails.envoyer(DEJA_PARTI, `accuse-${reference}-1`);
+      stripe.clesDIdempotenceEnCours.add(`accuses-${reference}-1`);
+      const avant = emails.envoyes.length;
+      preservee((await renoncer(declaration(reference))).reponse, "non_envoye");
+      expect(emails.envoyes).toHaveLength(avant);
+    });
+
+    it("l'accusé parti : aucune invitation de plus", async () => {
+      const { reference } = await simultanee();
+      const { reponse } = await renoncer(declaration(reference));
+      expect(reponse.envoi?.etat).toBe("envoye");
+      expect(reponse.droitAPreserver).toBe(false);
+      expect(reponse.mailto).toBeNull();
+    });
+  });
+
+  it("autre déclaration, compteur qui ne prend pas sûrement sa clé : l'accusé sans envoi, texte neutre, aucune décision de plus", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = "2026-09-25T14:05:00.000Z";
+    await emails.envoyer(DEJA_PARTI, `accuse-${reference}-1`);
+    stripe.pannesParCle.set(`accuses-${reference}-1`, "500");
+    stripe.clesDIdempotenceEnCours.add(`accuses-${reference}-1`);
+    const avant = { envoyes: emails.envoyes.length, ecritures: stripe.demandesDeModification.length };
+    const { statut, reponse } = await renoncer(declaration(reference));
+    expect(statut).toBe(200);
+    expect(reponse.envoi).toEqual({ etat: "non_envoye" });
+    expect(reponse.droitAPreserver).toBe(false);
+    expect(corpsDuMailto(reponse)).toContain(RECUE);
+    expect(emails.envoyes).toHaveLength(avant.envoyes);
+    // Une seule tentative d'écriture du compteur, celle du n° 1 : pas de n° 2.
+    expect(stripe.demandesDeModification.slice(avant.ecritures).map(({ cle }) => cle)).toEqual([`accuses-${reference}-1`]);
+    expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).accuses).toBe(0);
+    expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "accuse_non_envoye", code: "compteur_non_ecrit", reference });
+  });
+
+  for (const [nom, preparer] of [
+    ["le contenu de l'accusé a changé depuis un envoi en échec", async (reference: string) => {
+      emails.garderLesClesEnEchec = true;
+      emails.panneAuProchainEnvoi = true;
+      stripe.statutDesNouveauxRemboursements = "pending";
+      expect((await renoncer(declaration(reference))).reponse.envoi?.etat).toBe("echec");
+      // Le remboursement se règle : l'accusé recalculé n'est plus le même contenu pour Resend.
+      stripe.reglerRemboursement(stripe.remboursements[0]!.id, "succeeded");
+    }],
+    ["l'accusé est parti sans que retractation_accuse s'écrive", async (reference: string) => {
+      stripe.clesEnPanne.add(CLES.accuseRetractation);
+      stripe.statutDesNouveauxRemboursements = "pending";
+      expect((await renoncer(declaration(reference))).reponse.envoi?.etat).toBe("envoye");
+      stripe.clesEnPanne.delete(CLES.accuseRetractation);
+      stripe.reglerRemboursement(stripe.remboursements[0]!.id, "succeeded");
+    }],
+  ] as const) {
+    it(`déclaration identique, 409 sur accuse-<ref> (${nom}) : « incertain », jamais « échec », avec le bouton d'e-mail`, async () => {
+      const { reference } = await commandeConfirmee();
+      await preparer(reference);
+      const envoyes = emails.envoyes.length;
+      horloge = new Date(RECUE_LE.getTime() + 30 * 60_000);
+      const { statut, reponse } = await renoncer(declaration(reference));
+      expect(statut).toBe(200);
+      expect(reponse.issue).toBe("accuse");
+      expect(reponse.envoi).toEqual({ etat: "incertain" });
+      expect(texte(reponse.accuse!)).toContain("Statut : rétractation enregistrée — remboursement effectué");
+      expect(corpsDuMailto(reponse)).toContain(RECUE);
+      expect(emails.envoyes).toHaveLength(envoyes);
+    });
+  }
+
+  it("409 de Resend sur accuse-<ref>, même clé en cours : « en cours », avec le bouton d'e-mail", async () => {
+    const { reference } = await commandeConfirmee();
+    emails.delai = 40;
+    const lente = renoncer(declaration(reference));
+    await new Promise((resoudre) => setTimeout(resoudre, 5));
+    const { statut, reponse } = await renoncer(declaration(reference));
+    expect(statut).toBe(202);
+    expect(reponse.issue).toBe("en_cours");
+    expect(corpsDuMailto(reponse)).toContain(RECUE);
+    expect((await lente).reponse.envoi?.etat).toBe("envoye");
+    expect(accuses()).toHaveLength(1);
+  });
+
+  it("après une écriture impossible (cause ecriture_impossible), « Réessayer » attend 60 secondes ; pas après une autre panne", async () => {
+    const { reference } = await commandeConfirmee();
+    stripe.metadonneesEnPanne = true;
+    expect((await renoncer(declaration(reference))).reponse.attente).toBe(60);
+    stripe.metadonneesEnPanne = false;
+    stripe.enPanne = true;
+    expect((await renoncer(declaration(reference))).reponse.attente).toBe(0);
+    stripe.enPanne = false;
+    expect((await renoncer(declaration(INVENTEE))).reponse.attente).toBe(0);
   });
 });
 
@@ -781,23 +992,40 @@ describe("chaque e-mail de la route est compté, par commande", () => {
     return emails.envoyes.map(({ cle }) => cle).filter((cle) => cle.startsWith("accuse-"));
   }
 
-  it("12 déclarations simultanées sur une commande téléchargée, relectures en 429 : 3 accusés au plus", async () => {
-    const { reference, paiement } = await commandeConfirmee();
-    stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = TELECHARGEE_LE;
-    stripe.lirePaiement = async () => {
-      throw Object.assign(new Error("trop de requêtes"), { type: "StripeRateLimitError", code: "rate_limit", statusCode: 429 });
-    };
-    emails.delai = 15;
-    const prenoms = ["Ada", "Bea", "Cyr", "Dan", "Eve", "Flo", "Gus", "Hugo", "Iris", "Jade", "Kim", "Lou"];
-    const reponses = await Promise.all(prenoms.map((prenom) => renoncer(declaration(reference, { prenom }))));
-    expect(accuses().length).toBeLessThanOrEqual(3);
-    expect(new Set(clesDeLaRoute())).toEqual(new Set(clesDeLaRoute().filter((cle) => /-[123]$/.test(cle))));
-    // Aucune ne dit qu'un accusé est parti s'il n'est pas parti.
-    const partis = new Set(emails.envoyes.map(({ message }) => message.texte));
-    for (const { reponse } of reponses) {
-      if (reponse.envoi?.etat === "envoye") expect(partis.has(courrielEnTexte(reponse.accuse!))).toBe(true);
-    }
-  });
+  for (const premiereAcceptee of [false, true]) {
+    it(`12 déclarations simultanées sur une commande téléchargée, écritures du compteur en 429${premiereAcceptee ? " sauf la première" : ""} : 1 accusé parti, 11 accusés affichés avec le bouton d'e-mail`, async () => {
+      const { reference, paiement } = await commandeConfirmee();
+      stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = TELECHARGEE_LE;
+      // Le 429 frappe l'écriture `accuses-<ref>-n`, celle qui décide du numéro suivant.
+      const modifier = stripe.modifierMetadonnees.bind(stripe);
+      let ecrituresDuCompteur = 0;
+      stripe.modifierMetadonnees = async (id, metadonnees, cle) => {
+        if (cle?.startsWith(`accuses-${reference}-`)) {
+          ecrituresDuCompteur += 1;
+          if (!premiereAcceptee || ecrituresDuCompteur > 1) {
+            throw Object.assign(new Error("trop de requêtes"), { type: "StripeRateLimitError", code: "rate_limit", statusCode: 429 });
+          }
+        }
+        return modifier(id, metadonnees, cle);
+      };
+      const prenoms = ["Ada", "Bea", "Cyr", "Dan", "Eve", "Flo", "Gus", "Hugo", "Iris", "Jade", "Kim", "Lou"];
+      const reponses = (await Promise.all(prenoms.map((prenom) => renoncer(declaration(reference, { prenom }))))).map((r) => r.reponse);
+      expect(accuses()).toHaveLength(1);
+      expect(clesDeLaRoute()).toEqual([`accuse-${reference}-1`]);
+      const parties = reponses.filter((reponse) => reponse.envoi?.etat === "envoye");
+      expect(parties).toHaveLength(1);
+      expect(courrielEnTexte(parties[0]!.accuse!)).toBe(accuses()[0]!.message.texte);
+      const autres = reponses.filter((reponse) => reponse.envoi?.etat !== "envoye");
+      expect(autres).toHaveLength(11);
+      for (const reponse of autres) {
+        expect(reponse.issue).toBe("accuse");
+        expect(reponse.envoi).toEqual({ etat: "non_envoye" });
+        expect(reponse.accuse).toBeDefined();
+        expect(reponse.mailto).toMatch(/^mailto:/);
+      }
+      expect(lireSuivi(stripe.paiements.get(paiement.id)!.metadonnees).accuses).toBe(premiereAcceptee ? 1 : 0);
+    });
+  }
 
   it("une réponse 500 gardée par Stripe sous accuses-<ref>-1, puis 8 déclarations sur 4 heures : 2 accusés de plus au plus, puis le plafond", async () => {
     const { reference, paiement } = await commandeConfirmee();
@@ -1079,7 +1307,7 @@ describe("Stripe répond 409 : une autre requête de même clé est en cours (re
     );
   });
 
-  it("sur l'écriture du compteur après un 409 de Resend : « en cours », sans passer au numéro suivant ; le compteur ne recule pas", async () => {
+  it("sur l'écriture du compteur après un 409 de Resend : accusé affiché sans envoi, sans passer au numéro suivant ; le compteur ne recule pas", async () => {
     const { reference, paiement } = await commandeConfirmee();
     stripe.paiements.get(paiement.id)!.metadonnees[CLES.telechargement] = "2026-09-25T14:05:00.000Z";
     const cle = `accuses-${reference}-1`;
@@ -1101,8 +1329,11 @@ describe("Stripe répond 409 : une autre requête de même clé est en cours (re
     await d1Arrete;
     horloge = new Date(RECUE_LE.getTime() + 60_000);
     const d3 = await renoncer(declaration(reference, { prenom: "Dtrois" }));
-    expect(d3.statut).toBe(202);
-    expect(d3.reponse.issue).toBe("en_cours");
+    // Le compteur n'a pas sûrement pris sa clé : l'accusé s'affiche sans partir, avec le bouton d'e-mail (lot 8, § 1.3).
+    expect(d3.statut).toBe(200);
+    expect(d3.reponse.issue).toBe("accuse");
+    expect(d3.reponse.envoi?.etat).toBe("non_envoye");
+    expect(d3.reponse.mailto).toMatch(/^mailto:/);
     libererD1();
     expect((await d1).reponse.envoi?.etat).toBe("envoye");
     expect(emails.envoyes.filter(({ cle: c }) => c.startsWith("accuse-")).map(({ cle: c }) => c)).toEqual([`accuse-${reference}-1`]);
