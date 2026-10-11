@@ -8,7 +8,7 @@ d'enfants, la durée et les cachettes dont il dispose chez lui. Le site compose
 aussitôt un kit complet : guide de l'organisateur, invitations, cartes-indices
 à cacher, fiches d'énigmes, page du trésor, diplômes et page de solutions.
 
-Le dépôt en est au **lot 7**. Les lots 1 à 3 ont livré le moteur de jeu, le
+Le dépôt en est au **lot 8**. Les lots 1 à 3 ont livré le moteur de jeu, le
 kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs de
 deux audits. Le lot 4 a ajouté la vente du jeu complet à 12,90 € par Stripe, sa
 livraison et les pages légales. Le lot 5 a mis la vente en conformité avec le
@@ -24,11 +24,15 @@ lot 6 : chaque e-mail de « Renoncer au contrat ici » est compté, par commande
 même quand Stripe échoue ; l'état des remboursements se lit sur les
 remboursements eux-mêmes ; la boutique est vérifiée partout où une commande
 est retrouvée ; une clé réelle ne fonctionne qu'en production ; et une liste
-quotidienne des commandes à traiter part au vendeur. La vente reste fermée en
-production tant qu'il lui manque quelque chose — aujourd'hui, une clé Stripe
-réelle (voir « La vente »). Les pages de contenu viendront plus tard. Le site
-reste volontairement invisible des moteurs de recherche : `robots.txt`
-interdit tout, et chaque page porte une balise `noindex, nofollow`.
+quotidienne des commandes à traiter part au vendeur. Le lot 8 corrige l'audit
+du lot 7 (une déclaration dont l'accusé ne part pas n'est plus jamais laissée
+sans recours, remboursements partiels, contestations, effacement limité à la
+boutique, liste incomplète, heures illisibles), puis ouvre le site à Google :
+cinq guides, plan du site, masquage levé en production pour les pages
+publiques, mesure des visites (Vercel Web Analytics, sans cookie) et adresse
+`contact@missiongateau.com`. La vente reste fermée en production tant qu'il
+lui manque quelque chose — aujourd'hui, une clé Stripe réelle (voir « La
+vente »).
 
 ## Démarrer
 
@@ -80,6 +84,10 @@ src/contenu/    tous les textes, séparés du code
   vente.ts        bloc d'achat, page de commande, textes envoyés à Stripe
   emails.ts       confirmation, accusé de réception, liste des commandes à traiter
   retractation.ts la page « Renoncer au contrat »
+  guides/         les cinq guides, leurs exemples (moteur, graine fixe), la page /guides
+  referencement.ts titres, descriptions et date de modification des pages publiques
+src/site/       ce que voient les moteurs : noindex, robots.txt, plan du site, métadonnées
+src/proxy.ts    l'en-tête X-Robots-Tag de chaque requête, selon l'environnement
 src/vente/      la vente : ouverture, Stripe, Resend, chiffrement, livraison,
                 confirmation, rétractation, délai légal, tâche quotidienne
   garde.ts        le contrôle commun des routes POST (JSON, même origine)
@@ -88,7 +96,8 @@ src/vente/      la vente : ouverture, Stripe, Resend, chiffrement, livraison,
   remboursement.ts l'état réel d'un remboursement, lu sur les remboursements
   aTraiter.ts     la liste quotidienne des commandes à traiter, pour le vendeur
 src/pdf/        les documents imprimés (@react-pdf/renderer)
-src/app/        les pages du site et ses routes
+src/app/        les pages du site et ses routes (robots.txt et sitemap.xml compris)
+src/composants/ les composants React ; mesure.ts et MesureDAudience.tsx : Web Analytics
 tests/          vitest (un faux Stripe, tests/fauxStripe.ts, et un faux
                 Resend, tests/fauxEmail.ts ; tests/course.test.ts force tous
                 les ordres des appels de requêtes concurrentes, avec une
@@ -352,11 +361,17 @@ enregistré ni envoyé, et la réponse le dit :
   courrier (formulaire type en annexe des CGV, ou toute déclaration claire) ;
 - Stripe ne répond pas, limite le débit, ou échoue avant que la déclaration
   soit enregistrée (voir plus bas) : 503, « Nous ne pouvons pas vérifier
-  votre commande pour le moment… », avec un bouton qui ouvre la
-  messagerie de la personne (`mailto:` vers l'e-mail du vendeur, objet et
-  corps remplis avec nom, prénom, référence, e-mail, date et heure) : aucun
-  e-mail ne part du site, et elle garde sa propre preuve d'envoi. Le même
-  bouton est proposé quand la commande est introuvable.
+  votre commande pour le moment… Si vous avez déjà reçu un accusé de
+  réception pour cette déclaration, il reste valable. » (une déclaration déjà
+  enregistrée et accusée, renvoyée pendant une panne de lecture), avec un
+  bouton qui ouvre la messagerie de la personne (`mailto:` vers l'e-mail du
+  vendeur, objet et corps remplis avec nom, prénom, référence, e-mail, date et
+  heure) : aucun e-mail ne part du site, et elle garde sa propre preuve
+  d'envoi. Le même bouton est proposé quand la commande est introuvable.
+  Après une réponse de cause `ecriture_impossible`, « Réessayer » reste grisé
+  60 secondes, compte à rebours affiché (`attente` dans la réponse) : dix
+  tentatives pendant une même panne épuiseraient sinon les dix clés de la
+  marque pour 24 heures, pendant que le kit reste livrable.
 
 Dans ces deux cas, le journal note `declaration_non_transmise`, sa cause
 (`introuvable` ; `ecriture_impossible` : erreur 5xx de Stripe, ou toutes les
@@ -416,15 +431,24 @@ sur l'état de la page de la commande :
   réaffiche à l'identique même si le remboursement ou la course ont changé
   depuis ; un accusé envoyé à la main (`manuel`) est rappelé sans être
   réaffiché. Si Resend répond
-  409 sur `accuse-<ref>` et que la relecture du paiement échoue (ou ne montre
-  pas l'accusé enregistré) : « Votre déclaration est en cours de traitement :
-  rechargez la page dans quelques instants. », et rien d'autre ne part ;
+  409 sur `accuse-<ref>` et que la relecture du paiement ne montre pas
+  l'accusé enregistré (ou échoue) : 409 `concurrent_idempotent_requests` (même
+  clé en cours) → « Votre déclaration est en cours de traitement : rechargez
+  la page dans quelques instants. », avec le bouton d'e-mail ; 409
+  `invalid_idempotent_request` (le contenu de l'accusé a changé depuis un
+  envoi en échec, ou l'accusé est parti sans que `retractation_accuse`
+  s'écrive) → l'accusé recalculé, état « incertain » (« Cet accusé vous a
+  peut-être déjà été envoyé ; sinon, écrivez au vendeur à <e-mail du vendeur>
+  en reprenant ce texte. »), jamais « échec », avec le bouton d'e-mail. Rien
+  d'autre ne part ;
 - toute autre déclaration (rétractation déjà enregistrée par une déclaration
   différente, commande déjà téléchargée, délai expiré) est nouvelle, avec sa
   propre heure : elle reçoit l'accusé n° n, n = `accuses` + 1, sous la clé
   `accuse-<ref>-<n>`, dans la limite de **trois par commande** ; au-delà, la
-  page affiche l'accusé et dit qu'il n'est pas renvoyé par e-mail, avec
-  l'adresse du vendeur. Parti, `accuses` = n est écrit sous la clé
+  page affiche l'accusé et dit qu'il n'est pas renvoyé par e-mail (« trois
+  accusés ont déjà été envoyés ou tentés pour cette commande » : un numéro
+  peut être compté sans e-mail quand Resend garde la clé d'un échec), avec
+  l'adresse du vendeur et le bouton d'e-mail. Parti, `accuses` = n est écrit sous la clé
   d'idempotence `accuses-<ref>-<n>`, au mieux : son échec, ou une réponse
   rejouée, ne déclenche aucun e-mail et ne change pas la réponse. Si Resend
   répond que la clé du n° n a déjà servi pour une autre requête (409
@@ -433,12 +457,13 @@ sur l'état de la page de la commande :
   sûrement pris la clé de cette écriture (succès, réponse rejouée, ou réponse
   500, que Stripe garde sous la clé). Toute autre réponse (429, 409 d'une
   requête de même clé encore en cours, autre erreur 5xx, réseau coupé) ne le
-  garantit pas : la déclaration est alors « en cours de traitement », et rien
-  d'autre ne part. La valeur n est ainsi toujours écrite, ou sa clé prise,
+  garantit pas : la page affiche alors l'accusé sans envoi (comme au
+  plafond), avec le bouton d'e-mail et un texte neutre (« L'accusé de
+  réception n'a pas pu être envoyé par e-mail… »), et rien d'autre ne part. La valeur n est ainsi toujours écrite, ou sa clé prise,
   avant que n + 1 puisse l'être : une écriture en retard est rejouée sans
   effet, et le compteur ne recule pas. Si Resend répond que la clé est en cours (409
-  `concurrent_idempotent_requests`) : « en cours de traitement », rien
-  d'autre ne part. Jamais un second remboursement. L'accusé d'une
+  `concurrent_idempotent_requests`) : « en cours de traitement », avec le
+  bouton d'e-mail, rien d'autre ne part. Jamais un second remboursement. L'accusé d'une
   rétractation déjà enregistrée donne les deux heures ; celui d'une commande
   déjà téléchargée ne promet plus que le jeu reste disponible. Une
   déclaration reçue après la fin du délai, sans rétractation enregistrée,
@@ -447,10 +472,16 @@ sur l'état de la page de la commande :
   était expiré.
 
 Le remboursement se lit sur les remboursements eux-mêmes (`latest_charge.refunds`,
-développé à chaque lecture), jamais sur le drapeau `refunded` du débit :
-`succeeded` → effectué ; `pending` ou `requires_action` → demandé (au
+développé à chaque lecture), jamais sur le drapeau `refunded` du débit, et
+sur la couverture du montant payé : effectué quand les remboursements
+`succeeded` le couvrent ; demandé quand `succeeded` + `pending` +
+`requires_action` le couvrent sans que `succeeded` seul le couvre (au
 lancement, Stripe met en attente un remboursement demandé juste après le
-paiement : c'est un cas normal) ; aucun, `failed` ou `canceled` → à venir.
+paiement : c'est un cas normal) ; sinon à venir (aucun, `failed`,
+`canceled`, ou un remboursement partiel). Une rétractation qui l'emporte sur
+un paiement remboursé en partie (5,00 € depuis le tableau de bord, par
+exemple) rembourse le reste ; l'accusé et la page donnent le montant payé et
+ne disent « effectué » qu'une fois tout le montant remboursé.
 Les accusés et la page de la commande disent « remboursement demandé » ou
 « effectué » selon le cas (`src/vente/remboursement.ts`). Un paiement
 remboursé hors rétractation (depuis le tableau de bord de Stripe), dont les
@@ -465,6 +496,19 @@ réponse de l'API ne dit pas si l'adresse saisie est celle de l'acheteur. La
 page ne dit jamais qu'un accusé est parti quand il n'est pas parti. Un accusé
 qui n'a pas pu partir laisse dans le journal `accuse_non_envoye` et la
 référence extraite.
+
+**Un accusé qui ne part pas ne laisse jamais la page sans recours.** Quel que
+soit le cas (échec de Resend, plafond, 409 de Resend, compteur non écrit), la
+réponse porte l'accusé, l'état de l'envoi (`echec`, `plafond`, `non_envoye`,
+`incertain`) et le bouton d'e-mail (`mailto`), à l'heure de réception
+d'origine de cette déclaration (l'heure enregistrée pour la déclaration qui
+enregistre la rétractation), sans aucun e-mail au-delà du plafond. Une
+déclaration « arrivée en même temps » (suite `simultanee` : reçue avant le
+début du premier téléchargement, mais lue après son écriture), que rien ne
+garde chez Stripe, reçoit en plus `droitAPreserver` : la page lui dit de
+l'envoyer dès maintenant par e-mail au vendeur pour préserver son droit, et
+ne propose ni « Réessayer » ni « Renvoyer », qui la referaient à une heure
+nouvelle (« droit éteint »).
 
 ### Premier téléchargement et rétractation en même temps
 
@@ -518,7 +562,8 @@ hors de `accuse-<ref>` et `accuse-<ref>-1` à `-3`, et quatre au plus ; une
 requête qui répond « non transmise » n'a envoyé aucun e-mail (deux onglets
 d'une même déclaration restent deux requêtes : l'un peut répondre « non
 transmise » pendant que l'autre envoie l'accusé) ; un accusé réaffiché est
-toujours un e-mail réellement parti.
+toujours un e-mail réellement parti ; toute réponse sans e-mail parti porte le
+bouton d'e-mail (`mailto`).
 
 ### Une rétractation reçue par e-mail ou par courrier
 
@@ -534,9 +579,14 @@ paiement, prorogés comme le calcule `src/vente/delai.ts`), même lue après :
    téléchargement a eu lieu ce jour-là, traiter la commande comme « à
    examiner » (ci-dessous) ;
 3. écrire au paiement la métadonnée `retractation` avec la date **et
-   l'heure** complètes, au format ISO avec le fuseau (par exemple
-   `2026-10-02T09:15:00+02:00`, jamais une date seule, qui se lirait minuit
-   UTC) : la livraison s'arrête aussitôt. Si `telechargement` existe, écrire
+   l'heure** complètes, au format ISO 8601 avec le fuseau (par exemple
+   `2026-10-02T09:15:00+02:00`) : la livraison s'arrête aussitôt. Jamais une
+   date seule, qui se lirait minuit UTC, ni une date à la française :
+   JavaScript lit « 02/10/2026 09:15 » comme le 10 février, à l'heure du
+   serveur. Toute heure (`retractation`, `telechargement`, `examinee`) qui
+   n'est pas ISO 8601 complète est donc tenue pour illisible : elle ne compte
+   pas comme absente, le kit est refusé (« à examiner ») tant qu'elle reste,
+   rien n'est remboursé automatiquement, et la liste quotidienne la signale. Si `telechargement` existe, écrire
    aussi `course` = `retractation` ;
 4. rembourser, ou laisser la tâche quotidienne le faire à son prochain
    passage ;
@@ -570,8 +620,19 @@ e-mail au vendeur (l'e-mail de la fiche), depuis
 Gâteau ». La clé d'idempotence de Resend, `a-traiter-<AAAA-MM-JJ>-<empreinte>`
 (jour de Paris ; 16 caractères hexadécimaux du SHA-256 du contenu), fait
 qu'une liste inchangée ne repart pas, et qu'une liste modifiée au second
-passage du jour repart : deux e-mails par jour au plus, la tâche passant deux
-fois par jour. Rien ne part quand la liste est vide. Chaque commande y figure par sa référence, la date du
+passage du jour repart : deux e-mails par jour au plus, ce qui ne tient que
+par la planification (deux passages par jour) ; Vercel prévient qu'un
+déclenchement peut exceptionnellement être livré plus d'une fois (« Cron
+delivery can also occasionally invoke the same scheduled run more than
+once », https://vercel.com/docs/cron-jobs/manage-cron-jobs, mise à jour le
+11 août 2026) : la clé de Resend évite alors une seconde liste identique, mais
+une liste changée entre deux livraisons repartirait. Rien ne part quand la
+liste est vide et complète. Si la recherche des paiements ou la relecture
+d'une commande a échoué, la liste part quand même, avec en tête une ligne fixe
+« Liste incomplète : la recherche ou la relecture de <n> commande(s) a
+échoué ; elle sera refaite au prochain passage. » (ou « la recherche des
+commandes a échoué » quand c'est la recherche), sans donnée personnelle et
+comprise dans l'empreinte. Chaque commande y figure par sa référence, la date du
 paiement et ses marques, à l'heure de Paris — jamais un nom ni une adresse.
 Pour chaque rubrique :
 
@@ -587,15 +648,28 @@ Pour chaque rubrique :
   la copie cachée de l'accusé (il a pu partir sans que son identifiant soit
   enregistré) ; sinon, envoyer l'accusé à l'adresse de la commande. Puis
   écrire `retractation_accuse` = `manuel` ;
-- **rétractations sans remboursement demandé** (la rétractation l'a
-  emporté, et aucun remboursement `pending`, `requires_action` ni
-  `succeeded` après la phase des remboursements) : vérifier le paiement dans
-  Stripe et le rembourser, au plus tard 14 jours après la rétractation ;
+- **rétractations dont le montant payé n'est pas entièrement remboursé** (la
+  rétractation l'a emporté, et les remboursements faits ou demandés ne
+  couvrent pas le montant après la phase des remboursements ; jamais un
+  paiement contesté, que Stripe ne laisse rembourser que par la procédure de
+  contestation : « Vous ne pouvez pas effectuer de remboursement en dehors de
+  la procédure de litige tant que le litige est ouvert »,
+  https://docs.stripe.com/disputes/how-disputes-work ; la rubrique des
+  contestations le couvre) : vérifier le paiement dans Stripe et rembourser
+  ce qui reste, au plus tard 14 jours après la rétractation ;
 - **remboursements en attente depuis plus de 5 jours** (après l'heure de la
   rétractation ; le délai légal est de 14 jours) : vérifier le remboursement
   dans Stripe (solde disponible, action demandée) ;
 - **paiements contestés** : répondre à la contestation dans Stripe et au
-  client, puis écrire `examinee` (la commande quitte la rubrique).
+  client, puis écrire `examinee` (la commande quitte la rubrique). Une
+  contestation peut arriver jusqu'à 120 jours après le paiement (« dans les
+  120 jours suivant le paiement initial », en général, selon
+  https://docs.stripe.com/disputes/how-disputes-work) ; la liste ne voit que
+  les paiements des 45 derniers jours : au-delà, c'est l'e-mail de Stripe au
+  vendeur qui prévient ;
+- **heures illisibles** (`retractation`, `telechargement` ou `examinee`
+  présente mais hors ISO 8601 complet) : récrire la métadonnée au format
+  `2026-10-02T09:15:00+02:00`.
 
 Les journaux restent un complément : `declaration_non_transmise` (référence
 et heure d'une déclaration non transmise, avec sa cause), `accuse_non_envoye`
@@ -637,9 +711,18 @@ par son identifiant.
 Prestataire : Resend, par son SDK officiel (`resend`), derrière la petite
 interface de `src/vente/envoi.ts` (faux client dans les tests). Expéditeur
 « Mission Gâteau <commandes@missiongateau.com> », réponses vers l'e-mail de la
-fiche du vendeur (une messagerie Gmail, hébergée par Google), copie cachée de
-chaque confirmation et de chaque accusé de réception à ce même e-mail (preuve
-de l'envoi). Une version texte et une
+fiche du vendeur, `contact@missiongateau.com`, copie cachée de chaque
+confirmation et de chaque accusé de réception à ce même e-mail (preuve de
+l'envoi). Les messages adressés à `contact@` et à `commandes@` passent par
+ImprovMX (ImprovMX Incorporated, Dover, Delaware, États-Unis), qui les fait
+suivre vers deux messageries Gmail personnelles du vendeur ; ce qu'ImprovMX en
+garde, tel qu'il le déclare, est dans `/confidentialite` : jamais le contenu,
+un journal d'envoi (expéditeur, destinataire, objet, date) gardé 7 jours, une
+file d'attente purgée dès la remise sans durée maximale précisée, des serveurs
+dans l'Union européenne et aux États-Unis
+(https://improvmx.com/transparency/what-do-we-log et
+https://improvmx.com/transparency/privacy-policy, sans date, consultées le 11
+octobre 2026). Une version texte et une
 version HTML simple, rendues du même contenu ; aucune image ni ressource
 distante ; aucune donnée du jeu. **Le domaine `missiongateau.com` doit être
 vérifié dans Resend** : sans cela, Resend refuse l'expéditeur, la confirmation
@@ -662,23 +745,32 @@ aujourd'hui), elle écrit `{"tache":"quotidienne","sansCle":1}` et répond 200.
 Sinon, en quatre phases :
 
 1. `effacement` : la configuration chiffrée des paiements **et** des débits de
-   plus de 30 jours (comptés à partir du débit réussi), comme avant ;
+   plus de 30 jours (comptés à partir du débit réussi) de cette boutique : la
+   recherche exige `metadata["boutique"]:"mission-gateau"`, et chaque
+   paiement et débit est revérifié avant d'écrire (compteur `autresProduits`)
+   — un paiement d'un autre produit du même compte, même porteur de
+   `config=chiffree`, n'est jamais touché. Les paiements de test du lot 4,
+   s'il en reste sans `boutique`, ne sont plus effacés : aucune commande
+   réelle n'existe ;
 2. `confirmations` : la confirmation des commandes payées depuis plus d'une
    heure qui n'en ont pas, sauf celles rétractées, remboursées (remboursement
    fait ou demandé qui couvre le montant), en litige ou à examiner, sans
    jamais en envoyer deux ;
 3. `remboursements` : le remboursement des rétractations qui ont emporté la
-   course (voir plus haut), relues à jour, hors litige, **seulement s'il
-   n'existe aucun remboursement `pending`, `requires_action` ni
-   `succeeded`** ; un remboursement `failed` ou `canceled` est retenté, une
-   fois par jour (clé `retractation-<ref>-<jour>` ; Stripe ne rembourse jamais
-   au-delà du montant payé). Une rétractation battue par le premier
-   téléchargement, ou une commande à examiner, n'est jamais remboursée ici ;
+   course (voir plus haut), relues à jour, hors litige, **seulement si les
+   remboursements `pending`, `requires_action` et `succeeded` ne couvrent pas
+   le montant payé** (Stripe rembourse alors le reste) ; un remboursement
+   `failed` ou `canceled` est retenté, une fois par jour (clé
+   `retractation-<ref>-<jour>` ; Stripe ne rembourse jamais au-delà du
+   montant payé). Une rétractation battue par le premier téléchargement, une
+   commande à examiner ou une heure illisible n'est jamais remboursée ici.
+   Si la recherche des paiements a échoué, la ligne de journal compte une
+   erreur ;
 4. `a_traiter` : la liste des commandes à traiter, envoyée au vendeur s'il y
    en a au moins une (voir plus haut). Un 409 de Resend (liste déjà envoyée,
    ou envoi en cours) est compté, ce n'est pas une erreur.
 
-Les phases 2 à 4 ne voient que les paiements de cette boutique : la recherche
+Les quatre phases ne voient que les paiements de cette boutique : la recherche
 exige `boutique` = `mission-gateau`, et chaque paiement rendu est revérifié ;
 un paiement d'un autre produit du même compte Stripe n'est jamais touché.
 Elle examine les paiements aboutis des 45 derniers jours, au plus 2 000 par
@@ -690,6 +782,105 @@ ou déjà envoyée sous la même clé, sans second e-mail, Resend ne distinguant
 pas les deux ; `listeEnConflit`, 409) : un dépassement de durée ne fait pas perdre les
 compteurs des phases déjà faites. La réponse ne dit que `{ "ok": true }` ou
 `{ "ok": false }`.
+
+### Le site visible de Google
+
+Depuis le lot 8, la production montre ses pages publiques aux moteurs :
+l'accueil, `/creer`, `/guides` et chaque guide, `/mentions-legales`, `/cgv`,
+`/confidentialite` et `/credits` (`src/site/referencement.ts`). Tout le reste
+porte `noindex, nofollow`, en en-tête `X-Robots-Tag` (posé par
+`src/proxy.ts`, le « proxy » de Next 16, qui remplace le middleware) et en
+balise : `/commande/*`, `/renoncer`, `/api/*`, la page 404, et **tout** hors
+production (préversions, local), quel que soit le chemin. L'environnement
+(`VERCEL_ENV`) est lu à chaque requête, jamais au build.
+
+- `robots.txt` (`src/app/robots.txt/route.ts`) : en production, tout sauf
+  `/api/`, `/commande/` et `/renoncer`, et
+  `Sitemap: https://www.missiongateau.com/sitemap.xml` ; ailleurs,
+  `Disallow: /`.
+- `/sitemap.xml` : les pages publiques, en adresses absolues
+  `https://www.missiongateau.com`, avec la date de la dernière modification
+  de leur contenu, écrite avec lui (`src/contenu/referencement.ts`, et
+  `modifieLe` de chaque guide) — jamais la date du build : **à mettre à jour
+  quand on change le texte d'une page**. Hors production : 404.
+- Chaque page publique a son titre, sa description, une adresse canonique
+  absolue en `www`, des balises Open Graph (l'image est l'icône du gâteau,
+  servie par notre domaine) ; la langue est `fr`.
+- `/favicon.ico` sert l'icône du gâteau existante (`src/app/favicon.ico`, un
+  ICO qui contient tel quel le PNG de `src/app/icon.png`).
+- Aucun service de Google n'est appelé par le site ; la Search Console se
+  validera par un enregistrement DNS, hors de ce dépôt.
+
+### Les guides
+
+Cinq guides, sous `/guides/<adresse>`, listés par `/guides` et reliés depuis
+l'accueil et le pied de page : la chasse au trésor des 4-6 ans, la mission
+d'agents secrets des 7-9 ans, l'escape game des 10-12 ans, le déroulé de la
+fête, et les cachettes et énigmes selon l'âge. Leurs textes vivent dans
+`src/contenu/guides/` (un fichier par guide, `types.ts` pour leur forme) ;
+chacun montre un exemple produit par le vrai moteur avec une graine fixe et
+le prénom d'exemple Camille (`exemples.ts`), et renvoie vers `/creer` et son
+aperçu gratuit, avec le prix seulement si la vente est ouverte. Le guide des
+cachettes reprend mot pour mot les consignes de sécurité du guide de
+l'organisateur et du formulaire. `tests/guides.test.tsx` vérifie 900 à 1 500
+mots par guide, le lien vers `/creer`, l'exemple et l'absence de toute
+ressource externe ; le correcteur et la liste noire les relisent avec les
+autres textes.
+
+### Mesurer les visites
+
+Le critère d'abandon A1 compte les visites des 30 derniers jours, toutes
+provenances. La mesure retenue est **Vercel Web Analytics** (paquet
+`@vercel/analytics` 2.0.1, `src/composants/MesureDAudience.tsx`), rendue par
+la mise en page **en production seulement**, en `mode="production"` (le mode
+de débogage chargerait un script d'un autre domaine). Ce que dit la
+documentation de Vercel, consultée le 11 octobre 2026 :
+
+- **Ce qui est enregistré** (https://vercel.com/docs/analytics/privacy-policy,
+  mise à jour le 26 juin 2026) : à chaque page vue ou événement, l'heure,
+  l'adresse et sa route dynamique (`/commande/[ref]`), le référent, certains
+  paramètres de l'adresse, la géolocalisation (pays, région, ville), le
+  système et le navigateur avec leurs versions, le type d'appareil, la
+  version du script.
+- **Cookie et stockage** : Vercel dit mesurer « without using any
+  third-party cookies » ; sa page ne parle ni des cookies du site ni du
+  stockage du navigateur. Le script lui-même
+  (https://va.vercel-scripts.com/v1/script.js, relu) n'écrit dans le
+  `localStorage` (clé `__va_attribution`) que si le site appelle `identify`
+  ou `group`, et ne demande un cookie de session que sur `enableCookie` : ce
+  site n'appelle ni l'un ni l'autre. Rien n'est donc stocké dans le
+  navigateur, ce que la vérification de la production confirme (aucun
+  cookie). Si cela changeait, la règle du lot est de le retirer.
+- **Identification d'un visiteur** : une empreinte calculée à partir de la
+  requête, abandonnée au bout de 24 heures.
+- **Offres** (https://vercel.com/docs/analytics/limits-and-pricing, mise à
+  jour le 25 août 2026) : Hobby, 50 000 événements par mois, statistiques sur
+  1 mois, **pas d'événements personnalisés**, collecte arrêtée après la
+  limite (3 jours de grâce) ; Pro, événements à 0,03 $ les 1 000, sur le
+  crédit d'usage, statistiques sur 12 mois, événements personnalisés (2
+  propriétés) ; Vercel déclare pouvoir garder les données plus longtemps.
+  Événements personnalisés : « available on Enterprise and Pro plans »
+  (https://vercel.com/docs/analytics/custom-events, mise à jour le 26 juin
+  2026). Filtrer par paramètres `utm` n'est proposé qu'avec Web Analytics
+  Plus (https://vercel.com/docs/analytics/filtering).
+- **Script** : servi par notre domaine (`/_vercel/insights/script.js`, ou un
+  chemin propre au projet en version 2), données envoyées au même domaine.
+
+Ce qui part : `beforeSend` (`src/composants/mesure.ts`) réécrit chaque
+adresse — `/commande/<ref>` devient `/commande/[ref]`, `/renoncer` reste
+`/renoncer`, sans aucun paramètre ; ailleurs, seuls les paramètres `utm_*`
+restent. Aucune adresse e-mail, aucun identifiant de session Stripe, aucune
+référence ne part. Le compteur anonyme des aperçus envoie l'événement
+`apercu` avec l'âge et la durée choisis, jamais le prénom ni un détail de la
+fête ; avec l'offre Hobby, l'appel est fait et Vercel ne l'enregistre pas.
+
+**Web Analytics doit être activé dans le tableau de bord de Vercel** (onglet
+Analytics du projet), décision du vendeur : tant qu'il ne l'est pas, le script
+répond 404 et rien n'est mesuré.
+
+Provenance : les référents et les paramètres `utm_source` se lisent dans Web
+Analytics. Les liens que nous publierons porteront `?utm_source=pinterest`
+(Pinterest) et `?utm_source=instagram` (Instagram).
 
 ### Quand la vente est-elle ouverte ?
 
@@ -732,7 +923,9 @@ git :
 | `RESEND_API_KEY`    | clé Resend                 | clé Resend     |
 | `CRON_SECRET`       | secret de la tâche         | —              |
 
-Aucune autre variable n'est lue. Les adresses de retour de Stripe et les liens
+Aucune autre variable n'est lue par le code du site (le paquet de Vercel Web
+Analytics lit, au build, les variables `NEXT_PUBLIC_VERCEL_OBSERVABILITY_*`
+que Vercel pose lui-même). Les adresses de retour de Stripe et les liens
 des e-mails visent le déploiement qui crée la commande : en production,
 `VERCEL_PROJECT_PRODUCTION_URL` (le domaine de production que choisit Vercel :
 depuis que le domaine est branché, l'un de ceux de `missiongateau.com`,
@@ -820,10 +1013,16 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   d'une commande payée (l'acheteur, ou quelqu'un à qui il l'a donnée) peut
   donc faire partir au plus ces quatre accusés vers des adresses de son choix,
   au contenu fixe, sans lien ni texte libre. Ce plafond tient tant que Resend
-  se souvient de ses clés (24 heures). Ensuite, un numéro dont le compteur
-  `accuses` n'a pas pu être écrit (réponse de Stripe perdue) peut resservir
-  une fois, et une déclaration identique dont `retractation_accuse` n'a pas
-  pu être écrit renverrait un vrai second exemplaire de son accusé. La
+  se souvient de ses clés (24 heures). Ensuite, tant qu'une écriture qui
+  ferme une clé (`accuses` ≥ n, `retractation_accuse`) échoue durablement, la
+  clé resert une fois **par échec et par période de 24 heures**, pas une fois
+  par commande : mesuré, une écriture du compteur toujours en 500 laisse
+  partir 3 accusés numérotés par jour, et une déclaration identique dont
+  `retractation_accuse` ne s'écrit pas renverrait un vrai second exemplaire
+  de son accusé chaque jour. « Déjà accusée » reconstruit l'accusé avec la
+  fiche du vendeur et les textes actuels : après un changement de vendeur ou
+  de texte, ce n'est plus mot pour mot l'e-mail parti (la copie cachée du
+  vendeur, elle, l'est). La
   documentation de Resend ne dit pas si une requête en échec garde sa clé :
   si c'est le cas, un numéro peut être compté sans qu'aucun e-mail soit
   parti (l'accusé suivant prend alors le numéro d'après). Ces cas sont
@@ -836,7 +1035,8 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   numéro par un succès, une réponse rejouée ou un 500 (qu'il garde sous la
   clé) ; sur un 429, un 409 (une autre requête de même clé encore en cours),
   une autre erreur 5xx ou un réseau coupé, rien ne garantit que la clé est
-  prise, et la déclaration est « en cours de traitement ». C'est un écart au
+  prise, et la page affiche l'accusé sans envoi, avec le bouton d'e-mail
+  (lot 8 ; avant, « en cours de traitement »). C'est un écart au
   cahier du lot 7 (« sans décider sur la réponse ») : l'exploration des
   ordres, puis la relecture, ont montré qu'autrement le compteur pouvait
   reculer. Il repose sur une hypothèse : Stripe garde une réponse 500 sous sa
@@ -855,9 +1055,10 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   appliquées ; et, quand la réponse à l'écriture de `retractation` est perdue,
   une relecture par identifiant montre toutes les écritures déjà appliquées.
 - **Dix clés par marque** (`ESSAIS_DE_MARQUE`). Stripe garde une clé
-  d'idempotence 24 heures, échecs compris : il faudrait dix réponses 500
-  gardées sur une même commande pour bloquer l'écriture d'une marque pendant
-  24 heures. Clés épuisées, une déclaration reçoit la réponse de panne (503,
+  d'idempotence 24 heures, échecs compris : dix tentatives pendant une même
+  panne d'écriture suffiraient à bloquer l'écriture d'une marque pendant 24
+  heures ; c'est pourquoi « Réessayer » reste grisé 60 secondes après une
+  réponse de cause `ecriture_impossible`. Clés épuisées, une déclaration reçoit la réponse de panne (503,
   cause `ecriture_impossible`, bouton d'e-mail) et le premier téléchargement
   répond 503 ; aucune livraison ni aucun remboursement à tort.
 - **Une déclaration dite « non transmise » peut avoir été enregistrée** :
@@ -871,8 +1072,10 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
 - **Une déclaration « arrivée en même temps » qui n'a pas pu écrire sa
   marque** (elle a trouvé le premier téléchargement déjà écrit, alors
   qu'elle avait été reçue avant son début) ne laisse aucune trace chez
-  Stripe : le vendeur ne la connaît que par la copie cachée de son accusé,
-  pas par la liste quotidienne.
+  Stripe, ni dans la liste quotidienne. Le vendeur la connaît par la copie
+  cachée de son accusé **quand l'accusé part** ; quand il ne part pas (échec
+  de Resend, plafond, 409, compteur non écrit), seul l'e-mail que la page
+  invite à envoyer au vendeur, à l'heure d'origine, la garde.
 - **Le quota gratuit de Resend** : 100 destinataires par jour — chaque
   destinataire compte, copies cachées comprises (les e-mails reçus aussi) —,
   remis à zéro à minuit UTC (la page des erreurs de Resend parle, elle, de
@@ -889,9 +1092,10 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   seconde, et un compte dispose d'une allocation de lectures de 500 par
   transaction en moyenne sur 30 jours glissants, avec un minimum de 10 000 par
   mois (https://docs.stripe.com/rate-limits ; la documentation ne dit pas ce
-  qui arrive au-delà). Chaque visite d'une page de commande et chaque
-  déclaration en coûtent une à trois (une seule recherche pour une référence
-  inventée) : un afflux de requêtes peut épuiser l'allocation d'un mois de
+  qui arrive au-delà). Chaque visite d'une page de commande en coûte une à
+  trois, une déclaration jusqu'à 13 quand les clés de la marque sont épuisées
+  (la recherche, la session, une relecture par clé refusée, puis la relecture
+  qui suit l'échec), une seule recherche pour une référence inventée : un afflux de requêtes peut épuiser l'allocation d'un mois de
   lancement, quand les transactions sont encore rares. La règle de limitation
   de débit du pare-feu de Vercel (par adresse IP ; l'offre Hobby en permet
   une, en fenêtre fixe de 10 secondes à 10 minutes) est donc **à poser avant
@@ -908,13 +1112,22 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   passage suivant.
 - **Resend répond 409 sur `accuse-<ref>`, et `retractation_accuse` n'a pas pu
   être écrit** après l'envoi de l'accusé : une déclaration identique dont
-  l'accusé aurait changé (remboursement réglé depuis, par exemple) lit « en
-  cours de traitement » jusqu'à ce que Resend oublie la clé (24 heures) ; la
-  liste quotidienne montre la commande au vendeur.
+  l'accusé aurait changé (remboursement réglé depuis, par exemple) lit
+  l'accusé recalculé, « incertain », avec le bouton d'e-mail, jusqu'à ce que
+  Resend oublie la clé (24 heures) ; la liste quotidienne montre la commande
+  au vendeur.
 - Un remboursement **partiel** fait depuis le tableau de bord avant une
-  rétractation n'est pas complété automatiquement : l'accusé annonce le
-  remboursement de la totalité, et la tâche ne crée pas de second
-  remboursement tant que le premier existe ; c'est au vendeur de compléter.
+  rétractation est complété : la route (clé `retractation-<ref>`) puis, à
+  défaut, la tâche (clé du jour) demandent un remboursement sans montant, et
+  Stripe rembourse alors le reste : la documentation du paramètre `amount`
+  dit qu'un remboursement ne peut porter que sur « the remaining, unrefunded
+  amount of the charge » (https://docs.stripe.com/api/refunds/create) ; elle
+  ne dit pas en toutes lettres qu'une demande sans `amount` prend ce reste,
+  c'est ce que montre son exemple. L'état se lit sur la couverture du montant
+  payé (`src/vente/remboursement.ts`) : « effectué » quand les remboursements
+  `succeeded` le couvrent, « demandé » quand `succeeded` + `pending` +
+  `requires_action` le couvrent, sinon « à venir ». 5,00 € effectués et
+  7,90 € en attente, hors rétractation : « Remboursement demandé ».
 - Une course téléchargement / rétractation dont la route perdante n'a pas pu
   écrire `course` reste « à examiner » : c'est au vendeur de trancher, en
   écrivant `course` (`telechargement` ou `retractation`) dans le tableau de
@@ -937,6 +1150,10 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
 - La tâche quotidienne passe deux fois par jour, à l'heure près : une
   configuration peut survivre jusqu'à un demi-jour de plus que 30 jours (la
   livraison, elle, s'arrête à 30 jours pile).
+- Une heure écrite à la main hors ISO 8601 complet bloque la livraison et le
+  remboursement automatique de la tâche ; la fonction de rétractation, elle,
+  lit une telle marque comme absente (le protocole de la course ne change
+  pas dans ce lot).
 - Pas de webhook : le site ne sait d'une commande que ce qu'il demande à Stripe
   au moment où une page, un bouton ou la tâche l'interrogent.
 - Sans clé Stripe (ou en production sans clé réelle), une référence est
@@ -969,7 +1186,7 @@ heures de son suivi, chez Stripe, aussi longtemps que la facture (10 ans) ;
 l'e-mail, le nom, l'adresse de facturation et la facture, chez Stripe, au
 titre des obligations comptables (10 ans) ; les e-mails de confirmation et
 d'accusé de réception chez Resend (30 jours, selon Resend), et leur copie dans
-la messagerie du vendeur, hébergée par Google (Gmail, 5 ans). Une déclaration
+la messagerie du vendeur, transmise par ImprovMX (qui n'en garde pas le contenu) et hébergée par Google (Gmail, 5 ans). Une déclaration
 de rétractation n'est gardée que dans son accusé de réception et sa copie ;
 s'y ajoutent chez Stripe l'heure de la rétractation, l'empreinte de la
 déclaration qui l'a enregistrée et le nombre d'accusés envoyés. Une
@@ -980,9 +1197,12 @@ contenu chiffré : les routes de la vente ne journalisent que des noms
 d'événements, des compteurs et, quand le vendeur peut avoir à agir, la
 référence d'une commande ; les tests le vérifient.
 
-Le site ne pose aucun cookie, n'emploie aucun traceur, et ne charge aucune
-ressource depuis un autre domaine : polices et images sont servies par le site
-lui-même, et le paiement se fait sur la page hébergée par Stripe. Seul le
+Le site ne pose aucun cookie, n'emploie aucun traceur publicitaire, et ne
+charge aucune ressource depuis un autre domaine : polices et images sont
+servies par le site lui-même, le paiement se fait sur la page hébergée par
+Stripe, et la mesure d'audience (Vercel Web Analytics, en production
+seulement) passe par notre propre domaine, sans cookie (voir « Mesurer les
+visites »). Seul le
 `sessionStorage` de l'onglet sert, le temps du paiement. Les e-mails ne
 contiennent ni image ni ressource distante.
 

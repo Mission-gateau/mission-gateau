@@ -74,6 +74,8 @@ describe("toutes les routes", () => {
       "api/commande/route.ts",
       "api/effacement/route.ts",
       "api/renoncer/route.ts",
+      "robots.txt/route.ts",
+      "sitemap.xml/route.ts",
     ]);
   });
 

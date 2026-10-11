@@ -23,6 +23,9 @@ const routeur = vi.hoisted(() => ({
   },
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => routeur }));
+// La mesure d'audience : chaque appel de `track`, tel que le formulaire le fait.
+const mesure = vi.hoisted(() => ({ evenements: [] as unknown[][] }));
+vi.mock("@vercel/analytics", () => ({ track: (...args: unknown[]) => mesure.evenements.push(args) }));
 
 import { Confirmation } from "@/composants/Confirmation";
 import { Formulaire } from "@/composants/Formulaire";
@@ -143,6 +146,15 @@ function casesAcocher(): HTMLInputElement[] {
 }
 
 describe("de l'aperçu au paiement", () => {
+  it("l'aperçu affiché est compté une fois, avec l'âge et la durée, jamais le prénom ni un détail de la fête (lot 8, § 5)", async () => {
+    mesure.evenements = [];
+    await rendre(<Formulaire vente={OFFRE} />);
+    await composerUnApercu();
+    expect(texte()).toContain("Votre aperçu est prêt");
+    expect(mesure.evenements).toEqual([["apercu", { age: 8, duree: 45 }]]);
+    expect(JSON.stringify(mesure.evenements)).not.toContain("Zéphyrine");
+  });
+
   it("le bloc d'achat apparaît après l'aperçu et achète exactement sa configuration et sa graine", async () => {
     await rendre(<Formulaire vente={OFFRE} />);
     expect(texte()).not.toContain("Commander et payer");

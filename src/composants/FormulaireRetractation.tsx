@@ -344,7 +344,6 @@ function BoutonReessayer({ attente, envoi, renvoyer }: { attente: number; envoi:
   useEffect(() => {
     if (attente <= 0) return;
     const fin = Date.now() + attente * 1000;
-    setRestant(attente);
     const minuterie = setInterval(() => {
       const secondes = Math.max(0, Math.ceil((fin - Date.now()) / 1000));
       setRestant(secondes);

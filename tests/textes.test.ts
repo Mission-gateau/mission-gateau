@@ -160,6 +160,8 @@ describe("gabarits", () => {
       "secondes",
       // Liste quotidienne : les métadonnées dont l'heure est illisible.
       "cles",
+      // Guides : la légende et le déroulé de l'exemple produit par le moteur.
+      "graine", "debut", "duree", "decalage",
     ]);
     const inconnues = new Set<string>();
     for (const { texte } of textesDeProse()) {

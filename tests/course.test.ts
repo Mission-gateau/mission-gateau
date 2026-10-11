@@ -768,8 +768,10 @@ describe("la règle, écrite une fois", () => {
     expect(marqueGagnante({ ...deux, course: "telechargement" })).toBe("telechargement");
     expect(marqueGagnante({ ...deux, course: "retractation" })).toBe("retractation");
     expect(marqueGagnante({ ...deux, course: "n'importe quoi" })).toBe("a_examiner");
-    // Une marque illisible compte comme absente.
-    expect(marqueGagnante({ telechargement: "pas une date", retractation: "2026-09-26" })).toBe("retractation");
+    // Pour la course, une marque illisible compte comme absente ; une date seule n'est plus lisible (lot 8). La livraison,
+    // elle, refuse le kit tant qu'une marque est présente et illisible (tests/livraison.test.ts).
+    expect(marqueGagnante({ telechargement: "pas une date", retractation: "2026-09-26T08:30:00+02:00" })).toBe("retractation");
+    expect(marqueGagnante({ telechargement: "pas une date", retractation: "2026-09-26" })).toBeNull();
   });
 
   it("chaque route décide sur le paiement renvoyé par sa propre écriture, pas sur les heures", () => {

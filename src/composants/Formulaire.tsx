@@ -24,6 +24,7 @@ import { FORMULAIRE } from "@/contenu/formulaire";
 import { LISTE_THEMES } from "@/contenu/themes";
 import { ACHAT } from "@/contenu/vente";
 import { BlocAchat, type OffreEnVente } from "./BlocAchat";
+import { compterLApercu } from "./mesure";
 import { CarteChoix, ChampTexte, GroupeChamps, Resume } from "./champs";
 import {
   abonnerSauvegarde,
@@ -261,6 +262,8 @@ export function Formulaire({ vente = null }: { vente?: OffreEnVente | null }) {
       if (resultat?.url) URL.revokeObjectURL(resultat.url);
       // Le bloc d'achat achètera exactement cette configuration et cette graine.
       setResultatLocal({ url: obtenu.url, graine: obtenu.graine, configuration: analyse.data as Configuration });
+      // Le compteur anonyme des aperçus : l'âge et la durée, jamais le prénom ni un détail de la fête.
+      compterLApercu(analyse.data.age, analyse.data.duree);
     } catch {
       setErreurs([FORMULAIRE.erreurReseau]);
     } finally {

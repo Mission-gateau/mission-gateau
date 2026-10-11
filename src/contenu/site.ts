@@ -92,6 +92,14 @@ export const SITE = typographier({
   lienCgv: "Conditions générales de vente",
   lienConfidentialite: "Confidentialité",
   lienCredits: "Crédits et licences",
+  lienGuides: "Guides pour organiser la fête",
+  navigationGuides: "Guides",
+
+  /** Sur l'accueil : les guides, utiles même sans acheter. */
+  titreGuides: "Nos guides pour organiser la fête",
+  texteGuides:
+    "Chasse au trésor, mission, escape game, déroulé de l'après-midi, cachettes et énigmes selon l'âge : de quoi organiser le jeu chez vous, avec ou sans kit.",
+  tousLesGuides: "Tous les guides",
   /** Libellé imposé de la fonction de rétractation (article D221-5 du Code de la consommation). */
   lienRenoncer: "Renoncer au contrat ici",
   navigationLegale: "Informations légales",
