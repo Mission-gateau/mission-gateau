@@ -9,6 +9,7 @@ import { ACHAT, REPONSES_COMMANDE } from "../contenu/vente";
 import { etatDeLaCommande, etatDuPaiement } from "./commande";
 import { envoyerLaConfirmation, type IssueConfirmation } from "./confirmation";
 import { ecrireLaMarque, issueDeLEcriture, type EcritureDeMarque } from "./course";
+import { heureIllisible } from "./examen";
 import { schemaDeclaration } from "./declaration";
 import type { Dependances } from "./dependances";
 import { adresseDuSite } from "./environnement";
@@ -243,6 +244,8 @@ export async function livrerKit(requete: Request, reference: string, deps: Depen
     }
     // Un autre onglet écrit le premier téléchargement en ce moment : réessayer.
     if (ecriture.issue === "en_cours") return erreur(REPONSES_COMMANDE.enregistrementImpossible, 503);
+    // Une heure illisible apparue entre la lecture et l'écriture : à examiner, sans `course` ni PDF (src/vente/examen.ts).
+    if (heureIllisible(ecriture.apres.metadonnees)) return refus("a_examiner");
     if (ecriture.issue === "ecrite" && issueDeLEcriture("telechargement", ecriture.apres.metadonnees) === "perd") {
       // Une rétractation a été écrite avant : elle l'emporte, aucun PDF ne part.
       try {

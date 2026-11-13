@@ -208,20 +208,43 @@ export interface Suivi {
  * lirait minuit UTC, et JavaScript lit de travers une date écrite à la
  * française (« 02/10/2026 09:15 » devient le 10 février, à l'heure du
  * serveur) : tout ce qui n'est pas ISO 8601 complet est donc illisible.
+ *
+ * Le motif ne suffit pas : JavaScript lit `2026-02-30T09:15:00Z` comme le
+ * 2 mars, et `T24:00` comme minuit le lendemain. Une heure n'est lisible que
+ * si la date obtenue, relue dans le fuseau écrit, redonne exactement l'année,
+ * le mois, le jour, l'heure et les minutes écrits (et les secondes, quand
+ * elles le sont) : une date ou une heure qui n'existe pas est illisible.
  */
-const MOTIF_HEURE_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+const MOTIF_HEURE_ISO =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
 function lireHeure(valeur: string | undefined): Date | null {
-  if (!valeur || !MOTIF_HEURE_ISO.test(valeur.trim())) return null;
-  const heure = new Date(valeur.trim());
-  return Number.isNaN(heure.getTime()) ? null : heure;
+  const ecrite = valeur?.trim() ?? "";
+  const morceaux = MOTIF_HEURE_ISO.exec(ecrite);
+  if (!morceaux) return null;
+  const heure = new Date(ecrite);
+  if (Number.isNaN(heure.getTime())) return null;
+  const [, annee, mois, jour, heures, minutes, secondes, signe, decalageHeures, decalageMinutes] = morceaux;
+  // Décalage du fuseau écrit, en minutes (0 pour « Z ») ; relu, il doit lui aussi exister.
+  if (signe && (Number(decalageHeures) > 23 || Number(decalageMinutes) > 59)) return null;
+  const decalage = signe ? (signe === "-" ? -1 : 1) * (Number(decalageHeures) * 60 + Number(decalageMinutes)) : 0;
+  const relue = new Date(heure.getTime() + decalage * 60_000);
+  const identique =
+    relue.getUTCFullYear() === Number(annee) &&
+    relue.getUTCMonth() + 1 === Number(mois) &&
+    relue.getUTCDate() === Number(jour) &&
+    relue.getUTCHours() === Number(heures) &&
+    relue.getUTCMinutes() === Number(minutes) &&
+    (secondes === undefined || relue.getUTCSeconds() === Number(secondes));
+  return identique ? heure : null;
 }
 
 /** Les marques dont l'heure peut être écrite à la main, et doit donc être relue avec soin. */
 export const MARQUES_HORODATEES = [CLES.retractation, CLES.telechargement, CLES.examinee] as const;
 
 /**
- * Les marques présentes mais illisibles (heure hors ISO 8601 complet). Une
+ * Les marques présentes mais illisibles (heure hors ISO 8601 complet, ou date
+ * qui n'existe pas). Une
  * telle marque ne compte pas comme absente : tant qu'il en reste une, le kit
  * n'est pas livré (« à examiner »), aucun remboursement automatique n'est
  * fait, et la liste quotidienne la signale (rubrique `heures_illisibles`).

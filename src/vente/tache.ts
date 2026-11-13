@@ -4,13 +4,13 @@ import { candidatALaListe, cleDeLaListe, courrielDeLaListe, listeATraiter, liste
 import { etatDuPaiement } from "./commande";
 import { envoyerLaConfirmation } from "./confirmation";
 import { courrielEnHtml, courrielEnTexte } from "./courriels";
-import { marqueGagnante } from "./course";
+import { marqueRetenue } from "./examen";
 import type { Dependances } from "./dependances";
 import { bilanVide, effacerLesConfigurationsAnciennes, toutesLesPages, type BilanEffacement } from "./effacement";
 import { adresseDEnvoi } from "./envoi";
 import type { Environnement } from "./environnement";
 import { journal } from "./journal";
-import { BOUTIQUE, CLES, estUneCommande, heuresIllisibles, lireSuivi } from "./metadonnees";
+import { BOUTIQUE, CLES, estUneCommande, lireSuivi } from "./metadonnees";
 import { rembourseEnTotalite } from "./remboursement";
 import { cleDeRemboursement, rembourserSansPanne } from "./retractation";
 import type { ClientStripe, PaiementLu } from "./stripe";
@@ -238,7 +238,7 @@ async function confirmerLesOubliees(
         bilan.confirmationsDejaFaites += 1;
         continue;
       }
-      if (rembourseEnTotalite(paiement) || paiement.litige || marqueGagnante(paiement.metadonnees) !== null) {
+      if (rembourseEnTotalite(paiement) || paiement.litige || marqueRetenue(paiement.metadonnees) !== null) {
         bilan.confirmationsExclues += 1;
         continue;
       }
@@ -308,7 +308,7 @@ async function rembourserLesRetractations(
         continue;
       }
       if (rembourseEnTotalite(frais) || frais.litige) continue;
-      if (marqueGagnante(frais.metadonnees) !== "retractation" || heuresIllisibles(frais.metadonnees).length > 0) {
+      if (marqueRetenue(frais.metadonnees) !== "retractation") {
         bilan.remboursementsExclus += 1;
         continue;
       }

@@ -277,8 +277,8 @@ export type Remboursement = "effectue" | "demande" | "a_venir" | "litige";
  *   téléchargement, a perdu la course contre lui (voir src/vente/course.ts) ;
  * - `expiree` : le délai a pris fin le `dernierJour` ;
  * - `manuelle` : premier téléchargement et rétractation se sont croisés sans
- *   que la course soit écrite (commande « à examiner ») : le vendeur examine
- *   la commande et répond sous 7 jours.
+ *   que la course soit écrite, ou une heure est illisible (commande « à
+ *   examiner ») : le vendeur examine la commande et répond sous 7 jours.
  */
 export type SuiteDonnee =
   | {

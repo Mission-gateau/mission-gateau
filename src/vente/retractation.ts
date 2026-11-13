@@ -18,7 +18,6 @@ import {
   ecrireLaMarque,
   issueDUneRetractationBattue,
   issueDeLEcriture,
-  marqueGagnante,
   type EcritureDeMarque,
 } from "./course";
 import { dateAParis, heureAParis } from "./dates";
@@ -26,6 +25,7 @@ import type { Declaration } from "./declaration";
 import { delaiExpire, dernierJourDuDelai } from "./delai";
 import type { Dependances } from "./dependances";
 import { adresseDEnvoi, sansDoublon } from "./envoi";
+import { heureIllisible, marqueRetenue } from "./examen";
 import { codesErreur, journal } from "./journal";
 import { CLES, estUneCommande, lireSuivi } from "./metadonnees";
 import { etatApresUnRemboursement, etatDuRemboursement, remboursementEchoue, type EtatDuRemboursement } from "./remboursement";
@@ -59,6 +59,12 @@ import { limiteDeDebit, type ClientStripe, type PaiementLu } from "./stripe";
  *   déclaration différente, commande déjà téléchargée, délai expiré) reçoit
  *   l'accusé n° n, n = `accuses` + 1 ; au-delà de trois, l'accusé s'affiche
  *   sans partir.
+ *
+ * Une heure illisible sur le paiement retrouvé (src/vente/examen.ts), à la
+ * lecture initiale comme à toute relecture qui décide : la commande est « à
+ * examiner ». Rien n'est écrit (ni `retractation`, ni `course`), rien n'est
+ * remboursé, et la déclaration reçoit, comme une autre déclaration, l'accusé
+ * n° n qui annonce l'examen par le vendeur, dans le même plafond.
  *
  * Premier téléchargement et rétractation qui se croisent : voir
  * src/vente/course.ts. Les journaux ne portent jamais ni nom ni adresse ;
@@ -291,11 +297,22 @@ async function paiementDeLaDeclaration(
 
 /** Une déclaration jugée sur le paiement tel qu'il vient d'être lu. */
 function jugerLaDeclaration(c: Contexte, paiement: PaiementLu): Promise<ReponseRetractation> {
+  if (heureIllisible(paiement.metadonnees)) return aExaminer(c, paiement);
   const suivi = lireSuivi(paiement.metadonnees);
   if (suivi.retractation && suivi.empreinteRetractation === c.empreinte) return accuserLaRetractation(c, paiement);
   const retractable =
     !suivi.retractation && !suivi.telechargement && !delaiExpire(new Date(paiement.payeLe * 1000), c.recueLe);
   return retractable ? enregistrerLaRetractation(c, paiement) : accuserUneAutreDeclaration(c, paiement);
+}
+
+/**
+ * Une heure illisible : la commande est « à examiner ». Rien n'est écrit ni
+ * remboursé ; la déclaration reçoit l'accusé qui annonce l'examen par le
+ * vendeur (suite `manuelle`), dans le plafond des autres déclarations.
+ */
+function aExaminer(c: Contexte, paiement: PaiementLu): Promise<ReponseRetractation> {
+  journal({ route: "retractation", evenement: "heure_illisible", reference: c.reference });
+  return accuserUneAutreDeclaration(c, paiement);
 }
 
 function nonTransmise(cause: CauseDuJournal, declaration: Declaration, recueLe: Date, fiche: FicheVendeur): ReponseRetractation {
@@ -348,6 +365,8 @@ async function enregistrerLaRetractation(c: Contexte, paiement: PaiementLu): Pro
   if (ecriture.issue === "deja_ecrite") return jugerLaDeclaration(c, ecriture.apres);
 
   let apres = ecriture.apres;
+  // Une heure illisible apparue entre la lecture et l'écriture : ni `course`, ni remboursement.
+  if (heureIllisible(apres.metadonnees)) return aExaminer(c, apres);
   if (issueDeLEcriture("retractation", apres.metadonnees) === "perd") {
     // Le premier téléchargement a été écrit avant : il l'emporte, sans remboursement.
     try {
@@ -379,6 +398,7 @@ async function apresUnEchecDEcriture(c: Contexte, paiement: PaiementLu, erreur: 
     frais = null;
   }
   if (frais) {
+    if (heureIllisible(frais.metadonnees)) return aExaminer(c, frais);
     const suivi = lireSuivi(frais.metadonnees);
     if (suivi.retractation && suivi.empreinteRetractation === c.empreinte) {
       journal({ route: "retractation", evenement: "enregistree_malgre_l_echec", reference: c.reference });
@@ -407,13 +427,13 @@ function causeDeLEchec(erreur: unknown): CauseDuJournal {
  * le paiement : la marque qui l'emporte décide (voir src/vente/course.ts).
  */
 async function suiteDeLaRetractation(c: Contexte, paiement: PaiementLu, retracteeLe: Date): Promise<SuiteDonnee> {
-  switch (marqueGagnante(paiement.metadonnees)) {
+  switch (marqueRetenue(paiement.metadonnees)) {
     case "retractation":
       return suiteDuRemboursement(c, paiement);
     case "telechargement":
       return suiteDUneRetractationBattue(retracteeLe, lireSuivi(paiement.metadonnees).telechargement!);
     default:
-      // Les deux marques, sans `course` : le vendeur examine la commande.
+      // Les deux marques sans `course`, ou une heure illisible : le vendeur examine la commande.
       return { type: "manuelle" };
   }
 }
@@ -468,7 +488,7 @@ export async function rembourserSansPanne(deps: Dependances, paiement: PaiementL
 function suiteDUneAutreDeclaration(paiement: PaiementLu, recueLe: Date): SuiteDonnee {
   const suivi = lireSuivi(paiement.metadonnees);
   const payeLe = new Date(paiement.payeLe * 1000);
-  switch (marqueGagnante(paiement.metadonnees)) {
+  switch (marqueRetenue(paiement.metadonnees)) {
     case "retractation":
       return {
         type: "deja_retractee",

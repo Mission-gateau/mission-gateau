@@ -79,6 +79,8 @@ export function FormulaireRetractation({
   const [envoi, setEnvoi] = useState(false);
   const [probleme, setProbleme] = useState<string | null>(null);
   const [reponse, setReponse] = useState<Reponse | null>(null);
+  // Chaque réponse reçue a son numéro : deux réponses à la même heure affichée restent deux réponses.
+  const [numeroDeReponse, setNumeroDeReponse] = useState(0);
 
   const titre = useRef<HTMLHeadingElement | null>(null);
   const etapePrecedente = useRef<Etape>(etape);
@@ -141,6 +143,7 @@ export function FormulaireRetractation({
         return;
       }
       setReponse(corps);
+      setNumeroDeReponse((numero) => numero + 1);
       setEtape("resultat");
     } catch {
       setProbleme(remplir(RETRACTATION.erreurs.reseau, vendeur));
@@ -168,6 +171,7 @@ export function FormulaireRetractation({
       <div className="mt-8">
         <Resultat
           reponse={reponse}
+          numero={numeroDeReponse}
           vendeur={vendeur}
           envoi={envoi}
           probleme={probleme}
@@ -337,7 +341,10 @@ function BoutonEmail({ mailto }: { mailto: string }) {
 /**
  * « Réessayer », grisé pendant `attente` secondes, compte à rebours affiché :
  * après une écriture impossible chez Stripe, dix clics pendant une même panne
- * épuiseraient pour 24 heures les dix clés de la marque.
+ * épuiseraient pour 24 heures les dix clés de la marque. Le bouton est monté à
+ * neuf pour chaque réponse (clé : son numéro) : le compte à rebours part de
+ * l'attente de cette réponse dès le premier rendu, même quand la précédente,
+ * à la même heure affichée, n'en demandait aucune.
  */
 function BoutonReessayer({ attente, envoi, renvoyer }: { attente: number; envoi: boolean; renvoyer: () => void }) {
   const [restant, setRestant] = useState(attente);
@@ -361,6 +368,7 @@ function BoutonReessayer({ attente, envoi, renvoyer }: { attente: number; envoi:
 /** Ce que la page dit une fois la déclaration envoyée : elle ne dit jamais qu'un accusé est parti quand il n'est pas parti. */
 function Resultat({
   reponse,
+  numero,
   vendeur,
   envoi,
   probleme,
@@ -369,6 +377,8 @@ function Resultat({
   corriger,
 }: {
   reponse: Reponse;
+  /** Le numéro de cette réponse : un de plus à chaque réponse reçue. */
+  numero: number;
   vendeur: { email: string; adresse: string };
   envoi: boolean;
   /** L'échec du dernier nouvel envoi, s'il y en a un. */
@@ -400,7 +410,7 @@ function Resultat({
                 {nonTransmise.corriger}
               </button>
             ) : (
-              <BoutonReessayer key={reponse.date + reponse.heure} attente={reponse.attente ?? 0} envoi={envoi} renvoyer={renvoyer} />
+              <BoutonReessayer key={numero} attente={reponse.attente ?? 0} envoi={envoi} renvoyer={renvoyer} />
             )}
           </p>
           <ProblemeDEnvoi probleme={probleme} />

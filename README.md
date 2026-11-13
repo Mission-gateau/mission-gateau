@@ -8,7 +8,7 @@ d'enfants, la durée et les cachettes dont il dispose chez lui. Le site compose
 aussitôt un kit complet : guide de l'organisateur, invitations, cartes-indices
 à cacher, fiches d'énigmes, page du trésor, diplômes et page de solutions.
 
-Le dépôt en est au **lot 8**. Les lots 1 à 3 ont livré le moteur de jeu, le
+Le dépôt en est au **lot 9**. Les lots 1 à 3 ont livré le moteur de jeu, le
 kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs de
 deux audits. Le lot 4 a ajouté la vente du jeu complet à 12,90 € par Stripe, sa
 livraison et les pages légales. Le lot 5 a mis la vente en conformité avec le
@@ -30,7 +30,11 @@ sans recours, remboursements partiels, contestations, effacement limité à la
 boutique, liste incomplète, heures illisibles), puis ouvre le site à Google :
 cinq guides, plan du site, masquage levé en production pour les pages
 publiques, mesure des visites (Vercel Web Analytics, sans cookie) et adresse
-`contact@missiongateau.com`. La vente reste fermée en production tant qu'il
+`contact@missiongateau.com`. Le lot 9 corrige l'audit du lot 8 : la fonction
+de rétractation tient compte des heures illisibles comme le reste du site,
+une date qui n'existe pas (`2026-02-30T09:15:00Z`) est illisible, et
+« Réessayer » est grisé dès l'affichage d'une réponse qui demande d'attendre.
+La vente reste fermée en production tant qu'il
 lui manque quelque chose — aujourd'hui, une clé Stripe réelle (voir « La
 vente »).
 
@@ -93,6 +97,7 @@ src/vente/      la vente : ouverture, Stripe, Resend, chiffrement, livraison,
   garde.ts        le contrôle commun des routes POST (JSON, même origine)
   declaration.ts  les entrées de la rétractation, vérifiées ici et dans le navigateur
   course.ts       premier téléchargement contre rétractation : qui l'emporte
+  examen.ts       une heure illisible rend la commande « à examiner » : la règle, écrite une fois
   remboursement.ts l'état réel d'un remboursement, lu sur les remboursements
   aTraiter.ts     la liste quotidienne des commandes à traiter, pour le vendeur
 src/pdf/        les documents imprimés (@react-pdf/renderer)
@@ -369,7 +374,10 @@ enregistré ni envoyé, et la réponse le dit :
   heure) : aucun e-mail ne part du site, et elle garde sa propre preuve
   d'envoi. Le même bouton est proposé quand la commande est introuvable.
   Après une réponse de cause `ecriture_impossible`, « Réessayer » reste grisé
-  60 secondes, compte à rebours affiché (`attente` dans la réponse) : dix
+  60 secondes, compte à rebours affiché (`attente` dans la réponse), dès le
+  premier rendu de cette réponse — même quand la précédente, à la même heure
+  affichée, ne demandait aucune attente (le bouton est monté à neuf pour
+  chaque réponse) : dix
   tentatives pendant une même panne épuiseraient sinon les dix clés de la
   marque pour 24 heures, pendant que le kit reste livrable.
 
@@ -389,6 +397,17 @@ l'enregistrement.
 
 **La commande retrouvée**, elle est jugée **sur le paiement lui-même**, jamais
 sur l'état de la page de la commande :
+
+- une heure illisible (voir « Heures écrites à la main ») sur le paiement
+  retrouvé, à la lecture initiale comme à toute relecture qui décide (la
+  réponse à l'écriture de `retractation`, la relecture qui suit son refus ou
+  son échec) : la commande est « à examiner ». Rien n'est écrit — ni
+  `retractation`, ni son empreinte, ni `course` —, rien n'est remboursé, et la
+  marque du vendeur reste intacte. La déclaration est traitée comme une autre
+  déclaration : l'accusé n° n, qui annonce l'examen par le vendeur (réponse
+  sous 7 jours), sous `accuse-<ref>-<n>`, dans le plafond ci-dessous, puis
+  l'accusé affiché sans envoi avec le bouton d'e-mail. Le journal note
+  `heure_illisible` et la référence ;
 
 - rétractation possible (ni rétractation, ni téléchargement, délai en cours) :
   `retractation` (l'heure de réception) et `retractation_empreinte` (les 16
@@ -583,11 +602,8 @@ paiement, prorogés comme le calcule `src/vente/delai.ts`), même lue après :
    `2026-10-02T09:15:00+02:00`) : la livraison s'arrête aussitôt. Jamais une
    date seule, qui se lirait minuit UTC, ni une date à la française :
    JavaScript lit « 02/10/2026 09:15 » comme le 10 février, à l'heure du
-   serveur. Toute heure (`retractation`, `telechargement`, `examinee`) qui
-   n'est pas ISO 8601 complète est donc tenue pour illisible : elle ne compte
-   pas comme absente, le kit est refusé (« à examiner ») tant qu'elle reste,
-   rien n'est remboursé automatiquement, et la liste quotidienne la signale. Si `telechargement` existe, écrire
-   aussi `course` = `retractation` ;
+   serveur (voir « Heures écrites à la main »). Si `telechargement` existe,
+   écrire aussi `course` = `retractation` ;
 4. rembourser, ou laisser la tâche quotidienne le faire à son prochain
    passage ;
 5. envoyer au client, par e-mail, un accusé de réception qui reprend sa
@@ -606,6 +622,33 @@ livraison s'arrête, et la tâche quotidienne rembourse (ou rembourser
 soi-même). Sinon, écrire `course` = `telechargement` : la livraison reprend,
 sans remboursement. Dans les deux cas, répondre au client sous 7 jours, puis
 écrire `examinee` avec la date et l'heure de la réponse.
+
+### Heures écrites à la main
+
+`retractation`, `telechargement` et `examinee` peuvent être écrites à la main
+dans le tableau de bord de Stripe. Une telle heure n'est **lisible** que si :
+
+- elle suit l'ISO 8601 complet, avec le fuseau : `2026-10-02T09:15:00+02:00`,
+  `2026-10-02T09:15+02:00` ou `2026-10-02T07:15:00Z` (secondes et
+  fractions facultatives) ;
+- et sa date et son heure existent : relue dans le fuseau écrit, la date
+  obtenue redonne exactement l'année, le mois, le jour, l'heure et les
+  minutes écrits (et les secondes, quand elles le sont). JavaScript lit
+  `2026-02-30T09:15:00Z` comme le 2 mars et `T24:00` comme minuit le
+  lendemain : ces heures, comme `2026-02-29` (2026 n'est pas bissextile),
+  `2026-13-01` ou `T24:30`, sont illisibles. Une heure écrite par le code
+  (`toISOString()`) est toujours lisible.
+
+Une heure présente mais illisible **ne compte jamais comme absente**. Une
+seule règle, écrite dans `src/vente/examen.ts` et suivie par la page de la
+commande, la route du kit, la tâche quotidienne et la fonction de
+rétractation : tant qu'il en reste une, la commande est « à examiner » — le
+kit n'est pas livré, la confirmation n'est pas envoyée par la tâche, aucun
+remboursement automatique n'est fait, la fonction de rétractation n'écrit ni
+`retractation` ni `course` et répond par l'accusé qui annonce l'examen par le
+vendeur, et la liste quotidienne la signale (rubrique « heures
+illisibles »). Récrite au bon format, l'heure redevient lisible et la règle
+ordinaire reprend.
 
 ### La liste quotidienne des commandes à traiter
 
@@ -668,8 +711,10 @@ Pour chaque rubrique :
   les paiements des 45 derniers jours : au-delà, c'est l'e-mail de Stripe au
   vendeur qui prévient ;
 - **heures illisibles** (`retractation`, `telechargement` ou `examinee`
-  présente mais hors ISO 8601 complet) : récrire la métadonnée au format
-  `2026-10-02T09:15:00+02:00`.
+  présente mais hors ISO 8601 complet, ou à une date qui n'existe pas) :
+  récrire la métadonnée au format `2026-10-02T09:15:00+02:00`, puis
+  répondre sous 7 jours au client qui aurait reçu l'accusé « examen par le
+  vendeur ».
 
 Les journaux restent un complément : `declaration_non_transmise` (référence
 et heure d'une déclaration non transmise, avec sa cause), `accuse_non_envoye`
@@ -754,8 +799,8 @@ Sinon, en quatre phases :
    réelle n'existe ;
 2. `confirmations` : la confirmation des commandes payées depuis plus d'une
    heure qui n'en ont pas, sauf celles rétractées, remboursées (remboursement
-   fait ou demandé qui couvre le montant), en litige ou à examiner, sans
-   jamais en envoyer deux ;
+   fait ou demandé qui couvre le montant), en litige ou à examiner (une
+   heure illisible comprise), sans jamais en envoyer deux ;
 3. `remboursements` : le remboursement des rétractations qui ont emporté la
    course (voir plus haut), relues à jour, hors litige, **seulement si les
    remboursements `pending`, `requires_action` et `succeeded` ne couvrent pas
@@ -1150,10 +1195,23 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
 - La tâche quotidienne passe deux fois par jour, à l'heure près : une
   configuration peut survivre jusqu'à un demi-jour de plus que 30 jours (la
   livraison, elle, s'arrête à 30 jours pile).
-- Une heure écrite à la main hors ISO 8601 complet bloque la livraison et le
-  remboursement automatique de la tâche ; la fonction de rétractation, elle,
-  lit une telle marque comme absente (le protocole de la course ne change
-  pas dans ce lot).
+- Une heure écrite à la main illisible (hors ISO 8601 complet, ou date qui
+  n'existe pas) rend la commande « à examiner » partout : livraison,
+  confirmation par la tâche, remboursement automatique et fonction de
+  rétractation (lot 9 ; au lot 8, cette dernière la lisait comme absente).
+  La règle (`src/vente/examen.ts`) passe avant le protocole de la course,
+  qui ne change pas. Si l'heure illisible apparaît entre la lecture du
+  paiement et l'écriture de `retractation` (le vendeur écrit dans le tableau
+  de bord au même instant), la marque de la déclaration est déjà écrite :
+  ni `course` ni remboursement ne suivent, et l'accusé numéroté annonce
+  l'examen ; `retractation_accuse` n'étant pas écrit, la commande figure
+  aussi dans la rubrique des accusés non partis. Une déclaration identique
+  (« Réessayer ») sur une commande à l'heure illisible reçoit un nouvel
+  accusé numéroté, dans le plafond, et non « déjà enregistrée ». Une
+  déclaration reçue pendant qu'une heure est illisible n'est gardée chez
+  Stripe que par le compteur `accuses` : le vendeur la connaît par la copie
+  cachée de son accusé, ou, au-delà du plafond, par l'e-mail que la page
+  invite à lui envoyer.
 - Pas de webhook : le site ne sait d'une commande que ce qu'il demande à Stripe
   au moment où une page, un bouton ou la tâche l'interrogent.
 - Sans clé Stripe (ou en production sans clé réelle), une référence est

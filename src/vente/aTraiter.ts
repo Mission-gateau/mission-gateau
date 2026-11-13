@@ -3,6 +3,7 @@ import { remplir } from "../engine/texte";
 import { A_TRAITER } from "../contenu/emails";
 import { courrielEnTexte, type BlocCourriel, type DocumentCourriel } from "./courriels";
 import { marqueGagnante } from "./course";
+import { marqueRetenue } from "./examen";
 import { dateAParis, heureAParis } from "./dates";
 import { jourAParis, jourIso } from "./delai";
 import { CLES, heuresIllisibles, lireSuivi } from "./metadonnees";
@@ -21,7 +22,8 @@ import type { PaiementLu } from "./stripe";
  *   avant le premier téléchargement — leur accusé promet une réponse du
  *   vendeur sous 7 jours ;
  * - `accuse_manquant` : `retractation` sans `retractation_accuse` ;
- * - `sans_remboursement` : la rétractation l'a emporté, et les
+ * - `sans_remboursement` : la rétractation l'a emporté (aucune heure
+ *   illisible, voir src/vente/examen.ts), et les
  *   remboursements faits ou demandés ne couvrent pas le montant payé — sauf
  *   un paiement contesté, que Stripe ne laisse rembourser que par la
  *   procédure de contestation (la rubrique `contestations` le couvre) ;
@@ -96,7 +98,7 @@ export function listeATraiter(
       liste.simultanees.push(paiement);
     }
     if (suivi.retractation && !suivi.accuseRetractation) liste.accuse_manquant.push(paiement);
-    if (gagnante === "retractation" && !rembourseEnTotalite(paiement) && !paiement.litige) liste.sans_remboursement.push(paiement);
+    if (marqueRetenue(paiement.metadonnees) === "retractation" && !rembourseEnTotalite(paiement) && !paiement.litige) liste.sans_remboursement.push(paiement);
     if (
       suivi.retractation &&
       etatDuRemboursement(paiement) === "demande" &&

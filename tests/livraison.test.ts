@@ -451,6 +451,8 @@ describe("route du kit", () => {
     [CLES.retractation, "02/10/2026 09:15"],
     [CLES.telechargement, "2026-10-02"],
     [CLES.examinee, "le 2 octobre"],
+    [CLES.telechargement, "2026-02-30T09:15:00Z"],
+    [CLES.retractation, "2026-02-29T10:00:00Z"],
   ] as const) {
     it(`une heure illisible (${cle} = « ${valeur} ») ne compte pas comme absente : le kit est refusé, « à examiner » (lot 8, § 2)`, async () => {
       const { reference, paiement } = await commandeConfirmee();

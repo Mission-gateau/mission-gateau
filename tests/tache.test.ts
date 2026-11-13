@@ -142,6 +142,17 @@ describe("confirmations manquantes", () => {
     expect(emails.appels.filter(({ cle }) => cle.startsWith("confirmation-"))).toHaveLength(0);
   });
 
+  it("exclut une commande dont une heure est illisible, même une date impossible : elle est « à examiner » (lot 9, § 1)", async () => {
+    const francaise = await payee(2 * HEURE);
+    stripe.paiements.get(francaise.paiement.id)!.metadonnees[CLES.retractation] = "25/09/2026 09:15";
+    const impossible = await payee(2 * HEURE);
+    stripe.paiements.get(impossible.paiement.id)!.metadonnees[CLES.examinee] = "2026-02-30T09:15:00Z";
+    const { phases } = await lancer();
+    expect(phases.confirmations).toMatchObject({ confirmationsEnvoyees: 0, confirmationsExclues: 2 });
+    expect(confirmationsA()).toBe(0);
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+  });
+
   it("relit chaque paiement avant d'envoyer : la recherche de Stripe peut être en retard", async () => {
     const oubliee = await payee(3 * HEURE);
     // La recherche rend un paiement sans marque, mais il a été confirmé entre-temps.
