@@ -2,9 +2,9 @@ import { graineValide } from "../engine/alea";
 import { schemaConfiguration } from "../engine/configuration";
 import { VERSION_KIT } from "../engine/kit";
 import type { Configuration } from "../engine/types";
-import { marqueGagnante } from "./course";
+import { marqueRetenue } from "./examen";
 import { delaiExpire, dernierJourDuDelai, finDuDelai, type Jour } from "./delai";
-import { CLES, estUneCommande, heuresIllisibles, lireCommande, lireConfiguration, lireSuivi, type Commande, type Suivi } from "./metadonnees";
+import { CLES, estUneCommande, lireCommande, lireConfiguration, lireSuivi, type Commande, type Suivi } from "./metadonnees";
 import { referenceValide, sessionValide } from "./reference";
 import { etatDuRemboursement, rembourseEnTotalite, type EtatDuRemboursement } from "./remboursement";
 import type { ClientStripe, PaiementLu, SessionLue } from "./stripe";
@@ -128,10 +128,9 @@ export function etatDuPaiement(
   session: SessionLue | null = null,
 ): EtatCommande {
   if (paiement.statut !== "succeeded") return { etat: "non_aboutie" };
-  // Une heure illisible (écrite à la main hors ISO 8601 complet) ne compte pas comme absente : à examiner.
-  if (heuresIllisibles(paiement.metadonnees).length > 0) return { etat: "a_examiner" };
+  // Une heure illisible ne compte pas comme absente : à examiner (src/vente/examen.ts).
+  const gagnante = marqueRetenue(paiement.metadonnees);
   const suivi = lireSuivi(paiement.metadonnees);
-  const gagnante = marqueGagnante(paiement.metadonnees);
   if (gagnante === "a_examiner") return { etat: "a_examiner" };
   if (gagnante === "retractation" && suivi.retractation) {
     return {

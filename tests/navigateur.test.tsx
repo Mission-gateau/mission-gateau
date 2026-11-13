@@ -732,6 +732,45 @@ describe("formulaire de rétractation", () => {
       }
     });
 
+    it("503 sans attente, puis 503 « écriture impossible » à la même heure affichée : grisé dès le premier rendu (lot 9, § 3)", async () => {
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+      try {
+        const NON_TRANSMISE = { issue: "non_transmise", cause: "indisponible", date: "26 septembre 2026", heure: "10 h 30", mailto: MAILTO };
+        const reponses = [{ ...NON_TRANSMISE, attente: 0 }, { ...NON_TRANSMISE, attente: 60 }];
+        await envoyerUneDeclaration(() => Response.json(reponses.shift(), { status: 503 }));
+        const reessayer = () => [...conteneur.querySelectorAll("button")].find((b) => espaces(b.textContent ?? "").startsWith("Réessayer"))!;
+        expect(reessayer().disabled).toBe(false);
+        await cliquer(reessayer());
+        expect(appels).toHaveLength(2);
+        // Aucun tic de la minuterie : c'est le premier rendu de la seconde réponse.
+        expect(espaces(reessayer().textContent ?? "")).toBe("Réessayer dans 60 s");
+        expect(reessayer().disabled).toBe(true);
+        await cliquer(reessayer());
+        expect(appels).toHaveLength(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("deux réponses « écriture impossible » à la même heure affichée : le compte à rebours repart de 60 s", async () => {
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+      try {
+        const reponse = { issue: "non_transmise", cause: "indisponible", date: "26 septembre 2026", heure: "10 h 30", mailto: MAILTO, attente: 60 };
+        await envoyerUneDeclaration(() => Response.json(reponse, { status: 503 }));
+        const reessayer = () => [...conteneur.querySelectorAll("button")].find((b) => espaces(b.textContent ?? "").startsWith("Réessayer"))!;
+        await act(async () => {
+          vi.advanceTimersByTime(60_000);
+        });
+        expect(reessayer().disabled).toBe(false);
+        await cliquer(reessayer());
+        expect(appels).toHaveLength(2);
+        expect(espaces(reessayer().textContent ?? "")).toBe("Réessayer dans 60 s");
+        expect(reessayer().disabled).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("sans attente demandée (autre panne), « Réessayer » est aussitôt utilisable", async () => {
       await envoyerUneDeclaration(() =>
         Response.json({ issue: "non_transmise", cause: "indisponible", date: "26 septembre 2026", heure: "10 h 30", mailto: MAILTO, attente: 0 }, { status: 503 }),

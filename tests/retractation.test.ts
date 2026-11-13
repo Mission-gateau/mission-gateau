@@ -1385,6 +1385,145 @@ describe("commande « à examiner »", () => {
   });
 });
 
+describe("une heure illisible : la commande est « à examiner », rien n'est écrit ni remboursé (lot 9, § 1)", () => {
+  const STATUT_EXAMEN = "Statut : déclaration traitée à la main par le vendeur, qui vous répond sous 7 jours";
+
+  /** Les écritures de la route : seulement le compteur des accusés, jamais `retractation`, son empreinte ni `course`. */
+  function ecrituresInterdites(idPaiement: string) {
+    return stripe.demandesDeModification.filter(
+      ({ id, metadonnees }) =>
+        id === idPaiement &&
+        [CLES.retractation, CLES.empreinteRetractation, CLES.course, CLES.accuseRetractation, CLES.telechargement].some((cle) => cle in metadonnees),
+    );
+  }
+
+  /** L'accusé annonce l'examen par le vendeur, sous la clé numérotée attendue. */
+  function accuseDExamen(reponse: Reponse, reference: string, numero: number) {
+    expect(reponse.issue).toBe("accuse");
+    expect(reponse.envoi?.etat).toBe("envoye");
+    expect(texte(reponse.accuse!)).toContain(STATUT_EXAMEN);
+    expect(texte(reponse.accuse!)).toContain("le vendeur la traite à la main et vous répond sous 7 jours au plus");
+    expect(emails.appels.at(-1)!.cle).toBe(`accuse-${reference}-${numero}`);
+  }
+
+  it("reproduction de l'audit : kit téléchargé, puis telechargement réécrit en date seule — aucun remboursement, aucune écriture, accusé « examen »", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    expect((await telecharger(reference)).status).toBe(200);
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    meta[CLES.telechargement] = "2026-09-24";
+    const ecrituresAvant = stripe.demandesDeModification.length;
+    const { statut, reponse } = await renoncer(declaration(reference));
+    expect(statut).toBe(200);
+    accuseDExamen(reponse, reference, 1);
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    expect(ecrituresInterdites(paiement.id).slice(ecrituresAvant)).toEqual([]);
+    expect(meta[CLES.retractation]).toBeUndefined();
+    expect(meta[CLES.course]).toBeUndefined();
+    expect(meta[CLES.telechargement]).toBe("2026-09-24");
+    expect(lignesDuJournal()).toContainEqual({ route: "retractation", evenement: "heure_illisible", reference });
+    // La tâche quotidienne ne rembourse pas davantage, et la liste signale l'heure illisible.
+    await tacheQuotidienne(deps({ maintenant: () => new Date(RECUE_LE.getTime() + 86_400_000) }));
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    const liste = emails.envoyes.find(({ message }) => message.objet.startsWith("Commandes à traiter"));
+    expect(liste?.message.texte.replace(/[\u00a0\u202f]/g, " ")).toContain("heure illisible dans telechargement");
+  });
+
+  it("reproduction de l'audit : retractation écrite à la main à la française — la marque du vendeur reste intacte, aucun remboursement", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    meta[CLES.retractation] = "25/09/2026 09:15";
+    const { statut, reponse } = await renoncer(declaration(reference));
+    expect(statut).toBe(200);
+    accuseDExamen(reponse, reference, 1);
+    expect(meta[CLES.retractation]).toBe("25/09/2026 09:15");
+    expect(meta[CLES.empreinteRetractation]).toBeUndefined();
+    expect(meta[CLES.course]).toBeUndefined();
+    expect(ecrituresInterdites(paiement.id)).toEqual([]);
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    // Le kit reste refusé, « à examiner ».
+    expect((await telecharger(reference)).status).toBe(409);
+  });
+
+  for (const cle of [CLES.retractation, CLES.telechargement, CLES.examinee]) {
+    for (const valeur of ["2026-09-25", "25/09/2026 09:15", "2026-02-30T09:15:00Z"]) {
+      it(`${cle} = « ${valeur} » : accusé « examen », ni écriture ni remboursement`, async () => {
+        const { reference, paiement } = await commandeConfirmee();
+        const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+        meta[cle] = valeur;
+        const avant = { ...meta };
+        const { statut, reponse } = await renoncer(declaration(reference));
+        expect(statut).toBe(200);
+        accuseDExamen(reponse, reference, 1);
+        expect(stripe.demandesDeRemboursement).toHaveLength(0);
+        expect(ecrituresInterdites(paiement.id)).toEqual([]);
+        expect(meta).toEqual({ ...avant, [CLES.accuses]: "1" });
+      });
+    }
+  }
+
+  it("dans le plafond actuel : accusés n° 1 à 3, puis l'accusé affiché sans envoi avec le bouton d'e-mail", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    stripe.paiements.get(paiement.id)!.metadonnees[CLES.examinee] = "le 25 septembre";
+    for (const [rang, prenom] of ["Léa", "Paul", "Zoé"].entries()) {
+      const { reponse } = await renoncer(declaration(reference, { prenom }));
+      accuseDExamen(reponse, reference, rang + 1);
+    }
+    const avant = emails.appels.length;
+    const { statut, reponse } = await renoncer(declaration(reference, { prenom: "Inès" }));
+    expect(statut).toBe(200);
+    expect(reponse.issue).toBe("accuse");
+    expect(reponse.envoi?.etat).toBe("plafond");
+    expect(texte(reponse.accuse!)).toContain(STATUT_EXAMEN);
+    expect(reponse.mailto).toMatch(/^mailto:/);
+    expect(emails.appels).toHaveLength(avant);
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    expect(ecrituresInterdites(paiement.id)).toEqual([]);
+  });
+
+  it("une heure illisible apparue pendant l'écriture de la rétractation : ni course ni remboursement, accusé « examen »", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    stripe.avantEcriture = ({ cle }) => {
+      // Le vendeur écrit une date seule au même instant : la réponse à l'écriture la montre.
+      if (cle === `marque-retractation-${reference}-1`) meta[CLES.telechargement] = "2026-09-25";
+    };
+    const { statut, reponse } = await renoncer(declaration(reference));
+    stripe.avantEcriture = null;
+    expect(statut).toBe(200);
+    accuseDExamen(reponse, reference, 1);
+    expect(meta[CLES.course]).toBeUndefined();
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+    expect(stripe.demandesDeModification.filter(({ metadonnees }) => CLES.course in metadonnees)).toEqual([]);
+  });
+
+  it("une heure illisible lue à la relecture qui suit un échec d'écriture : ni course ni remboursement, accusé « examen »", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    stripe.pannesParCle.set(`marque-retractation-${reference}-1`, "500_appliquee");
+    stripe.avantEcriture = ({ cle }) => {
+      if (cle === `marque-retractation-${reference}-1`) meta[CLES.examinee] = "2026-09-25 10:00";
+    };
+    const { statut, reponse } = await renoncer(declaration(reference));
+    stripe.avantEcriture = null;
+    expect(statut).toBe(200);
+    accuseDExamen(reponse, reference, 1);
+    expect(meta[CLES.course]).toBeUndefined();
+    expect(stripe.demandesDeRemboursement).toHaveLength(0);
+  });
+
+  it("récrite au format ISO 8601 complet, l'heure redevient lisible : une déclaration suit alors la règle ordinaire", async () => {
+    const { reference, paiement } = await commandeConfirmee();
+    const meta = stripe.paiements.get(paiement.id)!.metadonnees;
+    meta[CLES.examinee] = "2026-02-30T09:15:00Z";
+    accuseDExamen((await renoncer(declaration(reference))).reponse, reference, 1);
+    meta[CLES.examinee] = "2026-09-25T09:15:00+02:00";
+    const { reponse } = await renoncer(declaration(reference, { prenom: "Paul" }));
+    expect(texte(reponse.accuse!)).toContain("Statut : rétractation enregistrée — remboursement effectué");
+    expect(emails.appels.at(-1)!.cle).toBe(`accuse-${reference}`);
+    expect(stripe.remboursements).toHaveLength(1);
+  });
+});
+
 describe("après la fin du délai, jamais « arrivée en même temps »", () => {
   const TARDIVE = new Date("2026-10-10T08:00:00.000Z");
 
