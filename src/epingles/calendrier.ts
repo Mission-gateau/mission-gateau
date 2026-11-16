@@ -169,6 +169,10 @@ export const EPINGLES: readonly Epingle[] = [
   { date: "2026-12-29", flux: "escape-game-10-12-ans", guide: "escape", fichier: "escape-pirates-fiche-3-ael.jpg", jeu: "escape-pirates-ael", page: { section: "fiche", numero: 3, enigmes: ["motsmeles"] } },
   { date: "2026-12-31", flux: "escape-game-10-12-ans", guide: "escape", fichier: "escape-agents-diplome-elio.jpg", jeu: "escape-agents-elio", page: { section: "diplome" } },
   { date: "2027-01-02", flux: "escape-game-10-12-ans", guide: "escape", fichier: "escape-dinosaures-fiche-2-hugo.jpg", jeu: "escape-dinosaures-hugo", page: { section: "fiche", numero: 2, enigmes: ["logique"] } },
+  // Ajoutées après le correctif du code final, qui débordait de son cadre sur la page du trésor.
+  { date: "2027-01-04", flux: "escape-game-10-12-ans", guide: "escape", fichier: "escape-pirates-tresor-ael.jpg", jeu: "escape-pirates-ael", page: { section: "tresor" } },
+  { date: "2027-01-06", flux: "escape-game-10-12-ans", guide: "escape", fichier: "escape-agents-tresor-lena.jpg", jeu: "escape-agents-lena", page: { section: "tresor" } },
+  { date: "2027-01-08", flux: "escape-game-10-12-ans", guide: "escape", fichier: "escape-dinosaures-tresor-hugo.jpg", jeu: "escape-dinosaures-hugo", page: { section: "tresor" } },
   // idees-anniversaire
   { date: "2026-11-17", flux: "idees-anniversaire", guide: "deroule", fichier: "guide-deroule-chasse-pirates-lino.jpg", jeu: "chasse-pirates-lino", page: { section: "deroule" } },
   { date: "2026-11-19", flux: "idees-anniversaire", guide: "cachettes", fichier: "guide-cachettes-chasse-agents-ines.jpg", jeu: "chasse-agents-ines", page: { section: "preparation" } },

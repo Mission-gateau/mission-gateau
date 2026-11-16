@@ -308,7 +308,7 @@ export function documentKit(kit: Kit, options: { essai?: boolean } = {}) {
           </Text>
           {kit.codeFinal ? (
             <View style={{ marginTop: 20, borderWidth: 1.4, borderColor: COULEURS.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}>
-              <LettresDetachees mot={kit.codeFinal} taille={26} />
+              <LettresDetachees mot={kit.codeFinal} taille={26} surUneLigne />
             </View>
           ) : null}
         </View>

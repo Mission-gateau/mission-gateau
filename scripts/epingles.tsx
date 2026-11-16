@@ -140,12 +140,6 @@ function trouverLaPage(epingle: Epingle, jeu: JeuRendu): number {
     case "briefing":
       return contenant(GUIDE.titreBriefing);
     case "tresor":
-      // Défaut connu du kit (lot 10) : un code final de quatre chiffres
-      // déborde de son cadre sur la page du trésor, le dernier chiffre passant
-      // à la ligne. Le jeu ne change pas dans ce lot : on ne montre pas cette page.
-      if ((kit.codeFinal?.length ?? 0) >= 4) {
-        throw new Error(`${epingle.fichier} : la page du trésor d'un code à quatre chiffres déborde, choisir une autre page`);
-      }
       return nieme("Trésor", 1);
     case "diplome":
       return nieme("Diplômes", 1);

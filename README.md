@@ -34,10 +34,12 @@ publiques, mesure des visites (Vercel Web Analytics, sans cookie) et adresse
 de rétractation tient compte des heures illisibles comme le reste du site,
 une date qui n'existe pas (`2026-02-30T09:15:00Z`) est illisible, et
 « Réessayer » est grisé dès l'affichage d'une réponse qui demande d'attendre.
-Le lot 10 fabrique les épingles Pinterest — 84 images tirées de vraies pages
+Le lot 10 fabrique les épingles Pinterest — 87 images tirées de vraies pages
 de jeux, publiées par quatre flux RSS, un par tableau, au fil d'un calendrier
 fixe (voir « Les épingles Pinterest ») — et répond 404 aux adresses qui
-contiennent une barre oblique inversée (`/creer%5C`), qui donnaient 500.
+contiennent une barre oblique inversée (`/creer%5C`), qui donnaient 500. Son
+correctif remet sur une ligne le code final de la page du trésor, dont le
+dernier chiffre passait parfois à la ligne.
 La vente reste fermée en production tant qu'il
 lui manque quelque chose — aujourd'hui, une clé Stripe réelle (voir « La
 vente »).
@@ -899,7 +901,7 @@ l'article, 100 caractères au plus, sa description, et son lien, qui doit être
 sur le domaine revendiqué ; les articles les plus anciens d'abord, 200
 épingles par jour au plus).
 
-**Les images** (`public/epingles/`, 84 JPEG de 1000 × 1500 px, 400 Ko au
+**Les images** (`public/epingles/`, 87 JPEG de 1000 × 1500 px, 400 Ko au
 plus) montrent chacune une vraie page d'un kit complet produit par le moteur,
 rendue depuis le PDF sans retouche, sur le fond bleu canard du site, avec en
 haut un titre court en Fredoka (« Chasse au trésor d'anniversaire » et « 4-6
@@ -911,8 +913,9 @@ de la fête** : ni date, ni adresse, ni contact, ni invité. Pour chaque format
 et chaque thème, 8 images : le déroulé, l'histoire du départ, deux pages de
 cartes-indices ou de fiches d'énigmes de types différents (intrus, suite,
 comptage, labyrinthe ; pictogrammes, calcul, miroir, mots mêlés ; morse,
-César, sudoku, grille de logique), le trésor (sauf l'escape game, voir plus
-bas) et le diplôme, tirés de deux jeux. S'y ajoutent 12 images pour les
+César, sudoku, grille de logique), le trésor et le diplôme, tirés de deux
+jeux ; l'escape game a 3 pages du trésor de plus, ajoutées après le
+correctif de son code final. S'y ajoutent 12 images pour les
 guides du déroulé (la page du déroulé) et des cachettes (la page « à
 préparer » : plan de pose et sécurité).
 
@@ -957,7 +960,8 @@ articles déjà publiés à l'heure de la requête (lue à chaque fois), du plus
 récent au plus ancien, 50 au plus ; il est gardé une heure au plus par le CDN
 de Vercel (`s-maxage=3600`) et jamais par le navigateur. Pinterest reçoit
 donc une épingle nouvelle tous les deux jours par flux : les trois flux de
-format vont jusqu'au 2 janvier 2027 (24 articles chacun), celui des idées
+format vont jusqu'au 2 janvier 2027 (24 articles), et jusqu'au 8 janvier
+pour l'escape game (27 articles), celui des idées
 jusqu'au 9 décembre 2026 (12 articles). Ensuite, ils ne changent plus.
 
 **Ajouter des images au calendrier** : ajouter une ligne à `EPINGLES`, datée
@@ -1328,12 +1332,15 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   `VERCEL_PROJECT_PRODUCTION_URL` ; préversion : `VERCEL_URL`). Un parent parti
   d'une autre adresse (alias de branche d'une préversion, autre alias
   `*.vercel.app`) ne retrouve pas son formulaire en cas d'annulation.
-- **Défaut du kit vu au lot 10, non corrigé** (le jeu ne change pas dans ce
-  lot) : sur la page du trésor de l'escape game, le code final à quatre
-  chiffres déborde de son cadre et son dernier chiffre passe à la ligne
-  (visible aussi dans `samples/`). Les épingles ne montrent donc pas cette
-  page pour l'escape game, et `npm run epingles` la refuse. Les codes à trois
-  chiffres de la mission tiennent.
+- **Le code final de la page du trésor** s'imprime sur une seule ligne
+  (`LettresDetachees` avec `surUneLigne`). Jusqu'au correctif du lot 10, son
+  dernier chiffre passait à la ligne sous les autres, en débordant du cadre,
+  pour de nombreux codes à quatre chiffres et certains à trois : la largeur
+  d'un cadre qui suit son contenu était mesurée sans les écarts entre les
+  cases. Les kits déjà vendus en profitent au prochain téléchargement ;
+  `VERSION_KIT` ne change pas, la structure du kit étant la même.
+  `tests/codeFinal.test.tsx` relit la page du trésor et celle des solutions
+  avec pdf.js, et vérifie que le code y forme une seule ligne.
 - Les épingles : les images sont rendues par pdf.js, pas par le lecteur PDF
   du parent ; un rendu très légèrement différent (lissage, crénage) est
   possible. Le compte Pinterest lit les flux à son rythme, que ce dépôt ne
