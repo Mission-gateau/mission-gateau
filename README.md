@@ -8,7 +8,7 @@ d'enfants, la durée et les cachettes dont il dispose chez lui. Le site compose
 aussitôt un kit complet : guide de l'organisateur, invitations, cartes-indices
 à cacher, fiches d'énigmes, page du trésor, diplômes et page de solutions.
 
-Le dépôt en est au **lot 10**. Les lots 1 à 3 ont livré le moteur de jeu, le
+Le dépôt en est au **lot 11**. Les lots 1 à 3 ont livré le moteur de jeu, le
 kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs de
 deux audits. Le lot 4 a ajouté la vente du jeu complet à 12,90 € par Stripe, sa
 livraison et les pages légales. Le lot 5 a mis la vente en conformité avec le
@@ -39,7 +39,11 @@ de jeux, publiées par quatre flux RSS, un par tableau, au fil d'un calendrier
 fixe (voir « Les épingles Pinterest ») — et répond 404 aux adresses qui
 contiennent une barre oblique inversée (`/creer%5C`), qui donnaient 500. Son
 correctif remet sur une ligne le code final de la page du trésor, dont le
-dernier chiffre passait parfois à la ligne.
+dernier chiffre passait parfois à la ligne. Le lot 11 corrige l'audit du
+lot 10 : les descriptions des épingles élident « de » devant un prénom qui
+commence par une voyelle ou un h (« la fin de la partie d'Alba »), et toute
+adresse dont le chemin contient un `%` (`/creer%2F`, `/cr%65er`…) reçoit
+une 404, comme celles en `%5C` — sur Vercel, elles répondaient 500.
 La vente reste fermée en production tant qu'il
 lui manque quelque chose — aujourd'hui, une clé Stripe réelle (voir « La
 vente »).
@@ -98,7 +102,7 @@ src/contenu/    tous les textes, séparés du code
   guides/         les cinq guides, leurs exemples (moteur, graine fixe), la page /guides
   referencement.ts titres, descriptions et date de modification des pages publiques
 src/site/       ce que voient les moteurs : noindex, robots.txt, plan du site, métadonnées
-src/proxy.ts    404 aux adresses en %5C, puis l'en-tête X-Robots-Tag de chaque requête
+src/proxy.ts    404 aux adresses dont le chemin contient % ou \, puis l'en-tête X-Robots-Tag
 src/epingles/   les épingles Pinterest : calendrier, flux RSS, tailles des images
   calendrier.ts   chaque image, son jeu, sa page, son flux et sa date de publication
   flux.ts         les quatre flux RSS 2.0 (servis par src/app/epingles/<flux>.xml/)
@@ -868,12 +872,22 @@ production (préversions, local), quel que soit le chemin. L'environnement
   ICO qui contient tel quel le PNG de `src/app/icon.png`).
 - Aucun service de Google n'est appelé par le site ; la Search Console se
   validera par un enregistrement DNS, hors de ce dépôt.
-- Une adresse dont le chemin contient une barre oblique inversée, telle
-  quelle ou codée (`%5C`, `%5c`), reçoit une 404 `noindex, nofollow` du proxy,
-  avant toute autre chose (lot 10). Des robots appellent `/creer%5C`,
-  `/cgv%5C`… depuis le 19 octobre 2026, et Next.js y répondait 500
-  (« Cannot find module … %5C.js »). Seul le chemin compte : un `%5C` dans les
-  paramètres de l'adresse ne change rien.
+- Une adresse dont le chemin, tel qu'il arrive, contient un `%` (un
+  caractère codé : `%2F`, `%5C`, `%65`…) ou une barre oblique inversée
+  reçoit une 404 `noindex, nofollow` du proxy (`cheminRefuse` dans
+  `src/site/referencement.ts`), avant toute autre chose. Aucune adresse du
+  site n'a de `%` dans son chemin : pages, guides, `/commande/<référence>`
+  (base64url), routes `/api`, flux et images des épingles et liens des
+  e-mails sont en ASCII sans `%`. Des robots appellent `/creer%5C`,
+  `/cgv%5C`… depuis le 19 octobre 2026 ; sur Vercel, Next.js répondait 500 à
+  toute adresse codée qui, une fois décodée, désigne une route (`/creer%2F`,
+  `/api%2Fcommande`, `/cr%65er` : « Cannot find module
+  './.next/server/pages/creer%2F.js' »). **Le défaut ne se reproduit que sur
+  Vercel** : `next start` en local répond 404 de lui-même, si bien que seuls
+  `tests/adresses-codees.test.ts`, qui appelle le proxy, et une mesure en
+  production montrent la règle. Le lot 10 ne refusait que `\` et `%5C` ; le
+  lot 11, tout `%` du chemin. Seul le chemin compte : un `%` dans les
+  paramètres de l'adresse (`/creer?x=%2F`) ne change rien.
 
 ### Les guides
 
@@ -950,7 +964,14 @@ et `utm_content=<nom de l'image>` (un lien distinct par épingle, et la mesure
 d'audience sait laquelle a amené la visite), un `guid` stable
 (`missiongateau-epingle-<nom de l'image>`, `isPermaLink="false"`), sa date, et
 l'image en `<enclosure>` (avec sa taille réelle) et en `<media:content>`
-(1000 × 1500). Les textes vivent dans `src/contenu/epingles.ts`.
+(1000 × 1500). Les textes vivent dans `src/contenu/epingles.ts`. Les gabarits
+y écrivent toujours « de {prenom} » : `src/epingles/flux.ts` (`elisionDevant`)
+l'élide quand le prénom commence par une voyelle, accentuée ou non, ou par un
+h — « la fin de la partie d'Alba », « au prénom d'Inès », « d'Hugo » (h muet
+ou non : aucun prénom d'exemple n'a de h aspiré) ; le y ne compte pour une
+voyelle que devant une consonne (« d'Yves », « de Yanis »). L'apostrophe est
+la droite, comme dans le reste des textes. Le moteur n'a pas de règle
+d'élision : elle ne vaut que pour les épingles (lot 11).
 
 **Le calendrier** : chaque image a une date de publication fixe, écrite dans
 `src/epingles/calendrier.ts`, à 6 h UTC (7 h à Paris l'hiver). Le premier

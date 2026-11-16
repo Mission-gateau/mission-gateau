@@ -11,6 +11,8 @@ import { typographier } from "../engine/texte";
  * reprennent celles de l'accueil (src/contenu/site.ts).
  *
  * Gabarits : {age}, {prenom}, {theme}, {tranche}, {jeu}, {enigmes}, {enigme}.
+ * « de {prenom} » s'écrit toujours ainsi : src/epingles/flux.ts l'élide quand
+ * le prénom commence par une voyelle ou un h (« d'Alba », « d'Hugo »).
  */
 export const TEXTES_EPINGLES = typographier({
   /** En bas de chaque image. */

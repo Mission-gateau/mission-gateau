@@ -7,7 +7,7 @@ import { GUIDES } from "@/contenu/guides";
 import { TEXTES_EPINGLES } from "@/contenu/epingles";
 import { formatPourAge, TRANCHES_AGE } from "@/engine/configuration";
 import { EPINGLES, JEUX, type IdFlux } from "@/epingles/calendrier";
-import { articlesDuFlux, descriptionDe, FLUX, fluxRss, lienDe, titreDe } from "@/epingles/flux";
+import { articlesDuFlux, descriptionDe, elisionDevant, FLUX, fluxRss, lienDe, titreDe, titreDeLImage } from "@/epingles/flux";
 import { IMAGES } from "@/epingles/images";
 import { proxy } from "@/proxy";
 import { GET as fluxChasse } from "@/app/epingles/chasse-4-6-ans.xml/route";
@@ -15,6 +15,7 @@ import { GET as fluxMission } from "@/app/epingles/mission-7-9-ans.xml/route";
 import { GET as fluxEscape } from "@/app/epingles/escape-game-10-12-ans.xml/route";
 import { GET as fluxIdees } from "@/app/epingles/idees-anniversaire.xml/route";
 import { fautes } from "./orthographe";
+import AVANT_LE_LOT_11 from "./donnees/epingles-lot-10.json";
 
 /**
  * Les épingles Pinterest (lot 10) : les images de public/epingles/, le
@@ -283,6 +284,66 @@ describe("les flux RSS des épingles", () => {
     expect(new Set(guids).size).toBe(guids.length);
     expect(new Set(EPINGLES.map((epingle) => epingle.fichier)).size).toBe(EPINGLES.length);
     for (const epingle of EPINGLES) expect(epingle.fichier).toMatch(/^[a-z0-9-]+\.jpg$/);
+  });
+});
+
+describe("l'élision de « de » devant le prénom (lot 11)", () => {
+  /** Les cinq descriptions qui écrivaient « de » devant un prénom à voyelle ou à h, et leur forme élidée. */
+  const ELIDEES: Record<string, string> = {
+    "chasse-dinosaures-tresor-alba.jpg": "la fin de la partie d'Alba, 6 ans",
+    "chasse-agents-diplome-ines.jpg": "au prénom d'Inès, 6 ans",
+    "escape-agents-diplome-elio.jpg": "au prénom d'Elio, 12 ans",
+    "escape-pirates-tresor-ael.jpg": "la fin de la partie d'Aël, 10 ans",
+    "escape-dinosaures-tresor-hugo.jpg": "la fin de la partie d'Hugo, 12 ans",
+  };
+  const avant = AVANT_LE_LOT_11 as Record<string, { titre: string; description: string }>;
+
+  it("la règle : voyelle, accentuée ou non, ou h ; le y seulement devant une consonne", () => {
+    for (const prenom of ["Alba", "Inès", "Elio", "Aël", "Hugo", "Éva", "Île", "Océane", "Ugo", "Hélène", "Yves", "alba", "Œnone"]) {
+      expect(elisionDevant(prenom), prenom).toBe(true);
+    }
+    for (const prenom of ["Maya", "Lino", "Sacha", "Timéo", "Zoé", "Léna", "Roxane", "Yanis", "Yohan", "Sofia"]) {
+      expect(elisionDevant(prenom), prenom).toBe(false);
+    }
+  });
+
+  it("aucun titre ni aucune description n'écrit « de » devant un prénom d'exemple qui commence par une voyelle ou un h", () => {
+    const aVoyelle = [...new Set(Object.values(JEUX).map((jeu) => jeu.prenom))].filter((prenom) => /^[aeiouyh]/i.test(prenom.normalize("NFD")));
+    expect(aVoyelle.sort()).toEqual(["Aël", "Elio", "Hugo", "Inès", "Alba"].sort());
+    for (const epingle of EPINGLES) {
+      for (const texte of [titreDe(epingle), descriptionDe(epingle), ...titreDeLImage(epingle)]) {
+        for (const prenom of aVoyelle) expect(texte, `${epingle.fichier} : ${texte}`).not.toMatch(new RegExp(`(^|[^\\p{L}])[Dd]e ${prenom}(?!\\p{L})`, "u"));
+      }
+    }
+  });
+
+  it("les cinq descriptions concernées portent la forme élidée, avec l'apostrophe des autres textes des épingles", () => {
+    for (const [fichier, attendu] of Object.entries(ELIDEES)) {
+      const epingle = EPINGLES.find((e) => e.fichier === fichier)!;
+      expect(descriptionDe(epingle), fichier).toContain(attendu);
+      expect(descriptionDe(epingle), fichier).not.toContain("’");
+    }
+    // Dans le flux, l'apostrophe s'échappe comme toutes les autres.
+    const flux = fluxRss("chasse-4-6-ans", new Date("2026-11-21T06:00:00Z"));
+    expect(flux).toContain("la fin de la partie d&apos;Alba, 6 ans");
+    expect(lireFlux(flux).articles.find((a) => a.guid.endsWith("chasse-dinosaures-tresor-alba"))!.description).toContain("d'Alba");
+  });
+
+  it("toutes les autres descriptions, et tous les titres, sont identiques au caractère près à ceux d'avant le lot 11 (main, e778a27)", () => {
+    expect(Object.keys(avant).sort()).toEqual(EPINGLES.map((e) => e.fichier).sort());
+    for (const epingle of EPINGLES) {
+      const ancien = avant[epingle.fichier]!;
+      expect(titreDe(epingle), epingle.fichier).toBe(ancien.titre);
+      const attendu = ELIDEES[epingle.fichier];
+      if (attendu) {
+        // Le seul changement : « de X » devient « d'X », une fois.
+        const prenom = JEUX[epingle.jeu].prenom;
+        expect(ancien.description.split(`de ${prenom},`)).toHaveLength(2);
+        expect(descriptionDe(epingle)).toBe(ancien.description.replace(`de ${prenom},`, `d'${prenom},`));
+      } else {
+        expect(descriptionDe(epingle), epingle.fichier).toBe(ancien.description);
+      }
+    }
   });
 });
 

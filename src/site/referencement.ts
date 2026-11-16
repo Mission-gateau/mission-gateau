@@ -64,12 +64,17 @@ export function enTeteRobots(chemin: string, production: boolean): string | null
 }
 
 /**
- * Un chemin qui contient une barre oblique inversée, telle quelle ou codée
- * (`%5C`, `%5c`) : aucune page du site n'en a, et Next.js y répondait 500
- * (« Cannot find module … %5C.js »). Le proxy y répond 404, `noindex`.
+ * Un chemin refusé d'emblée : il contient un caractère codé en `%XX`, ou une
+ * barre oblique inversée telle quelle. Aucune adresse du site n'en a (pages,
+ * guides, `/commande/<référence>` en base64url, routes /api, flux et images
+ * des épingles, liens des e-mails : tout est en ASCII sans `%`). Sur Vercel,
+ * et seulement là, Next.js répondait 500 à un tel chemin quand, une fois
+ * décodé, il désignait une route (`/creer%5C`, `/creer%2F`, `/cr%65er`… :
+ * « Cannot find module … creer%2F.js »). Le proxy y répond 404, `noindex`.
+ * Le lot 10 ne refusait que `\` et `%5C` ; le lot 11, tout `%` du chemin.
  */
-export function cheminAvecBarreInversee(chemin: string): boolean {
-  return /\\|%5c/i.test(chemin);
+export function cheminRefuse(chemin: string): boolean {
+  return /[%\\]/.test(chemin);
 }
 
 /** robots.txt : en production, tout sauf /api/, /commande/ et /renoncer, et le plan du site ; ailleurs, rien. */

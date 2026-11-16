@@ -5,7 +5,7 @@ import { DEROULE } from "../contenu/guides/deroule";
 import { ESCAPE_10_12_ANS } from "../contenu/guides/escape";
 import { MISSION_7_9_ANS } from "../contenu/guides/mission";
 import { formatPourAge, TRANCHES_AGE } from "../engine/configuration";
-import { remplir } from "../engine/texte";
+import { remplir, sansAccents } from "../engine/texte";
 import type { IdFormat } from "../engine/types";
 import { ADRESSE_CANONIQUE } from "../site/referencement";
 import { EPINGLES, HEURE_DE_PUBLICATION, JEUX, type Epingle, type IdFlux, type IdGuideEpingle } from "./calendrier";
@@ -72,6 +72,30 @@ export function lienDe(epingle: Epingle): string {
   return `${ADRESSE_CANONIQUE}/guides/${GUIDES_EPINGLES[epingle.guide].adresse}?${parametres.toString()}`;
 }
 
+/**
+ * Vrai si « de » s'élide devant ce mot : il commence par une voyelle,
+ * accentuée ou non, ou par un h (« d'Alba », « d'Inès », « d'Hugo »). Le y
+ * compte pour une voyelle devant une consonne (« d'Yves »), pas devant une
+ * voyelle (« de Yanis »). Le moteur n'a pas de règle d'élision : elle vit ici,
+ * pour les textes des épingles seulement.
+ */
+export function elisionDevant(mot: string): boolean {
+  const debut = sansAccents(mot).toLowerCase();
+  return /^[aeiouhœæ]/.test(debut) || /^y[^aeiouy]/.test(debut);
+}
+
+/**
+ * `remplir`, après avoir élidé « de » devant `{prenom}` quand le prénom le
+ * demande : « la fin de la partie de {prenom} » devient « … d'Alba », mais
+ * reste « … de Maya ». Tous les textes des épingles passent par ici, si bien
+ * qu'un gabarit nouveau qui écrit « de {prenom} » est élidé lui aussi.
+ */
+function remplirEpingle(gabarit: string, valeurs: Record<string, string | number>): string {
+  const prenom = valeurs.prenom;
+  const elide = typeof prenom === "string" && elisionDevant(prenom) ? gabarit.replace(/(^|[^\p{L}])([Dd])e \{prenom\}/gu, "$1$2'{prenom}") : gabarit;
+  return remplir(elide, valeurs);
+}
+
 function valeursDe(epingle: Epingle): Record<string, string | number> {
   const jeu = JEUX[epingle.jeu];
   const format: IdFormat = formatPourAge(jeu.age);
@@ -93,32 +117,32 @@ export function titreDeLImage(epingle: Epingle): [string, string] {
   const valeurs = valeursDe(epingle);
   const format = formatPourAge(JEUX[epingle.jeu].age);
   if (epingle.guide === "deroule" || epingle.guide === "cachettes") {
-    return [TEXTES_EPINGLES.guides[epingle.guide].image, remplir(TEXTES_EPINGLES.sousTitreGuide, valeurs)];
+    return [TEXTES_EPINGLES.guides[epingle.guide].image, remplirEpingle(TEXTES_EPINGLES.sousTitreGuide, valeurs)];
   }
-  return [TEXTES_EPINGLES.formats[format].image, remplir(TEXTES_EPINGLES.sousTitreFormat, valeurs)];
+  return [TEXTES_EPINGLES.formats[format].image, remplirEpingle(TEXTES_EPINGLES.sousTitreFormat, valeurs)];
 }
 
 /** Le titre de l'article (et de l'épingle) : 100 caractères au plus. */
 export function titreDe(epingle: Epingle): string {
   const valeurs = valeursDe(epingle);
   if (epingle.guide === "deroule" || epingle.guide === "cachettes") {
-    return remplir(TEXTES_EPINGLES.guides[epingle.guide].titre, valeurs);
+    return remplirEpingle(TEXTES_EPINGLES.guides[epingle.guide].titre, valeurs);
   }
   const format = formatPourAge(JEUX[epingle.jeu].age);
-  const debut = remplir(TEXTES_EPINGLES.formats[format].titre, valeurs);
-  const fin = remplir(TEXTES_EPINGLES.pages[epingle.page.section].titre, valeurs);
+  const debut = remplirEpingle(TEXTES_EPINGLES.formats[format].titre, valeurs);
+  const fin = remplirEpingle(TEXTES_EPINGLES.pages[epingle.page.section].titre, valeurs);
   return `${debut}, thème ${valeurs.theme} : ${fin}`;
 }
 
 /** La description de l'article (et de l'épingle), en texte simple : 500 caractères au plus. */
 export function descriptionDe(epingle: Epingle): string {
   const valeurs = valeursDe(epingle);
-  const page = remplir(TEXTES_EPINGLES.pages[epingle.page.section].phrase, valeurs);
+  const page = remplirEpingle(TEXTES_EPINGLES.pages[epingle.page.section].phrase, valeurs);
   if (epingle.guide === "deroule" || epingle.guide === "cachettes") {
     return [page, TEXTES_EPINGLES.guides[epingle.guide].phrase, TEXTES_EPINGLES.finGuide].join(" ");
   }
   const format = formatPourAge(JEUX[epingle.jeu].age);
-  return [page, remplir(TEXTES_EPINGLES.formats[format].phrase, valeurs), TEXTES_EPINGLES.finFormat].join(" ");
+  return [page, remplirEpingle(TEXTES_EPINGLES.formats[format].phrase, valeurs), TEXTES_EPINGLES.finFormat].join(" ");
 }
 
 /** Les articles d'un flux publiés à l'heure dite, du plus récent au plus ancien, 50 au plus. */
