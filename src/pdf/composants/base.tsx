@@ -78,13 +78,21 @@ export function LettresDetachees({
   mot,
   taille = 22,
   souligne = false,
+  surUneLigne = false,
 }: {
   mot: string;
   taille?: number;
   souligne?: boolean;
+  /**
+   * Interdit le retour à la ligne : pour un code court, dans un cadre dont la
+   * largeur suit son contenu (la page du trésor). Le moteur de mise en page
+   * oublie alors les écarts entre les cases en mesurant le cadre, et la
+   * dernière case passait à la ligne.
+   */
+  surUneLigne?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginVertical: 4 }}>
+    <View style={{ flexDirection: "row", flexWrap: surUneLigne ? "nowrap" : "wrap", gap: 6, marginVertical: 4 }}>
       {[...mot].map((lettre, index) => (
         <View key={`${lettre}-${index}`} style={{ alignItems: "center" }}>
           <Text style={{ fontFamily: "Fredoka", fontSize: taille, lineHeight: 1.25 }}>{lettre}</Text>
