@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "samples": "tsx scripts/samples.tsx",
-    "verifier:tracage": "tsx scripts/verifier-tracage.mts"
+    "verifier:tracage": "tsx scripts/verifier-tracage.mts",
+    "epingles": "tsx scripts/epingles.tsx"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
@@ -26,6 +27,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "1.1.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.4",
     "@types/react": "^19",
@@ -35,6 +37,7 @@
     "eslint-config-next": "16.3.6",
     "jsdom": "^30.1.1",
     "nspell": "^2.1.5",
+    "pdfjs-dist": "6.5.438",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

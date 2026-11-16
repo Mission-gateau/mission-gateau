@@ -63,6 +63,15 @@ export function enTeteRobots(chemin: string, production: boolean): string | null
   return fichier ? null : NOINDEX;
 }
 
+/**
+ * Un chemin qui contient une barre oblique inversée, telle quelle ou codée
+ * (`%5C`, `%5c`) : aucune page du site n'en a, et Next.js y répondait 500
+ * (« Cannot find module … %5C.js »). Le proxy y répond 404, `noindex`.
+ */
+export function cheminAvecBarreInversee(chemin: string): boolean {
+  return /\\|%5c/i.test(chemin);
+}
+
 /** robots.txt : en production, tout sauf /api/, /commande/ et /renoncer, et le plan du site ; ailleurs, rien. */
 export function robotsTxt(production: boolean): string {
   if (!production) return "User-Agent: *\nDisallow: /\n";

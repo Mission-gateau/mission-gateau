@@ -162,6 +162,8 @@ describe("gabarits", () => {
       "cles",
       // Guides : la légende et le déroulé de l'exemple produit par le moteur.
       "graine", "debut", "duree", "decalage",
+      // Épingles Pinterest : le jeu montré et ses énigmes.
+      "jeu", "enigmes", "enigme",
     ]);
     const inconnues = new Set<string>();
     for (const { texte } of textesDeProse()) {

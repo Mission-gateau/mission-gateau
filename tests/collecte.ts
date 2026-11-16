@@ -2,6 +2,7 @@ import { CONSIGNES, MESSAGES_FINAUX, SOLUTIONS, TITRES } from "@/contenu/consign
 import { DEVINETTES } from "@/contenu/devinettes";
 import { GUIDE } from "@/contenu/guide";
 import { GUIDES, TEXTES_GUIDES } from "@/contenu/guides";
+import { TEXTES_EPINGLES } from "@/contenu/epingles";
 import { PAGES_PUBLIQUES } from "@/contenu/referencement";
 import { GABARITS_INDICES, INDICES_CACHETTES } from "@/contenu/indices";
 import { GABARITS_LOGIQUE } from "@/contenu/logique";
@@ -97,6 +98,7 @@ export function tousLesTextes(): TexteRepere[] {
     ["guides", GUIDES],
     ["textesGuides", TEXTES_GUIDES],
     ["pagesPubliques", PAGES_PUBLIQUES],
+    ["epingles", TEXTES_EPINGLES],
   ];
   for (const [nom, valeur] of sources) parcourir(valeur, nom, resultat);
   return resultat;

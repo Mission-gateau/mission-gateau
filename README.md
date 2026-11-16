@@ -8,7 +8,7 @@ d'enfants, la durée et les cachettes dont il dispose chez lui. Le site compose
 aussitôt un kit complet : guide de l'organisateur, invitations, cartes-indices
 à cacher, fiches d'énigmes, page du trésor, diplômes et page de solutions.
 
-Le dépôt en est au **lot 9**. Les lots 1 à 3 ont livré le moteur de jeu, le
+Le dépôt en est au **lot 10**. Les lots 1 à 3 ont livré le moteur de jeu, le
 kit PDF, le formulaire et l'aperçu gratuit filigrané, puis les correctifs de
 deux audits. Le lot 4 a ajouté la vente du jeu complet à 12,90 € par Stripe, sa
 livraison et les pages légales. Le lot 5 a mis la vente en conformité avec le
@@ -34,6 +34,10 @@ publiques, mesure des visites (Vercel Web Analytics, sans cookie) et adresse
 de rétractation tient compte des heures illisibles comme le reste du site,
 une date qui n'existe pas (`2026-02-30T09:15:00Z`) est illisible, et
 « Réessayer » est grisé dès l'affichage d'une réponse qui demande d'attendre.
+Le lot 10 fabrique les épingles Pinterest — 84 images tirées de vraies pages
+de jeux, publiées par quatre flux RSS, un par tableau, au fil d'un calendrier
+fixe (voir « Les épingles Pinterest ») — et répond 404 aux adresses qui
+contiennent une barre oblique inversée (`/creer%5C`), qui donnaient 500.
 La vente reste fermée en production tant qu'il
 lui manque quelque chose — aujourd'hui, une clé Stripe réelle (voir « La
 vente »).
@@ -63,6 +67,7 @@ e-mails »).
 | `npm run assets`    | Télécharge polices et icônes dans `public/` (idempotent)      |
 | `npm run samples`   | Régénère les exemples de `samples/`                           |
 | `npm run verifier:tracage` | Après un build : vérifie que les fonctions PDF embarquent polices et icônes |
+| `npm run epingles`  | Refabrique les images des épingles Pinterest (`public/epingles/`) |
 
 `npm run assets` n'écrit que ce qui manque ; `npm run assets -- --force`
 retélécharge tout. `npm run samples` redonne à l'identique les fichiers JSON et
@@ -91,7 +96,13 @@ src/contenu/    tous les textes, séparés du code
   guides/         les cinq guides, leurs exemples (moteur, graine fixe), la page /guides
   referencement.ts titres, descriptions et date de modification des pages publiques
 src/site/       ce que voient les moteurs : noindex, robots.txt, plan du site, métadonnées
-src/proxy.ts    l'en-tête X-Robots-Tag de chaque requête, selon l'environnement
+src/proxy.ts    404 aux adresses en %5C, puis l'en-tête X-Robots-Tag de chaque requête
+src/epingles/   les épingles Pinterest : calendrier, flux RSS, tailles des images
+  calendrier.ts   chaque image, son jeu, sa page, son flux et sa date de publication
+  flux.ts         les quatre flux RSS 2.0 (servis par src/app/epingles/<flux>.xml/)
+  images.ts       produit par `npm run epingles` : taille réelle de chaque image
+public/epingles/ les images des épingles (JPEG 1000 × 1500), produites par le script
+scripts/epingles.tsx  fabrique ces images depuis le vrai moteur
 src/vente/      la vente : ouverture, Stripe, Resend, chiffrement, livraison,
                 confirmation, rétractation, délai légal, tâche quotidienne
   garde.ts        le contrôle commun des routes POST (JSON, même origine)
@@ -855,6 +866,12 @@ production (préversions, local), quel que soit le chemin. L'environnement
   ICO qui contient tel quel le PNG de `src/app/icon.png`).
 - Aucun service de Google n'est appelé par le site ; la Search Console se
   validera par un enregistrement DNS, hors de ce dépôt.
+- Une adresse dont le chemin contient une barre oblique inversée, telle
+  quelle ou codée (`%5C`, `%5c`), reçoit une 404 `noindex, nofollow` du proxy,
+  avant toute autre chose (lot 10). Des robots appellent `/creer%5C`,
+  `/cgv%5C`… depuis le 19 octobre 2026, et Next.js y répondait 500
+  (« Cannot find module … %5C.js »). Seul le chemin compte : un `%5C` dans les
+  paramètres de l'adresse ne change rien.
 
 ### Les guides
 
@@ -871,6 +888,93 @@ l'organisateur et du formulaire. `tests/guides.test.tsx` vérifie 900 à 1 500
 mots par guide, le lien vers `/creer`, l'exemple et l'absence de toute
 ressource externe ; le correcteur et la liste noire les relisent avec les
 autres textes.
+
+### Les épingles Pinterest
+
+Le site a un compte Pinterest professionnel (pinterest.com/missiongateau),
+qui a revendiqué missiongateau.com. Pinterest sait créer seul des épingles à
+partir d'un flux RSS : il lit le flux, et chaque article nouveau devient une
+épingle (l'image de `<enclosure>` ou `<media:content>`, le titre de
+l'article, 100 caractères au plus, sa description, et son lien, qui doit être
+sur le domaine revendiqué ; les articles les plus anciens d'abord, 200
+épingles par jour au plus).
+
+**Les images** (`public/epingles/`, 84 JPEG de 1000 × 1500 px, 400 Ko au
+plus) montrent chacune une vraie page d'un kit complet produit par le moteur,
+rendue depuis le PDF sans retouche, sur le fond bleu canard du site, avec en
+haut un titre court en Fredoka (« Chasse au trésor d'anniversaire » et « 4-6
+ans · thème pirates · à imprimer ») et en bas « Aperçu gratuit sur
+missiongateau.com ». Aucun prix, aucun avis, aucune note. Les 18 jeux
+d'exemple (`JEUX` dans `src/epingles/calendrier.ts`) ont une graine fixe, un
+prénom d'exemple, un âge qui varie dans la tranche du format, et **aucun champ
+de la fête** : ni date, ni adresse, ni contact, ni invité. Pour chaque format
+et chaque thème, 8 images : le déroulé, l'histoire du départ, deux pages de
+cartes-indices ou de fiches d'énigmes de types différents (intrus, suite,
+comptage, labyrinthe ; pictogrammes, calcul, miroir, mots mêlés ; morse,
+César, sudoku, grille de logique), le trésor (sauf l'escape game, voir plus
+bas) et le diplôme, tirés de deux jeux. S'y ajoutent 12 images pour les
+guides du déroulé (la page du déroulé) et des cachettes (la page « à
+préparer » : plan de pose et sécurité).
+
+`npm run epingles` les refabrique toutes (une quinzaine de secondes) : il
+compose chaque jeu, le contrôle (`verifierKit`), produit son PDF, trouve la
+page demandée par la mention de bas de page du kit, vérifie qu'elle montre
+bien les énigmes annoncées, la rend avec pdf.js sur le canevas de
+`@napi-rs/canvas`, compose l'image et l'enregistre, puis écrit la taille de
+chaque fichier dans `src/epingles/images.ts` et efface les images sorties du
+calendrier. Même entrée, même image : aucune date ni aucun hasard dans le
+rendu (deux passages donnent des fichiers identiques octet pour octet sur une
+même machine ; une autre version de pdf.js ou de Skia pourrait changer
+quelques pixels). Les images sont commitées : ni le build ni la CI ne les
+refabriquent.
+
+**Les flux**, un par tableau Pinterest (`src/epingles/flux.ts`) :
+
+| Flux | Tableau | Lien des articles |
+| ---- | ------- | ----------------- |
+| `https://www.missiongateau.com/epingles/chasse-4-6-ans.xml` | Chasse au trésor anniversaire 4-6 ans | guide de la chasse au trésor |
+| `https://www.missiongateau.com/epingles/mission-7-9-ans.xml` | Mission agents secrets anniversaire 7-9 ans | guide de la mission |
+| `https://www.missiongateau.com/epingles/escape-game-10-12-ans.xml` | Escape game anniversaire 10-12 ans | guide de l'escape game |
+| `https://www.missiongateau.com/epingles/idees-anniversaire.xml` | Idées anniversaire enfant à la maison | guides du déroulé et des cachettes |
+
+Un flux par tableau, parce que Pinterest range toutes les épingles d'un flux
+dans un seul tableau : c'est le flux qui choisit le tableau. Chaque flux est
+du RSS 2.0 (`application/rss+xml; charset=utf-8`) ; chaque article a un titre
+(100 caractères au plus), une description en texte simple (500 au plus, sans
+prix, chiffre de ventes, avis ni adresse e-mail), un lien vers le guide
+concerné avec `?utm_source=pinterest&utm_medium=social&utm_campaign=<flux>`
+et `utm_content=<nom de l'image>` (un lien distinct par épingle, et la mesure
+d'audience sait laquelle a amené la visite), un `guid` stable
+(`missiongateau-epingle-<nom de l'image>`, `isPermaLink="false"`), sa date, et
+l'image en `<enclosure>` (avec sa taille réelle) et en `<media:content>`
+(1000 × 1500). Les textes vivent dans `src/contenu/epingles.ts`.
+
+**Le calendrier** : chaque image a une date de publication fixe, écrite dans
+`src/epingles/calendrier.ts`, à 6 h UTC (7 h à Paris l'hiver). Le premier
+article de chaque flux est daté du 17 novembre 2026, puis un tous les deux
+jours, en alternant les thèmes et les pages. Un flux ne montre que les
+articles déjà publiés à l'heure de la requête (lue à chaque fois), du plus
+récent au plus ancien, 50 au plus ; il est gardé une heure au plus par le CDN
+de Vercel (`s-maxage=3600`) et jamais par le navigateur. Pinterest reçoit
+donc une épingle nouvelle tous les deux jours par flux : les trois flux de
+format vont jusqu'au 2 janvier 2027 (24 articles chacun), celui des idées
+jusqu'au 9 décembre 2026 (12 articles). Ensuite, ils ne changent plus.
+
+**Ajouter des images au calendrier** : ajouter une ligne à `EPINGLES`, datée
+deux jours après la dernière de son flux (un jeu nouveau va dans `JEUX`), puis
+`npm run epingles`, `npm test`, et commiter les images avec
+`src/epingles/images.ts`. Ne jamais changer la date, le nom de fichier ni le
+flux d'une ligne déjà publiée : Pinterest la prendrait pour une autre (le
+`guid` vient du nom de fichier). `tests/epingles.test.ts` vérifie les flux
+(relus par un analyseur XML), le calendrier et chaque image.
+
+**Le compte Pinterest est branché sur ces quatre adresses.** Si une adresse
+de flux change (nom de fichier, domaine), il faut rebrancher le flux dans les
+réglages du compte Pinterest, sinon plus rien ne se publie. Aucune balise ni
+aucun script de Pinterest n'est posé sur le site : rien ne change pour la
+politique de confidentialité, ni pour Google (`robots.txt` et le plan du
+site sont inchangés ; les flux et les images, fichiers servis tels quels, ne
+portent pas de `noindex` en production).
 
 ### Mesurer les visites
 
@@ -924,8 +1028,8 @@ Analytics du projet), décision du vendeur : tant qu'il ne l'est pas, le script
 répond 404 et rien n'est mesuré.
 
 Provenance : les référents et les paramètres `utm_source` se lisent dans Web
-Analytics. Les liens que nous publierons porteront `?utm_source=pinterest`
-(Pinterest) et `?utm_source=instagram` (Instagram).
+Analytics. Les liens des épingles portent `?utm_source=pinterest` (voir « Les
+épingles Pinterest ») ; ceux d'Instagram porteront `?utm_source=instagram`.
 
 ### Quand la vente est-elle ouverte ?
 
@@ -1224,6 +1328,16 @@ Mieux vaut changer de clé quand aucune commande récente n'attend sa livraison.
   `VERCEL_PROJECT_PRODUCTION_URL` ; préversion : `VERCEL_URL`). Un parent parti
   d'une autre adresse (alias de branche d'une préversion, autre alias
   `*.vercel.app`) ne retrouve pas son formulaire en cas d'annulation.
+- **Défaut du kit vu au lot 10, non corrigé** (le jeu ne change pas dans ce
+  lot) : sur la page du trésor de l'escape game, le code final à quatre
+  chiffres déborde de son cadre et son dernier chiffre passe à la ligne
+  (visible aussi dans `samples/`). Les épingles ne montrent donc pas cette
+  page pour l'escape game, et `npm run epingles` la refuse. Les codes à trois
+  chiffres de la mission tiennent.
+- Les épingles : les images sont rendues par pdf.js, pas par le lecteur PDF
+  du parent ; un rendu très légèrement différent (lissage, crénage) est
+  possible. Le compte Pinterest lit les flux à son rythme, que ce dépôt ne
+  maîtrise pas : une épingle peut paraître quelques heures après sa date.
 - Les champs libres (invités, date, heure, adresse, contact) refusent les
   accolades, qui casseraient les gabarits du kit. Un caractère absent des
   polices Nunito et Fredoka (émoji, écriture non latine) serait dessiné avec
@@ -1278,6 +1392,10 @@ listées sur la page `/credits` du site :
 Licences acceptées pour tout ce qui est livré dans le site ou dans les PDF :
 MIT, Apache 2.0, SIL Open Font License, CC0, et CC BY 4.0 avec crédit.
 Refusées : CC BY-SA, toute clause non commerciale, et toute licence inconnue.
+Les images des épingles n'emploient que ces trois ressources. Elles sont
+fabriquées sur le poste du développeur avec deux dépendances de
+développement, jamais servies en production : pdfjs-dist (Apache 2.0) et
+@napi-rs/canvas (MIT).
 
 Les histoires, les devinettes et les consignes sont écrites pour Mission
 Gâteau. Aucun personnage, nom ou univers protégé n'apparaît dans les jeux ; un
