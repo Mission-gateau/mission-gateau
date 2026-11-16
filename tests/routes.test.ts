@@ -20,6 +20,10 @@ import * as confirmation from "@/app/api/commande/[ref]/confirmation/route";
 import * as kit from "@/app/api/commande/[ref]/kit/route";
 import * as effacement from "@/app/api/effacement/route";
 import * as renoncer from "@/app/api/renoncer/route";
+import * as fluxChasse from "@/app/epingles/chasse-4-6-ans.xml/route";
+import * as fluxEscape from "@/app/epingles/escape-game-10-12-ans.xml/route";
+import * as fluxIdees from "@/app/epingles/idees-anniversaire.xml/route";
+import * as fluxMission from "@/app/epingles/mission-7-9-ans.xml/route";
 import { VENDEUR } from "@/contenu/vendeur";
 import { compterPages } from "./aide";
 import { FauxEmail } from "./fauxEmail";
@@ -74,6 +78,10 @@ describe("toutes les routes", () => {
       "api/commande/route.ts",
       "api/effacement/route.ts",
       "api/renoncer/route.ts",
+      "epingles/chasse-4-6-ans.xml/route.ts",
+      "epingles/escape-game-10-12-ans.xml/route.ts",
+      "epingles/idees-anniversaire.xml/route.ts",
+      "epingles/mission-7-9-ans.xml/route.ts",
       "robots.txt/route.ts",
       "sitemap.xml/route.ts",
     ]);
@@ -127,6 +135,9 @@ describe("toutes les routes", () => {
       ),
     );
     await nEstPasLeKit(renoncer.GET());
+
+    // Les flux des épingles : du XML, jamais un PDF.
+    for (const flux of [fluxChasse, fluxMission, fluxEscape, fluxIdees]) await nEstPasLeKit(flux.GET());
 
     // La tâche quotidienne : un état, et des compteurs dans le journal.
     await nEstPasLeKit(await effacement.GET(new Request("http://localhost/api/effacement")));
